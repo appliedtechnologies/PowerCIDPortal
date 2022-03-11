@@ -230,5 +230,5 @@ _Pvt_Extensions
 
 # FAKE - F# Make
 .fake/
-at.D365.PowerCID.Portal/at.D365.PowerCID.Portal/Properties/ServiceDependencies/
-at.D365.PowerCID.Portal/at.D365.PowerCID.Portal/appsettings.Development.json
+at.D365.PowerCID.Portal/Properties/ServiceDependencies/
+at.D365.PowerCID.Portal/appsettings.Development.json
