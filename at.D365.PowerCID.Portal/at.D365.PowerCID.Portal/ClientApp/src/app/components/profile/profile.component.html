@@ -1,0 +1,32 @@
+<dx-button
+  text="Login"
+  width="100%"
+  type="success"
+  stylingMode="contained"
+  [visible]="!isLoggedIn"
+  icon="at-icon powercid-icon-benutzer"
+  (onClick)="login()"
+></dx-button>
+
+<div *ngIf="isLoggedIn">
+  <div *ngIf="user?.MakeAdmin" class="hint-no-roles">
+    <strong>Initial role assignment failed.</strong> Power CID Portal needs a few minutes to configure everything in the background. Please refresh this page in a few moments to try it again.
+  </div> 
+
+  <div *ngIf="user">
+    <p><strong>First Name: </strong> {{user?.Firstname}}</p>
+    <p><strong>Last Name: </strong> {{user?.Lastname}}</p>
+    <p><strong>Email: </strong> {{user?.Email}}</p>
+    <p><strong>Id: </strong> {{user?.MsId}}</p>
+    <p><strong>Tenant: </strong> {{user?.TenantNavigation.Name}}</p>
+    <p><strong>Roles: </strong> {{roles}}</p>
+    <p><strong>Environments (import permission): </strong>{{allowedEnv}}</p>
+    
+
+    <div *ngIf="!roles" class="hint-no-roles">
+      <strong>You don't have a role yet.</strong> A PowerCID Portal administrator in your organization can assign you a role. Please log out and log back in to update your roles afterwards. This is also necessary if you are the first user in your organization to receive your initial role.
+    </div>
+
+    <app-history *ngIf="roles" [userId]="this.user?.Id"></app-history>
+  </div>
+</div>

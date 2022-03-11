@@ -1,0 +1,121 @@
+<h1>Deployment Paths</h1>
+
+<dx-button
+  id="addButton"
+  icon="add"
+  text="Add Deployment Path"
+  type="success"
+  (onClick)="this.onClickAddDeploymentPath()"
+>
+</dx-button>
+
+<div class="form">
+  <div class="drive-panel">
+    <div class="drive-header dx-treeview-item">
+      <div class="dx-treeview-item-content">
+        <i class="dx-icon at-icon powercid-icon-route"></i
+        ><span>Deployment Paths:</span>
+      </div>
+    </div>
+
+    <dx-sortable
+      filter=".dx-treeview-item"
+      group="shared"
+      data="deploymentpath"
+      [allowDropInsideItem]="true"
+      [allowReordering]="true"
+      (onDragChange)="onDragChange($event)"
+      (onDragEnd)="onDragEnd($event)"
+      (onAdd)="onAdd($event)"
+      (onReorder)="onReorder($event)"
+    >
+      <dx-tree-view
+        #treeViewDeploymentpath
+        id="treeViewDeploymentpath"
+        dataStructure="tree"
+        displayExpr="Name"
+        [dataSource]="deploymentPaths"
+        itemsExpr="DeploymentPathEnvironments"
+        keyExpr="Id"
+        itemTemplate="DeploymentPaths"
+        (onContentReady)="onContentReadyTreeViewDeploymentPaths($event)"
+      >
+        <div
+          *dxTemplate="let entry of 'DeploymentPaths'"
+          class="treeview-entry"
+        >
+          <div *ngIf="entry.EnvironmentNavigation">
+            {{ entry.StepNumber + ". " }}
+            {{ entry.EnvironmentNavigation.Name }}
+          </div>
+
+          <div *ngIf="!entry.EnvironmentNavigation">
+            {{ entry.Name }}
+          </div>
+          <dx-button
+            class="deleteDeploymentPath"
+            text="x"
+            (onClick)="onClickDeleteDeploymentPathOrStep($event, entry)"
+          >
+          </dx-button>
+        </div>
+      </dx-tree-view>
+    </dx-sortable>
+  </div>
+  <div class="form">
+    <div class="drive-panel">
+      <div class="drive-header dx-treeview-item">
+        <div class="dx-treeview-item-content">
+          <i class="dx-icon at-icon powercid-icon-unit"></i>
+          <span>Environments:</span>
+        </div>
+      </div>
+
+      <dx-sortable
+        filter=".dx-treeview-item"
+        group="shared"
+        data="environment"
+        [allowDropInsideItem]="true"
+        [allowReordering]="true"
+        (onDragChange)="onDragChange($event)"
+        (onDragEnd)="onDragEnd($event)"
+      >
+        <dx-tree-view
+          #treeViewEnvironment
+          id="treeViewEnvironment"
+          dataStructure="tree"
+          displayExpr="Name"
+          [dataSource]="dataSourceEnvironments"
+          keyExpr="Id"
+        >
+        </dx-tree-view>
+      </dx-sortable>
+    </div>
+  </div>
+</div>
+
+<dx-popup
+  *ngIf="isAddDeploymentPath"
+  title="Add Deployment Path"
+  [showTitle]="true"
+  [width]="500"
+  height="auto"
+  [(visible)]="isAddDeploymentPath"
+>
+  <dx-form [(formData)]="newDeploymentPath">
+    <dxi-item dataField="Name" [label]="{ text: 'Name' }"></dxi-item>
+
+    <dxi-item
+      itemType="button"
+      horizontalAlignment="left"
+      [buttonOptions]="{
+        icon: 'save',
+        text: 'Save',
+        type: 'success',
+        onClick: this.onClickSaveDeploymentPath.bind(this),
+
+        width: '100%'
+      }"
+    ></dxi-item>
+  </dx-form>
+</dx-popup>

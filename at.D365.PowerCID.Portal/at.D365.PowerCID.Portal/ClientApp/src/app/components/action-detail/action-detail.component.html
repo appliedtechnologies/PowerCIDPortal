@@ -1,0 +1,63 @@
+<dx-form id="form" [formData]="action" [readOnly]="true">
+  <dxi-item itemType="group" cssClass="first-group" [colCount]="1">
+    <dxi-item dataField="Name"></dxi-item>
+    <dxi-item
+      dataField="SolutionNavigation.Name"
+      [label]="{ text: 'Solution' }"
+    >
+    </dxi-item>
+    <dxi-item
+      dataField="TargetEnvironmentNavigation.Name"
+      [label]="{ text: 'Target environment' }"
+    >
+    </dxi-item>
+    <dxi-item dataField="TypeNavigation.Type" [label]="{ text: 'Type' }">
+    </dxi-item>
+    <dxi-item
+      dataField="StatusNavigation.Status"
+      [label]="{ text: 'Status' }"
+    ></dxi-item>
+
+    <dxi-item dataField="ResultNavigation.Result" [label]="{ text: 'Result' }">
+    </dxi-item>
+    <dxi-item
+      dataField="StartTime"
+      [label]="{ text: 'Start time' }"
+      editorType="dxDateBox"
+      [editorOptions]="{
+        displayFormat: 'dd.MM.yyyy HH:mm:ss'
+      }"
+    ></dxi-item>
+    <dxi-item
+      dataField="FinishTime"
+      [label]="{ text: 'Finish time' }"
+      editorType="dxDateBox"
+      [editorOptions]="{
+        displayFormat: 'dd.MM.yyyy HH:mm:ss'
+      }"
+    ></dxi-item>
+    <dxi-item
+      dataField="ErrorMessage"
+      editorType="dxTextArea"
+      [editorOptions]="{ height: 100 }"
+    ></dxi-item>
+    <dxi-item
+      dataField="CreatedByNavigation?.Name"
+      [label]="{ text: 'Created by' }"
+      [editorOptions]="{
+        value:
+          this.action?.CreatedByNavigation?.Firstname +
+          ' ' +
+          this.action?.CreatedByNavigation?.Lastname
+      }"
+    >
+    </dxi-item>
+    <dxi-item
+      dataField="CreatedOn"
+      [label]="{ text: 'Created on' }"
+      [editorOptions]="{
+        displayFormat: 'dd.MM.yyyy HH:mm:ss'
+      }"
+    ></dxi-item>
+  </dxi-item>
+</dx-form>

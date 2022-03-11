@@ -1,0 +1,60 @@
+::ng-deep .dx-toolbar-item-content > .dx-texteditor {
+  min-width: 180px;
+}
+
+.card {
+  position: relative;
+  background-color: white;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5px 10px;
+  margin: 0px;
+}
+
+.card-priority {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 5px;
+  width: 5px;
+  border-radius: 2px;
+  background: #86c285;
+}
+
+::ng-deep .dx-datagrid-content .dx-datagrid-table .dx-row > td,
+.dx-datagrid-content .dx-datagrid-table .dx-row > tr > td {
+  vertical-align: middle;
+}
+
+.card-not-available {
+  background-color: #c4c4c4;
+  text-decoration: line-through;
+}
+
+.card-ready {
+  background-color: #8fe5ff;
+}
+
+.card-not-yet-available {
+  background-color: #c4c4c4;
+}
+
+.card-success {
+  background-color: #86c285;
+}
+
+.card-error {
+  background-color: #ef7d59;
+}
+
+.card-in-progress {
+  background-color: #edc578;
+}
+
+.clickable-icon {
+  padding-right: 5px;
+  vertical-align: bottom;
+  cursor: pointer;
+  width: 20px;
+  margin-right: 5px;
+}

@@ -1,0 +1,13 @@
+#save-repository-button {
+  margin-top: 5px;
+  margin-bottom: 20px;
+}
+
+#github-connection-established {
+  text-align: center;
+  color: #a3cc54;
+}
+
+#setupApplicationUsers-button {
+  margin-top: 20px;
+}

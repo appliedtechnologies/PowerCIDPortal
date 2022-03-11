@@ -1,0 +1,18 @@
+{
+    "logging": {
+      "console": true
+    },
+    "api": {
+      "url": "/odata"
+    },
+    "github": {
+      "installation_url": "https://github.com/apps/power-cid-portal-github-conn-dev/installations/new"
+    },
+    "azure":{
+      "applicationId": "d5364903-9843-443c-bee3-cc0f336acfe2",
+      "roleNameAdmin": "atPowerCID.Admin",
+      "roleNameManager": "atPowerCID.Manager",
+      "roleNameUser": "atPowerCID.User"
+    },
+    "version": "0.2.2203.1110"
+  }

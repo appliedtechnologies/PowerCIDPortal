@@ -1,0 +1,19 @@
+<div class="home">
+  <div class="description">
+    <img src="../../../assets/logos/powercid-logo-medium.png" alt="PowerCID Logo" />
+    <strong>Application Lifecycle Management For Microsoft Power Platform</strong>
+    <h1>apptech Power CID</h1>
+    <p>   
+      The Microsoft Power Platform differentiates between Dataverse environments for Sandbox and production. In the course of  professional application lifecycle Managements (ALM), Power CID uses this feature for set up and the management of system environments for e.g. development, testing, integration and production as well as for the deployment of Power Apps between various environments within a Microsoft 365 Tenant.
+    </p>
+    <dx-button
+      text="Login"
+      width="30%"
+      type="success"
+      stylingMode="contained"
+      [visible]="!isLoggedIn"
+      icon="at-icon powercid-icon-benutzer"
+      (onClick)="login()"
+    >
+    </dx-button>
+</div>

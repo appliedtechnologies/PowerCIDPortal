@@ -1,0 +1,43 @@
+/* You can add global styles to this file, and also import other style files */
+
+html, body{
+  height: 100%;
+  margin: 0;
+}
+
+#init-loading-screen {
+  font-family: "Helvetica Neue","Segoe UI",helvetica,verdana,sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 50px;
+  text-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+  background: #046494;
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+@keyframes dots {
+  50% {
+    transform: translateY(-.4rem);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.d {
+  animation: dots 1.5s ease-out infinite;
+}
+
+.d-2 {
+  animation-delay: .5s;
+}
+
+.d-3 {
+  animation-delay: 1s;
+}

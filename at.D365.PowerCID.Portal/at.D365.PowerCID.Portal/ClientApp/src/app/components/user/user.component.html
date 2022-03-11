@@ -1,0 +1,119 @@
+<h1>Users</h1>
+
+<dx-data-grid
+  id="gridContainer"
+  [rowAlternationEnabled]="false"
+  [showRowLines]="true"
+  [showBorders]="true"
+  [dataSource]="dataSourceUsers"
+  [allowColumnResizing]="true"
+  [columnAutoWidth]="true"
+  [width]="'100%'"
+  (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
+>
+  <dxo-header-filter [visible]="true"></dxo-header-filter>
+
+  <dxo-search-panel
+    [visible]="true"
+    [highlightCaseSensitive]="false"
+    placeholder="Search..."
+  ></dxo-search-panel>
+  <dxo-paging [pageSize]="20"></dxo-paging>
+  <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
+
+  <dxi-column dataField="Firstname" caption="First Name"></dxi-column>
+  <dxi-column dataField="Lastname" caption="Last Name"> </dxi-column>
+  <dxi-column dataField="Email"></dxi-column>
+  <dxi-column dataField="MsId" caption="Azure AD Id"></dxi-column>
+  <dxi-column type="buttons">
+    <dxi-button
+      hint="Manage roles"
+      icon="card"
+      [onClick]="onClickEditRoles"
+    ></dxi-button>
+    <dxi-button
+      hint="Manage permissions"
+      icon="key"
+      [onClick]="onClickEditPermissions"
+    ></dxi-button>
+  </dxi-column>
+</dx-data-grid>
+
+<dx-popup
+  #popupPermissionEnvironments
+  *ngIf="isEditPermissionsPopupVisible"
+  [width]="480"
+  height="auto"
+  [showTitle]="true"
+  [title]="
+    'Manage Permissions (' +
+    currentSelectedUser.Firstname +
+    ' ' +
+    currentSelectedUser.Lastname +
+    ')'
+  "
+  [closeOnOutsideClick]="false"
+  [(visible)]="isEditPermissionsPopupVisible"
+  [maxHeight]="'90%'"
+>
+  <div id="hint-permissions">
+    Select which Environments
+    <i
+      >{{ currentSelectedUser.Firstname }} {{ currentSelectedUser.Lastname }}</i
+    >
+    could import to.
+  </div>
+  <dx-list
+    [dataSource]="dataSourceEnvironments"
+    [height]="'100%'"
+    selectionMode="all"
+    selectAllMode="allPages"
+    [showSelectionControls]="true"
+    [selectedItemKeys]="selectedItemKeysPermissionEnvironments"
+    displayExpr="Name"
+    (onSelectionChanged)="onSelectionChangedPermissionEnvironments($event)"
+    (onContentReady)="onContentReadyPermissionEnvironmentList($event)"
+  >
+  </dx-list>
+</dx-popup>
+
+<dx-popup
+  *ngIf="isEditRoles"
+  [width]="480"
+  height="auto"
+  [showTitle]="true"
+  [title]="
+    'Manage Roles (' +
+    currentSelectedUser.Firstname +
+    ' ' +
+    currentSelectedUser.Lastname +
+    ')'
+  "
+  [closeOnOutsideClick]="false"
+  [(visible)]="isEditRoles"
+>
+  <div *ngFor="let role of userAssignedAppRoles; index as i; last as isLast">
+    <dx-form id="role" [(formData)]="userAssignedAppRoles[i]">
+      <dxi-item itemType="group" cssClass="first-group" [colCount]="2">
+        <dxi-item
+          [label]="{ text: 'Role' }"
+          disabled="true"
+          dataField="Name"
+        ></dxi-item>
+        <dxi-item dataField="IsAssigned" editorType="dxCheckBox"> </dxi-item>
+      </dxi-item>
+      <dxi-item
+        *ngIf="isLast"
+        itemType="button"
+        horizontalAlignment="left"
+        [buttonOptions]="{
+          icon: 'save',
+          text: 'Save',
+          type: 'success',
+          onClick: this.onClickSaveRoles.bind(this),
+          width: '100%'
+        }"
+      ></dxi-item>
+    </dx-form>
+  </div>
+</dx-popup>

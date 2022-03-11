@@ -1,0 +1,138 @@
+<h1>Deployment History</h1>
+
+<dx-data-grid
+  #dataGrid
+  id="gridContainer"
+  [showRowLines]="true"
+  [showBorders]="true"
+  [dataSource]="dataSourceActions"
+  [allowColumnResizing]="true"
+  [columnAutoWidth]="true"
+  [width]="'100%'"
+  (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
+
+>
+  <dxo-header-filter [visible]="true"></dxo-header-filter>
+
+  <dxo-search-panel
+    [visible]="true"
+    [highlightCaseSensitive]="false"
+    placeholder="Search..."
+  ></dxo-search-panel>
+  <dxo-paging [pageSize]="20"></dxo-paging>
+  <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
+
+  <dxi-column dataField="Name"></dxi-column>
+  <dxi-column
+    dataField="Solution"
+    caption="Solution"
+    cellTemplate="solutionCellTemplate"
+  >
+    <dxo-lookup
+      [dataSource]="dataStoreSolutions"
+      valueExpr="Id" 
+      displayExpr="Name">
+    </dxo-lookup>
+    <div *dxTemplate="let rowData of 'solutionCellTemplate'">
+      <div>
+        <i
+          class="dx-icon-info clickable-icon"
+          title="show details"
+          (click)="onClickSolutionInfo(rowData)"
+        ></i>
+        {{ rowData.text }}
+      </div>
+    </div>
+  </dxi-column>
+  <dxi-column
+    dataField="SolutionNavigation.Application"
+    caption="Application"
+  >
+    <dxo-lookup
+      [dataSource]="dataStoreApplications"
+      valueExpr="Id" 
+      displayExpr="Name">
+    </dxo-lookup>
+  </dxi-column>  
+  <dxi-column
+    dataField="TargetEnvironment"
+    caption="Target Environment"
+  >
+    <dxo-lookup
+        [dataSource]="dataStoreEnvironments"
+        valueExpr="Id" 
+        displayExpr="Name">
+    </dxo-lookup>
+  </dxi-column>
+  <dxi-column dataField="TypeNavigation.Type" caption="Type"></dxi-column>
+  <dxi-column dataField="StatusNavigation.Status" caption="Status"></dxi-column>
+  <dxi-column dataField="ResultNavigation.Result" caption="Result"></dxi-column>
+  <dxi-column
+    dataField="StartTime"
+    caption="Start time"
+    dataType="datetime"
+    format="dd.MM.yyyy HH:mm:ss"
+    sortOrder="desc"
+  ></dxi-column>
+  <dxi-column
+    dataField="FinishTime"
+    caption="Finish time"
+    dataType="datetime"
+    format="dd.MM.yyyy HH:mm:ss"
+  ></dxi-column>
+  <dxi-column
+    dataField="CreatedBy"
+    caption="Created By"
+    [allowEditing]="false">
+    <dxo-lookup
+      [dataSource]="dataStoreUsers"
+      valueExpr="Id" 
+      [displayExpr]="createdByFullName">
+    </dxo-lookup>
+  </dxi-column>
+  <dxi-column
+    caption="Details"
+    type="buttons"
+    cellTemplate="actionCellTemplate"
+  >
+    <div *dxTemplate="let rowData of 'actionCellTemplate'">
+      <div id="action-detail">
+        <i
+          class="dx-icon-info clickable-icon"
+          title="show details"
+          (click)="onClickActionInfo(rowData)"
+        >
+        </i>
+      </div>
+    </div>
+  </dxi-column>
+</dx-data-grid>
+
+<dx-popup
+  *ngIf="isActionDetailPopupVisible"
+  [width]="700"
+  height="auto"
+  [showTitle]="true"
+  title="Action Details"
+  [closeOnOutsideClick]="true"
+  [(visible)]="this.isActionDetailPopupVisible"
+>
+  <app-action-detail [actionId]="selectedActionId"></app-action-detail>
+</dx-popup>
+
+<dx-popup
+  *ngIf="isSolutionDetailPopupVisible"
+  [width]="700"
+  height="auto"
+  [showTitle]="true"
+  [title]="'Details: ' + this.selectedSolution?.Name"
+  [closeOnOutsideClick]="true"
+  [(visible)]="isSolutionDetailPopupVisible"
+  [dragEnabled]="false"
+>
+  <app-solution-detail
+    [solution]="selectedSolution"
+    [application]="selectedApplication"
+    [isAddUpgrade]="false"
+  ></app-solution-detail>
+</dx-popup>

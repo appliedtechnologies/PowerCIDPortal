@@ -1,0 +1,59 @@
+@font-face {
+  font-family: 'Alata';
+  src: url(../../../assets/fonts/alata.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'montserrat';
+  src: url(../../../assets/fonts/montserrat.woff2) format('woff2');
+}
+.home {
+  background: linear-gradient(
+    rgba(0,0,0,0.7),
+    rgba(0,0,0,0.7)
+  ),
+  url(/assets/background/roundabout.png);
+  height: calc(100vh - 46px);
+  background-size: cover;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: -10px -20px;
+  position: fixed;
+}
+.home strong{
+  color: white;
+  font-family: 'Alata',sans-serif;
+  font-size: 1.2rem;
+  margin: 0;
+  text-align: center;
+}
+.home h1{
+  color: white;
+  font-family: 'montserrat',sans-serif; 
+  font-weight: 700;
+  margin: 10px;
+  text-transform: uppercase;
+  text-align: center;
+} 
+.home p{
+  color: white;
+  font-family: 'Alata',sans-serif;
+  font-size: 1rem;
+  width: 40%;  
+  text-align: center;
+  margin: 0;
+}
+
+.description{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  padding: 20px;
+}
+
+dx-button{
+  margin: 20px;
+  width: 30%;
+}
+

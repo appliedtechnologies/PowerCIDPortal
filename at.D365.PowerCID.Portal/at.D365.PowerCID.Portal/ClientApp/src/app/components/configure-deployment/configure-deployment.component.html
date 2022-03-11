@@ -1,0 +1,47 @@
+<div>
+    <strong>Application:</strong>   {{application.Name}}<br />
+    <strong>Environment:</strong>   {{environment.Name}}
+</div>
+<h3>Connection References:</h3>
+<p>Enter the Connection Id the Connection Reference should be associated with during the import on the target environment.</p>
+<dx-list 
+    [dataSource]="connectionReferencesFromDataverse"
+    noDataText="The Application does not include any Connection References."
+>
+    <div *dxTemplate="let connectionReference of 'item'">
+        <div class="list-entry">
+            <div class="list-entry-descriptor">
+                <div><strong>{{connectionReference.DisplayName}}</strong> ({{connectionReference.LogicalName}})</div>
+                <div>{{connectionReference.ConnectorId}}</div>
+            </div>
+            <dx-text-box
+                placeholder="Connection Id"
+                width="280"
+                (onInitialized)="onInitializedConnectionIdTextBox($event, connectionReference)"
+                (onValueChanged)="onValueChangedConnectionIdTextBox($event, connectionReference)"
+            >   
+            </dx-text-box>
+        </div>
+    </div>
+</dx-list>
+<h3>Environment Variables:</h3>
+<p>Enter the value the Environment Variable should set on during import on the target environment.</p>
+<dx-list 
+    [dataSource]="environmentVariablesFromDataverse"
+    noDataText="The Application does not include any Environment Variable."
+>
+    <div *dxTemplate="let environmentVariable of 'item'">
+        <div class="list-entry">
+            <div class="list-entry-descriptor">
+                <div><strong>{{environmentVariable.DisplayName}}</strong> ({{environmentVariable.LogicalName}})</div>
+            </div>
+            <dx-text-box
+                placeholder="Value"
+                width="280"
+                (onInitialized)="onInitializedEnvVarValueTextBox($event, environmentVariable)"
+                (onValueChanged)="onValueChangedEnvVarValueTextBox($event, environmentVariable)"
+            >   
+            </dx-text-box>
+        </div>
+    </div>
+</dx-list>

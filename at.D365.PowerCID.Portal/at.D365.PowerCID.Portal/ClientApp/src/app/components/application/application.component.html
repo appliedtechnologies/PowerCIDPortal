@@ -1,0 +1,239 @@
+<h1>Applications</h1>
+
+<dx-data-grid
+  id="gridContainer"
+  [dataSource]="dataSourceApplications"
+  [showRowLines]="true"
+  [showBorders]="true"
+  [allowColumnResizing]="true"
+  (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
+  (onRowInserted)="onRowInserted($event)"
+  (onEditorPreparing)="onEditorPreparing($event)"
+  (onInitNewRow)="onInitNewRowApplication($event)"
+  [columnAutoWidth]="true"
+  [width]="'100%'"
+>
+  <dxo-editing mode="row" [allowUpdating]="true" [useIcons]="true">
+  </dxo-editing>
+
+  <dxo-search-panel
+    [visible]="true"
+    [highlightCaseSensitive]="false"
+    placeholder="Search..."
+  ></dxo-search-panel>
+
+  <dxo-paging [pageSize]="25"></dxo-paging>
+  <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
+
+  <dxi-column
+    dataField="OrdinalNumber"
+    [width]="140"
+    sortOrder="asc"
+    [calculateSortValue]="ordinalNumberSortValue"
+  ></dxi-column>
+
+  <dxi-column dataField="Name" caption="Name"
+    ><dxi-validation-rule type="required"> </dxi-validation-rule
+  ></dxi-column>
+
+  <dxi-column dataField="MsId" caption="App Id"></dxi-column>
+
+  <dxi-column
+    dataField="InternalDescription"
+    caption="Description"
+    
+    [allowEditing]="true"
+    [allowSearch]="true"
+  >  
+  </dxi-column>
+
+  <dxi-column dataField="SolutionUniqueName" caption="Solution Unique Name">
+    <dxi-validation-rule type="required"> </dxi-validation-rule
+  ></dxi-column>
+
+  <dxi-column
+    dataField="DevelopmentEnvironment"
+    caption="Development Environment"
+    editCellTemplate="environmentsDropdownTemplate"
+    ><dxi-validation-rule type="required"> </dxi-validation-rule>
+    <dxo-lookup
+      [dataSource]="dataStoreEnvironments"
+      valueExpr="Id"
+      displayExpr="Name"
+    ></dxo-lookup>
+  </dxi-column>
+
+  <dxi-column
+    dataField="PublisherNavigation"
+    caption="Publisher"
+    editCellTemplate="publishersDropdownTemplate"
+    cellTemplate="publisherTemplate"
+  >
+    <dxi-validation-rule type="required" message="Publisher is required">
+    </dxi-validation-rule>
+  </dxi-column>
+
+  <dxi-column
+    dataField="ModifiedBy"
+    caption="Modified By"
+    [calculateCellValue]="modifiedByFullName"
+    [allowEditing]="false"
+    [allowSearch]="false"
+  >  
+  </dxi-column>
+  <dxi-column
+    dataField="ModifiedOn"
+    caption="Modified On"
+    dataType="datetime"
+    format="dd.MM.yyyy HH:mm:ss"
+    [allowEditing]="false"
+    >
+  </dxi-column>
+
+  <dxi-column [width]="150" type="buttons">
+    <dxi-button name="edit"> </dxi-button>
+    <dxi-button icon="folder" text="Open in make.powerapps.com" [onClick]="onClickOpenMakerPortal"> </dxi-button>
+    <dxi-button icon="globe" text="Go to page" [onClick]="onClickOpenPage"></dxi-button>
+    <dxi-button
+      icon="at-icon powercid-icon-route"
+      text="Assign deploymentpaths"
+      [onClick]="onClickAssignDeploymentPaths"
+    >
+    </dxi-button>
+  </dxi-column>
+
+  <div *dxTemplate="let cellInfo of 'environmentsDropdownTemplate'">
+    <dx-select-box
+      *ngIf="cellInfo.row.isNewRow == true"
+      [dataSource]="dataSourceEnvironments"
+      displayExpr="Name"
+      (onValueChanged)="onValueChangedEnvironment($event, cellInfo)"
+    ></dx-select-box>
+    <span
+      class="dx-texteditor-input dx-state-disabled dx-widget"
+      *ngIf="cellInfo.row.isNewRow === undefined"
+    >
+      {{ cellInfo.row.data.DevelopmentEnvironmentNavigation.Name }}
+    </span>
+  </div>
+
+  <div *dxTemplate="let cellInfo of 'publisherTemplate'">
+    {{ cellInfo.data.PublisherNavigation.Name }}
+  </div>
+
+  <div *dxTemplate="let cellInfo of 'publishersDropdownTemplate'">
+    <dx-select-box
+      *ngIf="cellInfo.row.isNewRow == true"
+      [items]="filteredPublishers"
+      displayExpr="Name"
+      [disabled]="publisherSelectionDisabled"
+      (onValueChanged)="onValueChangedPublishers($event, cellInfo)"
+    ></dx-select-box>
+    <span
+      class="dx-texteditor-input dx-state-disabled dx-widget"
+      *ngIf="cellInfo.row.isNewRow === undefined"
+    >
+      {{ cellInfo.row.data.PublisherNavigation.Name }}
+    </span>
+  </div>
+</dx-data-grid>
+
+<dx-popup
+  *ngIf="isPullApplications"
+  [width]="700"
+  height="auto"
+  [showTitle]="true"
+  [title]="'Add existing Application'"
+  [closeOnOutsideClick]="true"
+  [(visible)]="this.isPullApplications"
+  (onInitialized)="this.applicationSelectionDisabled = true"
+>
+  <span>Development Environment:</span>
+  <dx-select-box
+    class="selectBox"
+    *ngIf="isPullApplications"
+    [items]="developmentEnvironments"
+    displayExpr="Name"
+    (onValueChanged)="onValueChangedEnvironments($event)"
+  ></dx-select-box>
+
+  <span>Application:</span>
+  <dx-select-box
+    class="selectBox"
+    *ngIf="isPullApplications"
+    [items]="pulledApplications"
+    [disabled]="applicationSelectionDisabled"
+    (onValueChanged)="onValueChangedApplications($event)"
+  ></dx-select-box>
+  <p class="warning">
+    Adding an existing application to PowerCID Portal will create an upgrade in Dataverse for it!
+  </p>
+  <dx-form>
+    <dxi-item
+      itemType="button"
+      horizontalAlignment="left"
+      [buttonOptions]="{
+        icon: 'save',
+        text: 'Save',
+        type: 'success',
+        onClick: this.onClickSaveApplication.bind(this),
+        width: '100%'
+      }"
+    ></dxi-item
+  ></dx-form>
+</dx-popup>
+
+<dx-popup
+  *ngIf="isAssignDevelopmentPaths"
+  [width]="550"
+  height="auto"
+  [showTitle]="true"
+  [title]="'Assign and prioritize Deployment Paths'"
+  [closeOnOutsideClick]="true"
+  [(visible)]="isAssignDevelopmentPaths"
+  [maxHeight]="'90%'"
+>
+  <p id="info">Drag and drop one or multiple Deployment Paths to the application for assiging them. The priority decreases from top to bottom.</p>
+  <div class="header">
+    <p>Application: <i>{{ this.currentApplicationName }}</i></p>
+    <p>Deployment Paths</p>
+  </div>
+  <div id="list-demo">
+    <div class="widget-container">
+      <dx-list
+        [dataSource]="applicationDeploymentPaths"
+        [repaintChangesOnly]="true"
+        keyExpr="Id"
+        [height]="'100%'"
+        displayExpr="Name"
+        noDataText="No deployment path assigned "
+      >
+        <dxo-item-dragging
+          group="deploymentPaths"
+          [data]="applicationDeploymentPaths"
+          [allowReordering]="true"
+          [onDragStart]="onDragStart"
+          [onAdd]="onAdd"
+          [onRemove]="onRemove"
+          [onReorder]="onReorder"
+        >
+        </dxo-item-dragging>
+      </dx-list>
+      <dx-list
+        [height]="'100%'"
+        [dataSource]="deploymentPaths"
+        [repaintChangesOnly]="true"
+        keyExpr="Id"
+        displayExpr="Name"
+      >
+        <dxo-item-dragging
+          group="deploymentPaths"
+          [data]="deploymentPaths"
+          [allowReordering]="false"
+          [onDragStart]="onDragStart"
+        >
+        </dxo-item-dragging>
+      </dx-list>
+    </div>
+  </div>
+</dx-popup>

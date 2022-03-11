@@ -1,0 +1,72 @@
+<h1>GitHub Connection</h1>
+<div *ngIf="!this.isGitHubConnected; else GitHubConnected">
+  <p>
+    In order to use all functions of Power CID Portal you need to establish a
+    connection to a GitHub repository. This will be used to save your exported
+    solutions. Click on the button below to install the "Power CID Portal GitHub
+    Connector" in your GitHub organization. Afterwards you are going to be
+    redircted back here to select the repositoy to use with Power CID Portal.
+  </p>
+  <dx-button
+    text="Connect to GitHub"
+    width="100%"
+    type="success"
+    stylingMode="contained"
+    icon="at-icon powercid-icon-github"
+    (onClick)="onClickConnectGitHub($event)"
+  >
+  </dx-button>
+</div>
+<ng-template #GitHubConnected>
+  <h5 id="github-connection-established">
+    Connection to GitHub was successfully established!
+  </h5>
+  <p>
+    Please select a repository from your connected GitHub account. The selected
+    repository is going to be used by Power CID Portal for saving the
+    ZIP-Archives of your exported solutions. <br /><br />
+    <strong>Important:</strong> The repository to be used with Power CID Portal must not be empty. At least one file (e.g. README.md) must be included.
+  </p>
+  <dx-select-box
+    [dataSource]="dataSourceGitHubRepositories"
+    placeholder="Select Repository..."
+    [(value)]="valueSelectBoxRepositoryName"
+  >
+  </dx-select-box>
+  <dx-button
+    id="save-repository-button"
+    text="Save selected repository"
+    width="100%"
+    type="success"
+    stylingMode="contained"
+    icon="save"
+    (onClick)="onClickSaveRepositoryName($event)"
+  >
+  </dx-button>
+</ng-template>
+
+<h1>Add Application Users</h1>
+<p>For using the PowerCID Portal in every environment of interest the PowerCID Portal application user with System Customizer role must exist. You can add these application user automatically with the button below. The environments must be added via the Environment-Page before. Alternativly you can add the application user with app id <i>{{appId}}</i> in every environemnt of interest by hand.</p>
+<dx-button
+  text="Add application user and assign System Customizer role in all environments"
+  width="100%"
+  type="success"
+  stylingMode="contained"
+  icon="user"
+  (onClick)="onClickSetupApplicationUsers($event)"
+>
+</dx-button>
+
+<dx-popup
+  *ngIf="isSetupApplicationUser"
+  [width]="700"
+  height="auto"
+  [showTitle]="true"
+  title="Result: Add application user and assign role"
+  [(visible)]="isSetupApplicationUser"
+  [maxHeight]="'90%'"
+>
+  <ul *ngFor="let environmentMessage of this.environmentMessages">
+    <li>{{ environmentMessage }}</li>
+  </ul>
+</dx-popup>

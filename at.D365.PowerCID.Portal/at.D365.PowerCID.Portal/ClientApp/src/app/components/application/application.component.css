@@ -1,0 +1,40 @@
+::ng-deep .dx-invalid-message.dx-overlay-wrapper {
+  visibility: visible;
+}
+
+.selectBox {
+  margin-bottom: 15px;
+}
+
+#info{
+  text-align: center;
+  margin-top: 5px;
+}
+
+.warning {
+  text-align: center;
+  color: #f0ad4e;
+  font-weight: bold;
+}
+.header {
+  display: flex;
+}
+.header p {
+  font-weight: bold;
+  text-align: center;
+  width: 50%;
+}
+
+::ng-deep .widget-container {
+  display: flex;
+}
+
+::ng-deep .widget-container > * {
+  height: 400px;
+  width: 50%;
+  padding: 10px;
+}
+
+::ng-deep .dx-datagrid-search-panel{
+  margin: 0 !important;
+}

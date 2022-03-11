@@ -1,0 +1,84 @@
+<dx-form id="form" [(formData)]="solution" [readOnly]="!this.isAdd">
+  <dxi-item itemType="group" cssClass="first-group" [colCount]="1">
+    <dxi-item dataField="Name" [isRequired]="this.isAdd"></dxi-item>
+    <dxi-item [isRequired]="this.isAdd" [label]="{ text: 'Application' }">
+      <div *dxTemplate>
+        <dx-text-box [value]="this.application?.Name" [readOnly]="true">
+        </dx-text-box>
+      </div>
+    </dxi-item>
+    <dxi-item dataField="UniqueName" *ngIf="!this.isAdd"></dxi-item>
+
+    <dxi-item
+      dataField="UrlMakerportal"
+      *ngIf="!this.isAdd"
+      [label]="{ text: 'URL Portal' }"
+    ></dxi-item>
+    <dxi-item dataField="Version" *ngIf="!this.isAdd"></dxi-item>
+    <dxi-item
+      editorType="dxCheckBox"
+      dataField="ApplyManually"
+      *ngIf="isUpgrade || isAddUpgrade"
+    ></dxi-item>
+  </dxi-item>
+
+  <dxi-item
+    [visible]="this.isAdd"
+    itemType="button"
+    horizontalAlignment="left"
+    [buttonOptions]="{
+      icon: 'save',
+      text: 'Save',
+      type: 'success',
+      onClick: this.onClickSaveSolution.bind(this),
+      width: '100%'
+    }"
+  ></dxi-item>
+
+  <dxi-item
+    *ngIf="!this.isAdd"
+    itemType="group"
+    cssClass="second-group"
+    caption="History"
+    [colCount]="2"
+  >
+    <dxi-item [label]="{ text: 'Created by' }">
+      <div *dxTemplate>
+        <dx-text-box
+          [value]="
+            this.solution.CreatedByNavigation?.Firstname +
+            ' ' +
+            this.solution.CreatedByNavigation?.Lastname
+          "
+        >
+        </dx-text-box>
+      </div>
+    </dxi-item>
+    <dxi-item
+      dataField="CreatedOn"
+      [editorOptions]="{
+        displayFormat: 'dd.MM.yyyy HH:mm:ss'
+      }"
+      [label]="{ text: 'Created on' }"
+    ></dxi-item>
+    <dxi-item [label]="{ text: 'Modified by' }">
+      <div *dxTemplate>
+        <dx-text-box
+          [value]="
+            this.solution.ModifiedByNavigation?.Firstname +
+            ' ' +
+            this.solution.ModifiedByNavigation?.Lastname
+          "
+        >
+        </dx-text-box>
+      </div>
+    </dxi-item>
+    <dxi-item
+      dataField="ModifiedOn"
+      [editorOptions]="{
+        displayFormat: 'dd.MM.yyyy HH:mm:ss'
+      }"
+      [label]="{ text: 'Modified on' }"
+    ></dxi-item>
+  </dxi-item>
+</dx-form>

@@ -1,0 +1,15 @@
+.clickable-icon {
+  padding-right: 5px;
+  vertical-align: bottom;
+  cursor: pointer;
+  width: 20px;
+  margin-right: 5px;
+}
+
+#action-detail {
+  color: #a3cc54;
+}
+
+::ng-deep .dx-datagrid-search-panel{
+  margin: 0 !important;
+}

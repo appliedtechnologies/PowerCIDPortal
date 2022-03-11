@@ -1,0 +1,265 @@
+<h1>Solutions Overview</h1>
+<dx-data-grid
+  #solutionsGrid
+  [dataSource]="dataSourceSolutions"
+  [columns]="dataGridColumns"
+  [showBorders]="true"
+  [columnAutoWidth]="true"
+  [sorting]="{ mode: 'multiple' }"
+  [scrolling]="{ mode: 'virtual' }"
+  [headerFilter]="{ visible: true }"
+  class="solutions-grid"
+  [loadPanel]="{ enabled: true }"
+  [allowColumnReordering]="true"
+  [remoteOperations]="{
+    sorting: false,
+    filtering: true,
+    paging: true,
+    groupPaging: true,
+    grouping: true
+  }"
+  (onToolbarPreparing)="onToolbarPreparingSolutionsGrid($event)"
+>
+  <div *dxTemplate="let cellInfo of 'typeCellTemplate'">
+    <div class="card dx-card dx-theme-text-color">
+      {{ cellInfo.value }}
+    </div>
+  </div>
+
+  <div *dxTemplate="let cellInfo of 'versionCellTemplate'">
+    <div class="card dx-card dx-theme-text-color">
+      {{ cellInfo.value }}
+    </div>
+  </div>
+
+  <div *dxTemplate="let cellInfo of 'nameCellTemplate'">
+    <div class="card dx-card dx-theme-text-color">
+      <i
+        class="dx-icon-info clickable-icon"
+        (click)="onClickSolutionInfo(cellInfo)"
+      ></i>
+      <i
+        class="dx-icon-folder clickable-icon"
+        (click)="onClickOpenMakerPortal(cellInfo)"
+      ></i>
+      {{ cellInfo.value }}
+    </div>
+  </div>
+
+  <div *dxTemplate="let cellInfo of 'environmentHeaderCellTemplate'">
+    <i
+      class="at-icon powercid-icon-einstellungen clickable-icon"
+      title="configure deployment"
+      (click)="onClickConfigureDeployment(cellInfo.column.environmentData)"
+    ></i>
+    {{ cellInfo.column.caption }}
+  </div>
+
+  <div *dxTemplate="let cellInfo of 'devEnvironmentCellTemplate'">
+    <div
+      *ngIf="
+        getLastActionForEnvironment(cellInfo);
+        else noActionAvailable;
+        let lastAction
+      "
+    >
+      <div
+        *ngIf="lastAction.Result == 1"
+        class="card dx-card dx-theme-text-color card-success"
+      >
+        <i
+          class="dx-icon-info clickable-icon"
+          title="show details"
+          (click)="onClickActionInfo(lastAction)"
+        ></i>
+        <i
+          class="dx-icon-download clickable-icon"
+          title="download managed solution"
+          (click)="onClickDownloadSolution(cellInfo, lastAction)"
+        ></i>
+        <i
+          class="dx-icon-newfolder clickable-icon"
+          (click)="onClickDeploySolution(cellInfo, true)"
+          title="renew export"
+        ></i>
+        {{ lastAction.StatusNavigation.Status }}
+        {{ lastAction.ResultNavigation?.Result }}
+      </div>
+      <div
+        *ngIf="lastAction.Result != 1 && lastAction.Status != 3"
+        class="card dx-card dx-theme-text-color card-in-progress"
+      >
+        <i
+          class="dx-icon-info clickable-icon"
+          title="show details"
+          (click)="onClickActionInfo(lastAction)"
+        ></i>
+        <i
+          class="dx-icon-refresh clickable-icon"
+          title="start auto-refresh"
+          (click)="onClickStartAutoRefresh(lastAction)"
+        ></i>
+        {{ lastAction.StatusNavigation.Status }}
+        {{ lastAction.ResultNavigation?.Result }}
+      </div>
+      <div
+        *ngIf="lastAction.Result != 1 && lastAction.Status == 3"
+        class="card dx-card dx-theme-text-color card-error"
+      >
+        <i
+          class="dx-icon-info clickable-icon"
+          title="show details"
+          (click)="onClickActionInfo(lastAction)"
+        ></i>
+        <i
+          class="dx-icon-newfolder clickable-icon"
+          (click)="onClickDeploySolution(cellInfo, true)"
+          title="renew export"
+        ></i>
+        {{ lastAction.StatusNavigation.Status }}
+        {{ lastAction.ResultNavigation?.Result }}
+      </div>
+    </div>
+    <ng-template #noActionAvailable>
+      <div class="card dx-card dx-theme-text-color card-ready">
+        <span>
+          <i
+            class="dx-icon-newfolder clickable-icon"
+            (click)="onClickDeploySolution(cellInfo, true)"
+            title="export only"
+          ></i>
+          not exported yet
+        </span>
+      </div>
+    </ng-template>
+  </div>
+
+  <div *dxTemplate="let cellInfo of 'environmentCellTemplate'">
+    <div *ngIf="canDeployToEnv(cellInfo) == false; else canDeploy">
+      <div class="card dx-card dx-theme-text-color card-not-yet-available">
+        via {{ this.previousEnvironmentName }}
+      </div>
+    </div>
+    <ng-template #canDeploy>
+      <div
+        *ngIf="
+          getLastActionForEnvironment(cellInfo);
+          else noActionAvailable;
+          let lastAction
+        "
+      >
+        <div
+          *ngIf="lastAction.Result == 1"
+          class="card dx-card dx-theme-text-color card-success"
+        >
+          <i
+            class="dx-icon-info clickable-icon"
+            title="show details"
+            (click)="onClickActionInfo(lastAction)"
+          ></i>
+          {{ lastAction.StatusNavigation.Status }}
+          {{ lastAction.ResultNavigation?.Result }}
+        </div>
+        <div
+          *ngIf="lastAction.Result != 1 && lastAction.Status != 3"
+          class="card dx-card dx-theme-text-color card-in-progress"
+        >
+          <i
+            class="dx-icon-info clickable-icon"
+            title="show details"
+            (click)="onClickActionInfo(lastAction)"
+          ></i>
+          <i
+            *ngIf="autoRefreshInterval == null"
+            class="dx-icon-refresh clickable-icon"
+            title="start auto-refresh"
+            (click)="onClickStartAutoRefresh(lastAction)"
+          ></i>
+          {{ lastAction.StatusNavigation.Status }}
+          {{ lastAction.ResultNavigation?.Result }}
+        </div>
+        <div
+          *ngIf="lastAction.Result != 1 && lastAction.Status == 3"
+          class="card dx-card dx-theme-text-color card-error"
+        >
+          <i
+            class="dx-icon-info clickable-icon"
+            title="show details"
+            (click)="onClickActionInfo(lastAction)"
+          ></i>
+          <i
+            class="at-icon powercid-icon-handcart clickable-icon"
+            (click)="onClickDeploySolution(cellInfo, false)"
+            title="try deployment again"
+          ></i>
+          {{ lastAction.StatusNavigation.Status }}
+          {{ lastAction.ResultNavigation?.Result }}
+        </div>
+      </div>
+    </ng-template>
+    <ng-template #noActionAvailable>
+      <div class="card dx-card dx-theme-text-color card-ready">
+        <span>
+          <i
+            class="at-icon powercid-icon-handcart clickable-icon"
+            (click)="onClickDeploySolution(cellInfo, false)"
+            title="deploy here"
+          ></i>
+          deploy here
+        </span>
+      </div>
+    </ng-template>
+  </div>
+</dx-data-grid>
+
+<dx-popup
+  *ngIf="isConfigureDeploymentPopupVisible"
+  [width]="1000"
+  height="auto"
+  [showTitle]="true"
+  title="Configure Deployment"
+  [closeOnOutsideClick]="true"
+  [(visible)]="isConfigureDeploymentPopupVisible"
+  [maxHeight]="'90%'"
+>
+  <dx-scroll-view>
+    <app-configure-deployment [application]="selectedApplication" [environment]="configureDeploymentEnvironment"></app-configure-deployment>
+  </dx-scroll-view>
+</dx-popup>
+
+<dx-popup
+  *ngIf="isActionDetailPopupVisible"
+  [width]="700"
+  height="auto"
+  [showTitle]="true"
+  title="Action Details"
+  [closeOnOutsideClick]="true"
+  [(visible)]="isActionDetailPopupVisible"
+  [maxHeight]="'90%'"
+>
+  <dx-scroll-view>
+    <app-action-detail [actionId]="actionId"></app-action-detail>
+  </dx-scroll-view>
+</dx-popup>
+
+<dx-popup
+  *ngIf="isSolutionDetailPopupVisible"
+  [width]="700"
+  height="auto"
+  [showTitle]="true"
+  [title]="solutionDetailPopupTitle"
+  [closeOnOutsideClick]="false"
+  [(visible)]="isSolutionDetailPopupVisible"
+  [dragEnabled]="false"
+  (onHiding)="onHiddenSolutionDetailPopup($event)"
+  [maxHeight]="'90%'"
+>
+  <dx-scroll-view>
+    <app-solution-detail
+      [isAddUpgrade]="isAddUpgrade"
+      [solution]="detailSolution"
+      [application]="this.selectedApplication"
+      (onSaveCompleted)="onSaveCompletedSolutionDetail($event)"
+    ></app-solution-detail>
+  </dx-scroll-view>
+</dx-popup>
