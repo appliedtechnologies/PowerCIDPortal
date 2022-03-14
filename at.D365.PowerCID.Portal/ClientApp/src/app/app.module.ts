@@ -22,6 +22,7 @@ import {
   DxSortableModule,
   DxTextAreaModule,
   DxScrollViewModule,
+  DxContextMenuModule,
 } from "devextreme-angular";
 
 import {
@@ -81,6 +82,10 @@ import { ConfigureDeploymentComponent } from "./components/configure-deployment/
 import { ConnectionReferenceEnvironmentService } from "./shared/services/connectionreferenceenvironment.service";
 import { ConnectionReferenceService } from "./shared/services/connectionreference.service";
 import { EnvironmentVariableService } from "./shared/services/environmentvariable.service";
+import { SideNavigationMenuComponent } from './components/side-navigation-menu/side-navigation-menu.component';
+import { ScreenService } from "./shared/services/screen.service";
+import { HeaderComponent } from './components/header/header.component';
+import { UserPanelComponent } from './components/user-panel/user-panel.component';
 
 export function initializeAppConfig(appConfig: AppConfig, router: Router) {
   return () => appConfig.load();
@@ -101,7 +106,7 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     SettingsComponent,
     UserComponent,
     ConfigureDeploymentComponent,  
-    LogPipe
+    LogPipe, SideNavigationMenuComponent, HeaderComponent, UserPanelComponent
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: "ng-cli-universal" }),
@@ -128,7 +133,8 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     DxSortableModule,
     DxTextBoxModule,
     DxTextAreaModule,
-    DxScrollViewModule
+    DxScrollViewModule,
+    DxContextMenuModule
   ],
   providers: [
     AppConfig,
@@ -181,6 +187,7 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     ConnectionReferenceEnvironmentService,
     ConnectionReferenceService,
     EnvironmentVariableService,
+    ScreenService
   ],
   bootstrap: [AppComponent, MsalRedirectComponent],
 })

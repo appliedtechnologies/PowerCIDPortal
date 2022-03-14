@@ -1,4 +1,4 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, Input, OnInit, ViewChild } from "@angular/core";
 import { NavigationEnd, Router } from "@angular/router";
 import { filter } from "rxjs/operators";
 import { AppConfig } from "./shared/config/app.config";
@@ -6,6 +6,10 @@ import { LayoutService } from "./shared/services/layout.service";
 import notify from "devextreme/ui/notify";
 import { UserService } from "./shared/services/user.service";
 import { User } from "src/app/shared/models/user.model";
+import { ScreenService } from "./shared/services/screen.service";
+import { DxScrollViewComponent } from "devextreme-angular";
+import { navigation } from "./app-navigation";
+import { AppInfoService } from "./shared/services/app-info.service";
 
 export class List {
   id: number;
@@ -19,6 +23,20 @@ export class List {
   styleUrls: ["./app.component.css"],
 })
 export class AppComponent implements OnInit {
+  @ViewChild(DxScrollViewComponent, { static: true }) scrollView: DxScrollViewComponent;
+  selectedRoute = '';
+
+  menuOpened: boolean;
+  temporaryMenuOpened = false;
+
+  @Input()
+  title: string;
+
+  menuMode = 'shrink';
+  menuRevealMode = 'expand';
+  minMenuSize = 0;
+  shaderEnabled = false;
+
   public showLoading: boolean;
   public loadingMessage: string;
   public isDrawerOpen: boolean = true;
@@ -27,10 +45,69 @@ export class AppComponent implements OnInit {
   public toolbarContent = [];
     
   ngOnInit(): void {
+    this.menuOpened = this.screen.sizes['screen-large'];
+
+    this.router.events.subscribe(val => {
+      if (val instanceof NavigationEnd) {
+        this.selectedRoute = val.urlAfterRedirects.split('?')[0];
+      }
+    });
+
+    this.screen.changed.subscribe(() => this.updateDrawer());
+
+    this.updateDrawer();
+
     this.toolbarContent = this.generateToolbarContent(false);
     this.userService.stateChanged$.subscribe(() => {
       this.toolbarContent = this.generateToolbarContent(this.userService.isLogggedIn);
     });    
+  }
+
+  updateDrawer() {
+    const isXSmall = this.screen.sizes['screen-x-small'];
+    const isLarge = this.screen.sizes['screen-large'];
+
+    this.menuMode = isLarge ? 'shrink' : 'overlap';
+    this.menuRevealMode = isXSmall ? 'slide' : 'expand';
+    this.minMenuSize = isXSmall ? 0 : 60;
+    this.shaderEnabled = !isLarge;
+  }
+
+  get hideMenuAfterNavigation() {
+    return this.menuMode === 'overlap' || this.temporaryMenuOpened;
+  }
+
+  get showMenuAfterClick() {
+    return !this.menuOpened;
+  }
+
+  navigationChanged(event) {
+    const path = event.itemData.path;
+    const pointerEvent = event.event;
+
+    if (path && this.menuOpened) {
+      if (event.node.selected) {
+        pointerEvent.preventDefault();
+      } else {
+        this.router.navigate([path]);
+        this.scrollView.instance.scrollTo(0);
+      }
+
+      if (this.hideMenuAfterNavigation) {
+        this.temporaryMenuOpened = false;
+        this.menuOpened = false;
+        pointerEvent.stopPropagation();
+      }
+    } else {
+      pointerEvent.preventDefault();
+    }
+  }
+
+  navigationClick() {
+    if (this.showMenuAfterClick) {
+      this.temporaryMenuOpened = true;
+      this.menuOpened = true;
+    }
   }
 
   public generateToolbarContent(showLogoutButton: boolean){  
@@ -79,17 +156,14 @@ export class AppComponent implements OnInit {
 
   public navigationEntries: any[];
 
-  constructor(private router: Router, private layoutService: LayoutService, private userService: UserService) {
+
+
+  constructor(private router: Router, private layoutService: LayoutService, private userService: UserService, private screen: ScreenService, public appInfo: AppInfoService ) {
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe((event) => {
         this.selectedNavigationEntryRouerLink = [this.router.url.split(/[\#\?]+/)[0]];
       });
-
-    this.setNavigationEntries();
-    this.userService.stateChanged$.subscribe(() => {
-      this.setNavigationEntries();
-    });
 
     //get layout values from layout service
     this.layoutService.showLoading$.subscribe(
@@ -117,69 +191,5 @@ export class AppComponent implements OnInit {
 
   public onItemClickDrawerNavigation(e): void {
     this.router.navigate([e.itemData.routerLink]);
-  }
-
-  private setNavigationEntries(): void{
-    this.navigationEntries = [
-      {
-        text: "Home",
-        icon: "home",
-        routerLink: "/",
-        visible: true
-      },
-      {
-        text: "Profile",
-        icon: "at-icon powercid-icon-benutzer",
-        routerLink: "/profile",
-        visible: this.userService.isLogggedIn
-      },
-      {
-        text: "Solutions Overview",
-        icon: "at-icon powercid-icon-code-file",
-        routerLink: "/solutions",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager, AppConfig.settings.azure.roleNameUser].includes(e))
-      },
-      {
-        text: "Deployment History",
-        icon: "at-icon powercid-icon-vergangenheit",
-        routerLink: "/history",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
-      },
-      {
-        text: "Applications",
-        icon: "at-icon powercid-icon-web-design",
-        routerLink: "/applications",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
-      },
-      {
-        text: "Environments",
-        icon: "at-icon powercid-icon-unit",
-        routerLink: "/environments",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
-      },
-      {
-        text: "Deployment Paths",
-        icon: "at-icon powercid-icon-route",
-        routerLink: "/deploymentpaths",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
-      },
-      {
-        text: "Users",
-        icon: "at-icon powercid-icon-conference-hintergrund-ausgew-hlte",
-        routerLink: "/users",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.includes(AppConfig.settings.azure.roleNameAdmin)
-      },
-      {
-        text: "Settings",
-        icon: "at-icon powercid-icon-einstellungen",
-        routerLink: "/settings",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.includes(AppConfig.settings.azure.roleNameAdmin)
-      }
-    ];
-
-    this.navigationEntries.forEach(e => {
-      if(e.visible === undefined)
-        e.visible = false;
-    });
   }
 }

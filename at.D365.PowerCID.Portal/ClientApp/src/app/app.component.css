@@ -124,9 +124,29 @@
 
 ::ng-deep #main-menu .dx-empty-message{
     color: white;
-
 }
+
 
 ::ng-deep #router-outlet-wrapper{
     padding: 10px 20px;
+}
+
+:host {
+  flex-direction: column;
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.layout-header {
+  z-index: 1501;
+}
+
+.layout-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.content {
+  flex-grow: 1;
 }
