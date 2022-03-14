@@ -44,6 +44,7 @@ namespace at.D365.PowerCID.Portal
             builder.EntitySet<DeploymentPath>("DeploymentPaths");
             builder.EntitySet<ConnectionReference>("ConnectionReferences");
             builder.EntitySet<EnvironmentVariable>("EnvironmentVariables");
+            builder.EntitySet<AsyncJob>("AsyncJobs");
 
             builder.EntitySet<EnvironmentVariableEnvironment>("EnvironmentVariableEnvironments").EntityType.HasKey(e => new { e.EnvironmentVariable, e.Environment });
             builder.EntitySet<ConnectionReferenceEnvironment>("ConnectionReferenceEnvironments").EntityType.HasKey(e => new { e.ConnectionReference, e.Environment });
