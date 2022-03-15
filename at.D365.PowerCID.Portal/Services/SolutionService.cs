@@ -17,6 +17,7 @@ using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Octokit.GraphQL;
 
 namespace at.D365.PowerCID.Portal.Services
 {
@@ -131,8 +132,19 @@ namespace at.D365.PowerCID.Portal.Services
             string repositoryName = gitHubRepositoryName[1];
             string owner = gitHubRepositoryName[0];
 
-            byte[] solutionZipFile = await installationClient.Repository.Content.GetRawContent(owner, repositoryName, path);
-            return solutionZipFile;
+            var connection = await this.gitHubService.GetGraphQLConnetion(tenant.GitHubInstallationId);
+            var query = new Query()
+                .RepositoryOwner(owner)
+                .Repository(repositoryName)
+                .Object($"HEAD:{path}")
+                .Select(x => new {
+                    x.Oid
+                })
+                .Compile();
+            var reuslt = await connection.Run(query);
+
+            var solutionZipFileBase64 = (await installationClient.Git.Blob.Get(owner, repositoryName, reuslt.Oid)).Content;
+            return Convert.FromBase64String(solutionZipFileBase64);
         }
 
         public async Task<string> GetSolutionFromGitHubAsBase64String(Tenant tenant, Solution solution)
