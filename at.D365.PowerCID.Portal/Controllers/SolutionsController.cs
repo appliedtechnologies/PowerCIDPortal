@@ -4,6 +4,7 @@ using at.D365.PowerCID.Portal.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Deltas;
 using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,43 @@ namespace at.D365.PowerCID.Portal.Controllers
         public IQueryable<Solution> Get()
         {
             return base.dbContext.Solutions.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+        }
+
+        
+        [Authorize(Roles = "atPowerCID.Admin")]
+        public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Solution> solution)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if((await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+                return Forbid();
+
+            var entity = await base.dbContext.Solutions.FindAsync(key);
+            if (entity == null)
+            {
+                return NotFound();
+            }
+            solution.Patch(entity);
+            try
+            {
+                await base.dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!SolutionExists(key))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return Updated(entity);
         }
 
         [HttpPost]
@@ -110,6 +148,11 @@ namespace at.D365.PowerCID.Portal.Controllers
         private bool ExportExists(int solutionId)
         {
             return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.Type == 1 && a.Result == 1);
+        }
+
+        private bool SolutionExists(int key)
+        {
+            return base.dbContext.Solutions.Any(p => p.Id == key);
         }
     }
 }
