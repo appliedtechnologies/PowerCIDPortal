@@ -1,3 +1,8 @@
 ::ng-deep .second-group {
   margin-top: 30px;
 }
+
+::ng-deep .dx-field-item-label-content{  
+  max-width: 150px;  
+  white-space: normal;  
+} 
