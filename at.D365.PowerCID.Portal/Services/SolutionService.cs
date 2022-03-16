@@ -223,7 +223,7 @@ namespace at.D365.PowerCID.Portal.Services
         {
             Upgrade upgrade;
             upgrade = isPatch == false ? (Upgrade)action.SolutionNavigation : default;
-            bool existsSolutionInTargetEnvironment = ExistsSolutionInTargetEnvironment(action.SolutionNavigation.Application, environmentId);
+            bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, basicUrl, tenantMsId);
 
             EntityCollection solutionComponentParameters = await this.GetSolutionComponentsForImport(environmentId, action.SolutionNavigation.Application);
 
@@ -299,9 +299,16 @@ namespace at.D365.PowerCID.Portal.Services
             return connectionReferenceEntities;
         }
 
-        private bool ExistsSolutionInTargetEnvironment(int applicationId, int targetEnvironmentId)
+        private async Task<bool> ExistsSolutionInTargetEnvironment(string solutionUniqueName, string basicUrl, string tenantMsId)
         {
-            return dbContext.Actions.Any(x => x.SolutionNavigation.Application == applicationId && x.TargetEnvironment == targetEnvironmentId && x.Result == 1);
+            string apiUri = basicUrl + configuration["DownstreamApis:DataverseApi:BaseUrl"] + $"solutions?$filter=uniquename%20eq%20%27{solutionUniqueName}%27&$count=true";
+            string configAuthority = configuration["AzureAd:Instance"] + tenantMsId;
+            string[] scope = new string[] { basicUrl + "/.default" };
+            string token = await this.GetToken(configAuthority, scope);
+            var responseMessage = await HttpGetRequest(apiUri, token);
+
+            JObject responseMessageData = await responseMessage.Content.ReadAsAsync<JObject>();
+            return (int)responseMessageData["@odata.count"] > 0;
         }
 
         #region httpMethoden
