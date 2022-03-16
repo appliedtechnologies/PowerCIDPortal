@@ -81,6 +81,7 @@ import { ConfigureDeploymentComponent } from "./components/configure-deployment/
 import { ConnectionReferenceEnvironmentService } from "./shared/services/connectionreferenceenvironment.service";
 import { ConnectionReferenceService } from "./shared/services/connectionreference.service";
 import { EnvironmentVariableService } from "./shared/services/environmentvariable.service";
+import { FullNamePipe } from "./shared/pipes/full-name.pipe";
 
 export function initializeAppConfig(appConfig: AppConfig, router: Router) {
   return () => appConfig.load();
@@ -101,7 +102,8 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     SettingsComponent,
     UserComponent,
     ConfigureDeploymentComponent,  
-    LogPipe
+    LogPipe,
+    FullNamePipe
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: "ng-cli-universal" }),
