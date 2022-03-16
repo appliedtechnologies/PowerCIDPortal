@@ -229,8 +229,8 @@ namespace at.D365.PowerCID.Portal.Services
 
             ImportSolutionAsyncRequest importSolutionAsyncRequest = new ImportSolutionAsyncRequest{
                 CustomizationFile = solutionFileData,
-                OverwriteUnmanagedCustomizations = true,
-                PublishWorkflows = true,
+                OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
+                PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
                 HoldingSolution = !isPatch && existsSolutionInTargetEnvironment == true,
                 ComponentParameters = solutionComponentParameters
             };
