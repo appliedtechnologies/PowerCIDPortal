@@ -106,8 +106,15 @@ export class SideNavigationMenuComponent {
   }
 
   public onItemClickNavigation(e): void {
+    if(e.itemData.items)
+      this.setNavigationEntries();
+
     if(e.itemData.routerLink)
       this.router.navigate([e.itemData.routerLink]);   
+  }
+
+  public onItemExpanded(e): void{
+    this.setNavigationEntries();
   }
 
   private checkNavigationEntry(entry: NavigationEntry): void{
