@@ -18,22 +18,13 @@ export class SideNavigationMenuComponent {
 
   public navigationEntries: NavigationEntry[];
 
-  private _selectedItem: String;
-  @Input()
-  set selectedItem(value: String) {
-    this._selectedItem = value;
-    if (!this.menu.instance) {
-      return;
-    }
-
-    this.menu.instance.selectItem(value);
-  }
+  private selectedItemRoute: String;
 
   constructor(private router: Router,private elementRef: ElementRef, private userService: UserService) {
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe((event) => {
-        this.selectedItem = this.router.url.split(/[\#\?]+/)[0];
+        this.selectedItemRoute = this.router.url.split(/[\#\?]+/)[0];
       });
 
     this.setNavigationEntries();
@@ -107,27 +98,34 @@ export class SideNavigationMenuComponent {
     ];
 
     this.navigationEntries.forEach(e => {
-      if(e.visible === undefined)
-        e.visible = false;
+      this.checkNavigationEntry(e);
+      e.items?.forEach(ee => {
+        this.checkNavigationEntry(ee);
+      })
     });
   }
 
   public onItemClickNavigation(e): void {
-    this.router.navigate([e.itemData.routerLink]);   
+    if(e.itemData.routerLink)
+      this.router.navigate([e.itemData.routerLink]);   
+  }
+
+  private checkNavigationEntry(entry: NavigationEntry): void{
+    if(entry.visible === undefined)
+      entry.visible = false;
+
+    if(entry.routerLink == this.selectedItemRoute)
+      entry.selected = true;
   }
 }
 
 
 export class NavigationEntry {
   text: string;
-
   visible: boolean;
-
   icon: string;
-
   routerLink?: string;
-
+  selected?: boolean;
   expanded?: boolean;
-
   items?: NavigationEntry[]; 
 }
