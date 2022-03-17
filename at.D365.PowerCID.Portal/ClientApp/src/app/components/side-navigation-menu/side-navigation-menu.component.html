@@ -1,14 +1,13 @@
 <ng-content></ng-content>
-
 <div class="menu-container">
-  <dx-tree-view
-    [items]="items"
-    keyExpr="path"
-    selectionMode="single"
-    [focusStateEnabled]="false"
-    expandEvent="click"
-    (onItemClick)="onItemClick($event)"
-    width="100%">
-  </dx-tree-view>
+<dx-tree-view 
+selectionMode="single"
+keyExpr="routerLink"
+[items]="navigationEntries"
+(onItemClick)="onItemClickDrawerNavigation($event)"
+(onSelectionChanged)="test($event)">   
+           
+</dx-tree-view>
 </div>
+
 

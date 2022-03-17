@@ -83,7 +83,6 @@ import { ConnectionReferenceEnvironmentService } from "./shared/services/connect
 import { ConnectionReferenceService } from "./shared/services/connectionreference.service";
 import { EnvironmentVariableService } from "./shared/services/environmentvariable.service";
 import { SideNavigationMenuComponent } from './components/side-navigation-menu/side-navigation-menu.component';
-import { ScreenService } from "./shared/services/screen.service";
 import { HeaderComponent } from './components/header/header.component';
 import { UserPanelComponent } from './components/user-panel/user-panel.component';
 
@@ -187,7 +186,6 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     ConnectionReferenceEnvironmentService,
     ConnectionReferenceService,
     EnvironmentVariableService,
-    ScreenService
   ],
   bootstrap: [AppComponent, MsalRedirectComponent],
 })

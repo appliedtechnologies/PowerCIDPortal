@@ -1,0 +1,3 @@
+:host .menu-container ::ng-deep .dx-treeview .dx-treeview-node-container .dx-treeview-node.dx-state-selected > .dx-treeview-item * {
+    color: blue;
+  }
