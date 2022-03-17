@@ -150,7 +150,3 @@
 .content {
   flex-grow: 1;
 }
-
-:host .menu-container ::ng-deep .dx-treeview .dx-treeview-node-container .dx-treeview-node.dx-state-selected > .dx-treeview-item * {
-    color: orange;
-  }

@@ -1,3 +1,17 @@
-:host .menu-container ::ng-deep .dx-treeview .dx-treeview-node-container .dx-treeview-node.dx-state-selected > .dx-treeview-item * {
-    color: blue;
-  }
+::ng-deep .dx-treeview-node.dx-state-selected, ::ng-deep .dx-treeview-item-without-checkbox.dx-state-selected > .dx-treeview-item {
+  color:white !important;
+  background-color: #a3cc54 !important;
+}
+
+::ng-deep .dx-treeview-node{
+  padding: 0;
+}
+
+::ng-deep .dx-treeview-item{
+  padding: 10px 20px;
+}
+
+::ng-deep .dx-treeview-toggle-item-visibility {
+  right: 10px;
+  left: auto;
+}

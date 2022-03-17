@@ -4,24 +4,19 @@ import { UserService } from "src/app/shared/services/user.service";
 
 import * as events from 'devextreme/events';
 import { AppConfig } from 'src/app/shared/config/app.config';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-side-navigation-menu',
   templateUrl: './side-navigation-menu.component.html',
   styleUrls: ['./side-navigation-menu.component.css']
 })
-export class SideNavigationMenuComponent implements AfterViewInit, OnDestroy {
+export class SideNavigationMenuComponent {
   @ViewChild(DxTreeViewComponent, { static: true })
   menu: DxTreeViewComponent;
 
   public navigationEntries: NavigationEntry[];
-
-  @Output()
-  selectedItemChanged = new EventEmitter<string>();
-
-  @Output()
-  openMenu = new EventEmitter<any>();
 
   private _selectedItem: String;
   @Input()
@@ -31,52 +26,20 @@ export class SideNavigationMenuComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    let test = this.menu.instance.selectItem(value);
-  }
-
-
-  private _compactMode = false;
-  @Input()
-  get compactMode() {
-    return this._compactMode;
-  }
-  set compactMode(val) {
-    this._compactMode = val;
-
-    if (!this.menu.instance) {
-      return;
-    }
-
-    if (val) {
-      this.menu.instance.collapseAll();
-    } else {
-      this.menu.instance.expandItem(this._selectedItem);
-    }
+    this.menu.instance.selectItem(value);
   }
 
   constructor(private router: Router,private elementRef: ElementRef, private userService: UserService) {
+    this.router.events
+      .pipe(filter((event) => event instanceof NavigationEnd))
+      .subscribe((event) => {
+        this.selectedItem = this.router.url.split(/[\#\?]+/)[0];
+      });
+
     this.setNavigationEntries();
     this.userService.stateChanged$.subscribe(() => {
       this.setNavigationEntries();
     });
-  }
-
-  onItemClick(event) {
-    this.selectedItemChanged.emit(event);
-  }
-
-  ngAfterViewInit() {
-    events.on(this.elementRef.nativeElement, 'dxclick', (e) => {
-      this.openMenu.next(e);
-    });
-  }
-
-  ngOnDestroy() {
-    events.off(this.elementRef.nativeElement, 'dxclick');
-  }
-
-  test(e){
-
   }
 
   private setNavigationEntries(): void{
@@ -149,7 +112,7 @@ export class SideNavigationMenuComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  public onItemClickDrawerNavigation(e): void {
+  public onItemClickNavigation(e): void {
     this.router.navigate([e.itemData.routerLink]);   
   }
 }
