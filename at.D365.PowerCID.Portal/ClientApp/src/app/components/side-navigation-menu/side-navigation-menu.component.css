@@ -22,3 +22,53 @@
   height: 42px;
   transform: scaleX(-1);
 }
+
+
+#legal-links{
+  color: #333333;
+  opacity: 0.6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+  line-height: 200%;    
+}
+
+#legal-links a{
+  color: inherit;
+  text-decoration: none;
+  width: 50%;
+  display: flex;
+  justify-content: center;
+}
+
+#legal-links a:hover{
+  background-color: rgba(191, 191, 191, .15);
+}
+
+
+#legal-links p{
+  margin: 0;
+}
+
+#footer {
+  position: absolute;
+  bottom: 0;
+}
+
+#apptech-logo{
+  width: 100%;
+  height: 100%;
+}
+
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 500%;
+  height: 100%;
+  box-sizing: border-box;
+}
+:host .menu-container {
+  min-height: 500%;
+  flex: 1;
+}

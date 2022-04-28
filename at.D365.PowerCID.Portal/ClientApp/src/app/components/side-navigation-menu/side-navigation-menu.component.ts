@@ -1,8 +1,5 @@
-import { Component, NgModule, Output, Input, EventEmitter, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
-import { DxTreeViewModule, DxTreeViewComponent } from 'devextreme-angular/ui/tree-view';
+import { Component} from '@angular/core';
 import { UserService } from "src/app/shared/services/user.service";
-
-import * as events from 'devextreme/events';
 import { AppConfig } from 'src/app/shared/config/app.config';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -13,18 +10,17 @@ import { filter } from 'rxjs/operators';
   styleUrls: ['./side-navigation-menu.component.css']
 })
 export class SideNavigationMenuComponent {
-  @ViewChild(DxTreeViewComponent, { static: true })
-  menu: DxTreeViewComponent;
 
-  public navigationEntries: NavigationEntry[];
+  navigationEntries: NavigationEntry[];
+  version: string = AppConfig.settings.version;
+  selectedItemRoute: String;
 
-  private selectedItemRoute: String;
-
-  constructor(private router: Router,private elementRef: ElementRef, private userService: UserService) {
+  constructor(private router: Router, private userService: UserService) {
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe((event) => {
         this.selectedItemRoute = this.router.url.split(/[\#\?]+/)[0];
+        this.setNavigationEntries();
       });
 
     this.setNavigationEntries();
@@ -33,7 +29,23 @@ export class SideNavigationMenuComponent {
     });
   }
 
-  private setNavigationEntries(): void{
+  onItemClickNavigation(e): void {
+    if(e.itemData.items)
+      this.setNavigationEntries();
+
+    if(e.itemData.routerLink)
+      this.router.navigate([e.itemData.routerLink]);   
+  }
+
+  onItemExpanded(e): void{
+    this.setNavigationEntries();
+  }
+
+  onContentReady(e): void {
+    
+  }
+
+  setNavigationEntries(): void{
     this.navigationEntries = [
       {
         text: "Home",
@@ -105,19 +117,7 @@ export class SideNavigationMenuComponent {
     });
   }
 
-  public onItemClickNavigation(e): void {
-    if(e.itemData.items)
-      this.setNavigationEntries();
-
-    if(e.itemData.routerLink)
-      this.router.navigate([e.itemData.routerLink]);   
-  }
-
-  public onItemExpanded(e): void{
-    this.setNavigationEntries();
-  }
-
-  private checkNavigationEntry(entry: NavigationEntry): void{
+  checkNavigationEntry(entry: NavigationEntry): void{
     if(entry.visible === undefined)
       entry.visible = false;
 
@@ -125,7 +125,6 @@ export class SideNavigationMenuComponent {
       entry.selected = true;
   }
 }
-
 
 export class NavigationEntry {
   text: string;
