@@ -6,7 +6,7 @@
 }
 
 #drawer-template{
-    width: 200px;
+    width: 220px;
     height: calc(100vh - 46px);
 }
 
@@ -21,35 +21,10 @@
     margin: 15px 15px 5px;
 }
 
+
 ::ng-deep #welcome-user{
     font-size: 14px;
     margin-right: 10px;
-}
-
-#legal-links{
-    color: #333333;
-    opacity: 0.6;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 10px;
-    line-height: 200%;    
-}
-
-#legal-links a{
-    color: inherit;
-    text-decoration: none;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-}
-
-#legal-links p{
-    margin: 0;
-}
-
-#legal-links a:hover{
-    background-color: rgba(191, 191, 191, .15);
 }
 
 ::ng-deep #header-toolbar.dx-toolbar {
@@ -62,36 +37,8 @@
     padding: 5px 10px;
 }
 
-::ng-deep .dx-list-item-icon-container, ::ng-deep .dx-toolbar-before {
-    width: 36px;
-    padding-right: 0px !important;
-    text-align: center;
-}
- 
-::ng-deep .dx-list-item-content {
-    padding-left: 10px !important;
-}
-
 ::ng-deep .dx-drawer-expand.dx-drawer-right .panel-list {
     float: right;
-}
-
-::ng-deep .panel-list .dx-list-item {
-    color: #333333;
-    border-top: 1px solid rgba(221, 221, 221, .2);
-}
-
-::ng-deep .panel-list .dx-list-item-selected {
-    color:white !important;
-    background-color: #a3cc54 !important;
-}
-
-::ng-deep .panel-list .dx-list-item .dx-icon {
-    color: #333 !important;
-}
-
-::ng-deep .panel-list .dx-list-item-selected .dx-icon, ::ng-deep .dx-list:not(.dx-list-select-decorator-enabled) .dx-list-item.dx-state-active .dx-icon  {
-    color: white !important;
 }
 
 ::ng-deep .options {
@@ -124,9 +71,35 @@
 
 ::ng-deep #main-menu .dx-empty-message{
     color: white;
-
 }
+
 
 ::ng-deep #router-outlet-wrapper{
     padding: 10px 20px;
+}
+
+::ng-deep .dx-toolbar-menu-container .dx-dropdownmenu-button .dx-button-content .dx-icon{
+    float: right;  
+    padding-left: 10px; 
+    margin: 0; 
+}
+
+:host {
+  flex-direction: column;
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.layout-header {
+  z-index: 1501;
+}
+
+.layout-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.content {
+  flex-grow: 1;
 }

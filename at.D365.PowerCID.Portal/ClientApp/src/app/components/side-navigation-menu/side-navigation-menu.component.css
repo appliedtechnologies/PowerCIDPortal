@@ -1,0 +1,85 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+:host ::ng-deep .dx-treeview-node.dx-state-selected.dx-treeview-node-is-leaf, :host ::ng-deep .dx-treeview-item-without-checkbox.dx-state-selected.dx-treeview-node-is-leaf > .dx-treeview-item {
+  color:white !important;
+  background-color: #a3cc54 !important;
+}
+
+:host ::ng-deep .dx-treeview-item-without-checkbox.dx-state-focused.dx-treeview-node-is-leaf > .dx-treeview-item{
+  color:white !important;
+  background-color: #a3cc54 !important;
+}
+
+:host ::ng-deep .dx-treeview-item-without-checkbox.dx-state-focused > .dx-treeview-item{
+  background-color: unset;
+  color: unset;
+}
+
+:host ::ng-deep .dx-treeview-node.dx-treeview-node-is-leaf > .dx-treeview-item.dx-state-hover {
+  background-color: rgba(0,0,0,.04);
+  color: #333;
+}
+
+:host ::ng-deep .dx-treeview-node > .dx-treeview-item.dx-state-hover {
+  background-color: unset;
+  color: unset;
+}
+
+:host ::ng-deep .dx-treeview-node{
+  padding: 0;
+  border-top: 1px solid hsla(0,0%,87%,.2);
+}
+
+:host ::ng-deep .dx-treeview-item{
+  padding: 10px 20px;
+}
+
+:host ::ng-deep .dx-treeview-node[aria-level="2"] .dx-treeview-item{
+  padding-left: 30px;
+}
+
+:host ::ng-deep .dx-treeview-toggle-item-visibility {
+  right: 10px;
+  left: auto;
+  height: 42px;
+  transform: scaleX(-1);
+}
+
+:host ::ng-deep .dx-scrollable-content{
+  padding-right: 0 !important;
+}
+
+#legal-links{
+  color: #333333;
+  opacity: 0.6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+  line-height: 200%;    
+}
+
+#legal-links a{
+  color: inherit;
+  text-decoration: none;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+#legal-links a:hover{
+  background-color: rgba(191, 191, 191, .15);
+}
+
+#legal-links p{
+  margin: 0;
+}
+
+#apptech-logo{
+  margin: 15px 15px 5px;
+}

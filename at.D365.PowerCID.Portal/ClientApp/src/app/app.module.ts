@@ -22,6 +22,8 @@ import {
   DxSortableModule,
   DxTextAreaModule,
   DxScrollViewModule,
+  DxContextMenuModule,
+  DxResponsiveBoxModule 
 } from "devextreme-angular";
 
 import {
@@ -81,6 +83,7 @@ import { ConfigureDeploymentComponent } from "./components/configure-deployment/
 import { ConnectionReferenceEnvironmentService } from "./shared/services/connectionreferenceenvironment.service";
 import { ConnectionReferenceService } from "./shared/services/connectionreference.service";
 import { EnvironmentVariableService } from "./shared/services/environmentvariable.service";
+import { SideNavigationMenuComponent } from './components/side-navigation-menu/side-navigation-menu.component';
 import { FullNamePipe } from "./shared/pipes/full-name.pipe";
 
 export function initializeAppConfig(appConfig: AppConfig, router: Router) {
@@ -102,7 +105,8 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     SettingsComponent,
     UserComponent,
     ConfigureDeploymentComponent,  
-    LogPipe,
+    LogPipe, 
+    SideNavigationMenuComponent, 
     FullNamePipe
   ],
   imports: [
@@ -130,7 +134,9 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     DxSortableModule,
     DxTextBoxModule,
     DxTextAreaModule,
-    DxScrollViewModule
+    DxScrollViewModule,
+    DxContextMenuModule,
+    DxResponsiveBoxModule 
   ],
   providers: [
     AppConfig,

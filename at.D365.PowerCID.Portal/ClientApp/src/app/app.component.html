@@ -11,35 +11,23 @@
 <div id="app-wrapper">
   <dx-toolbar
     id="header-toolbar"
-    [items]="toolbarContent">
+    (onContentReady)="onContentReady($event)"
+    [items]="toolbarContent"> 
   </dx-toolbar>
+    
   <dx-drawer 
     template="template"
     [(opened)]="isDrawerOpen"
     revealMode="expand">
     <div *dxTemplate="let data of 'template'" id="drawer-template">
       <div id="drawer-content">
-        <dx-list class="panel-list"
-          selectionMode="single"
-          keyExpr="routerLink"
-          [(selectedItemKeys)]="selectedNavigationEntryRouerLink"
-          [items]="navigationEntries"
-          noDataText="Loading..."
-          id="main-menu"
-          (onItemClick)="onItemClickDrawerNavigation($event)">
-        </dx-list>
-        <a href="https://www.appliedtechnologies.de/" target="_blank" title="applied technologies Homepage" rel="noopener noreferrer"><img id="apptech-logo" src="../assets/logos/at-logo-white.svg" alt="applied technologies GmbH Logo" /></a>
-        <div id="legal-links">
-          <p>v{{verion}}</p>
-          <a href="https://www.appliedtechnologies.de/impressum/" target="_blank" rel="noopener noreferrer">Imprint</a>
-          <a href="https://www.appliedtechnologies.de/datenschutzerklaerung/" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
-        </div>       
+          <app-side-navigation-menu></app-side-navigation-menu>     
       </div>  
     </div>
     <dx-scroll-view id="content" class="dx-theme-background-color" [showScrollbar]="'always'">
-        <div id="router-outlet-wrapper">
-          <router-outlet></router-outlet>
-        </div>
+      <div id="router-outlet-wrapper">
+        <router-outlet></router-outlet>
+      </div>
     </dx-scroll-view>
   </dx-drawer>
 </div>
