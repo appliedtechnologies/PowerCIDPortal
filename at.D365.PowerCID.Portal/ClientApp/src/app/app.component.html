@@ -21,16 +21,13 @@
     revealMode="expand">
     <div *dxTemplate="let data of 'template'" id="drawer-template">
       <div id="drawer-content">
-        <div class="menu-container">
-          <app-side-navigation-menu>
-          </app-side-navigation-menu> 
-        </div>  
-        </div>    
+          <app-side-navigation-menu></app-side-navigation-menu>     
       </div>  
+    </div>
     <dx-scroll-view id="content" class="dx-theme-background-color" [showScrollbar]="'always'">
-        <div id="router-outlet-wrapper">
-          <router-outlet></router-outlet>
-        </div>
+      <div id="router-outlet-wrapper">
+        <router-outlet></router-outlet>
+      </div>
     </dx-scroll-view>
   </dx-drawer>
 </div>

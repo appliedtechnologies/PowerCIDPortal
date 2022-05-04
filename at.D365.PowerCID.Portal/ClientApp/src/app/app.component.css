@@ -80,7 +80,8 @@
 
 ::ng-deep .dx-toolbar-menu-container .dx-dropdownmenu-button .dx-button-content .dx-icon{
     float: right;  
-    padding-left: 10px;  
+    padding-left: 10px; 
+    margin: 0; 
 }
 
 :host {
