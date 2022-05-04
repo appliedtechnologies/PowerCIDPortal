@@ -17,6 +17,7 @@ using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Octokit.GraphQL;
 
 namespace at.D365.PowerCID.Portal.Services
 {
@@ -131,8 +132,19 @@ namespace at.D365.PowerCID.Portal.Services
             string repositoryName = gitHubRepositoryName[1];
             string owner = gitHubRepositoryName[0];
 
-            byte[] solutionZipFile = await installationClient.Repository.Content.GetRawContent(owner, repositoryName, path);
-            return solutionZipFile;
+            var connection = await this.gitHubService.GetGraphQLConnetion(tenant.GitHubInstallationId);
+            var query = new Query()
+                .RepositoryOwner(owner)
+                .Repository(repositoryName)
+                .Object($"HEAD:{path}")
+                .Select(x => new {
+                    x.Oid
+                })
+                .Compile();
+            var reuslt = await connection.Run(query);
+
+            var solutionZipFileBase64 = (await installationClient.Git.Blob.Get(owner, repositoryName, reuslt.Oid)).Content;
+            return Convert.FromBase64String(solutionZipFileBase64);
         }
 
         public async Task<string> GetSolutionFromGitHubAsBase64String(Tenant tenant, Solution solution)
@@ -211,14 +223,14 @@ namespace at.D365.PowerCID.Portal.Services
         {
             Upgrade upgrade;
             upgrade = isPatch == false ? (Upgrade)action.SolutionNavigation : default;
-            bool existsSolutionInTargetEnvironment = ExistsSolutionInTargetEnvironment(action.SolutionNavigation.Application, environmentId);
+            bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, basicUrl, tenantMsId);
 
             EntityCollection solutionComponentParameters = await this.GetSolutionComponentsForImport(environmentId, action.SolutionNavigation.Application);
 
             ImportSolutionAsyncRequest importSolutionAsyncRequest = new ImportSolutionAsyncRequest{
                 CustomizationFile = solutionFileData,
-                OverwriteUnmanagedCustomizations = true,
-                PublishWorkflows = true,
+                OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
+                PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
                 HoldingSolution = !isPatch && existsSolutionInTargetEnvironment == true,
                 ComponentParameters = solutionComponentParameters
             };
@@ -287,9 +299,16 @@ namespace at.D365.PowerCID.Portal.Services
             return connectionReferenceEntities;
         }
 
-        private bool ExistsSolutionInTargetEnvironment(int applicationId, int targetEnvironmentId)
+        private async Task<bool> ExistsSolutionInTargetEnvironment(string solutionUniqueName, string basicUrl, string tenantMsId)
         {
-            return dbContext.Actions.Any(x => x.SolutionNavigation.Application == applicationId && x.TargetEnvironment == targetEnvironmentId && x.Result == 1);
+            string apiUri = basicUrl + configuration["DownstreamApis:DataverseApi:BaseUrl"] + $"solutions?$filter=uniquename%20eq%20%27{solutionUniqueName}%27&$count=true";
+            string configAuthority = configuration["AzureAd:Instance"] + tenantMsId;
+            string[] scope = new string[] { basicUrl + "/.default" };
+            string token = await this.GetToken(configAuthority, scope);
+            var responseMessage = await HttpGetRequest(apiUri, token);
+
+            JObject responseMessageData = await responseMessage.Content.ReadAsAsync<JObject>();
+            return (int)responseMessageData["@odata.count"] > 0;
         }
 
         #region httpMethoden

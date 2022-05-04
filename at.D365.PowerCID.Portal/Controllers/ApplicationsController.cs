@@ -129,7 +129,23 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
 
             return Updated(entity);
+        }
 
+        [Authorize(Roles = "atPowerCID.Admin")]
+        public async Task<IActionResult> Delete([FromODataUri] int key)
+        {
+            var application = await dbContext.Applications.FindAsync(key);
+
+            if((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == key && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+                return Forbid();
+
+            if (application == null)
+            {
+                return NotFound();
+            }
+            dbContext.Applications.Remove(application);
+            await dbContext.SaveChangesAsync();
+            return Ok();
         }
 
         [HttpPost]

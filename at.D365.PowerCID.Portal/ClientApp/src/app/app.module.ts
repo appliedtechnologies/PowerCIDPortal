@@ -84,6 +84,7 @@ import { ConnectionReferenceEnvironmentService } from "./shared/services/connect
 import { ConnectionReferenceService } from "./shared/services/connectionreference.service";
 import { EnvironmentVariableService } from "./shared/services/environmentvariable.service";
 import { SideNavigationMenuComponent } from './components/side-navigation-menu/side-navigation-menu.component';
+import { FullNamePipe } from "./shared/pipes/full-name.pipe";
 
 export function initializeAppConfig(appConfig: AppConfig, router: Router) {
   return () => appConfig.load();
@@ -106,6 +107,7 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     ConfigureDeploymentComponent,  
     LogPipe, 
     SideNavigationMenuComponent, 
+    FullNamePipe
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: "ng-cli-universal" }),

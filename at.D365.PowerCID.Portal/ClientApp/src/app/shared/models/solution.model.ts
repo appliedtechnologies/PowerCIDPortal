@@ -18,4 +18,6 @@ export interface Solution {
   CreatedByNavigation?: User;
 	ModifiedByNavigation?: User;
 	Actions?: Action[];
+	OverwriteUnmanagedCustomizations?: boolean;
+	EnableWorkflows?: boolean;
 }

@@ -492,6 +492,14 @@ namespace at.D365.PowerCID.Portal.Data.Models
                     .HasMaxLength(100)
                     .IsUnicode(false);
 
+                entity.Property(e => e.OverwriteUnmanagedCustomizations)
+                    .HasColumnName("Overwrite Unmanaged Customizations")
+                    .HasDefaultValue(true);
+
+                entity.Property(e => e.EnableWorkflows)
+                    .HasColumnName("Enable Workflows")
+                    .HasDefaultValue(true);
+
                 entity.HasOne(d => d.ApplicationNavigation)
                     .WithMany(p => p.Solutions)
                     .HasForeignKey(d => d.Application)
