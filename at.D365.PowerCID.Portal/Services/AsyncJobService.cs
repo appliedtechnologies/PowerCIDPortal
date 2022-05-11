@@ -278,7 +278,7 @@ namespace at.D365.PowerCID.Portal.Services
                                     if (!isPatch)
                                     {
                                         Upgrade upgrade = (Upgrade)asyncJob.ActionNavigation.SolutionNavigation;
-                                        if (upgrade.ApplyManually == false && asyncJob.IsManaged == true)
+                                        if (upgrade.ApplyManually == false && asyncJob.IsManaged == true && asyncJob.ActionNavigation.Status != 4)
                                         {
                                             await DeleteAndPromote(asyncJob, token);
 
