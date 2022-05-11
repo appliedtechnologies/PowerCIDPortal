@@ -82,6 +82,8 @@ import { ConnectionReferenceEnvironmentService } from "./shared/services/connect
 import { ConnectionReferenceService } from "./shared/services/connectionreference.service";
 import { EnvironmentVariableService } from "./shared/services/environmentvariable.service";
 import { FullNamePipe } from "./shared/pipes/full-name.pipe";
+import { PowerBIEmbedModule } from 'powerbi-client-angular';
+import { PowerBIEmbeddedComponent } from "./components/powerbi-embedded/powerbi-embedded.component";
 
 export function initializeAppConfig(appConfig: AppConfig, router: Router) {
   return () => appConfig.load();
@@ -103,7 +105,8 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     UserComponent,
     ConfigureDeploymentComponent,  
     LogPipe,
-    FullNamePipe
+    FullNamePipe,
+    PowerBIEmbeddedComponent
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: "ng-cli-universal" }),
@@ -130,7 +133,8 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     DxSortableModule,
     DxTextBoxModule,
     DxTextAreaModule,
-    DxScrollViewModule
+    DxScrollViewModule,
+    PowerBIEmbedModule
   ],
   providers: [
     AppConfig,

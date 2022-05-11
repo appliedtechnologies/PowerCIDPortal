@@ -158,6 +158,12 @@ export class AppComponent implements OnInit {
         visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
       },
       {
+        text: "Power BI",
+        icon: "at-icon powercid-icon-unit",
+        routerLink: "/powerbi-embedded",
+        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
+      },
+      {
         text: "Deployment Paths",
         icon: "at-icon powercid-icon-route",
         routerLink: "/deploymentpaths",

@@ -129,4 +129,11 @@
 
 ::ng-deep #router-outlet-wrapper{
     padding: 10px 20px;
+    display: flex;
+    flex-grow: 1;
+    flex-direction: column;
+    height: calc(100vh - 90px);
+    align-content: stretch;
+    justify-content: flex-start;
+    align-items: stretch;
 }

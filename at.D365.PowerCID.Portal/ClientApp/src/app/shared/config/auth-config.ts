@@ -55,6 +55,7 @@ export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   protectedResourceMap.set(location.origin + "/odata/*", [
     `api://${AppConfig.settings.azure.applicationId}/access_as_user`,
   ]);
+  protectedResourceMap.set("https://analysis.windows.net/powerbi/api",["Report.Read.All"])
 
   return {
     interactionType: InteractionType.Redirect,
@@ -70,5 +71,6 @@ export function MSALGuardConfigFactory(): MsalGuardConfiguration {
 }
 
 export const InitRedirctRequest: RedirectRequest = {
-  scopes: ["https://graph.microsoft.com/.default"]
+  scopes: ["https://graph.microsoft.com/User.Read"],
+  extraScopesToConsent: ["https://analysis.windows.net/powerbi/api/Report.Read.All"]
 };

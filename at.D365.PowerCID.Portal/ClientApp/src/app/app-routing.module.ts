@@ -3,6 +3,7 @@ import { Routes, RouterModule } from "@angular/router";
 import { MsalGuard } from "@azure/msal-angular";
 import { ApplicationComponent } from "./components/application/application.component";
 import { DeploymentpathComponent } from "./components/deploymentpath/deploymentpath.component";
+import { PowerBIEmbeddedComponent } from "./components/powerbi-embedded/powerbi-embedded.component";
 import { EnvironmentComponent } from "./components/environment/environment.component";
 import { HomeComponent } from "./components/home/home.component";
 import { SolutionDetailComponent } from "./components/solution-detail/solution-detail.component";
@@ -34,7 +35,15 @@ const routes: Routes = [
     canActivate: [MsalGuard, RoleGuard],
     data: {
       expectedRoles: ["atPowerCID.Admin", "atPowerCID.Manager"],
-    },
+    },   
+  },
+  { 
+    path: "powerbi-embedded", 
+    component: PowerBIEmbeddedComponent, 
+    canActivate: [MsalGuard, RoleGuard], 
+    data: {
+      expectedRoles: ["atPowerCID.Admin", "atPowerCID.Manager"],
+    }, 
   },
   {
     path: "applications",
