@@ -1,0 +1,19 @@
+<dx-scroll-view
+  [showScrollbar]="'always'"> 
+  <dx-tree-view 
+    selectionMode="single"
+    keyExpr="routerLink"
+    selectedExpr="selected"
+    [items]="navigationEntries"
+    [selectByClick]="true"
+    (onItemClick)="onItemClickNavigation($event)"
+    (onContentReady)="onContentReady($event)">
+  </dx-tree-view>  
+</dx-scroll-view> 
+
+<a href="https://www.appliedtechnologies.de/" target="_blank" title="applied technologies Homepage" rel="noopener noreferrer"><img id="apptech-logo" src="../assets/logos/at-logo-white.svg" alt="applied technologies GmbH Logo" /></a>
+<div id="legal-links">
+  <p>{{version}}</p> 
+  <a href="https://www.appliedtechnologies.de/impressum/" target="_blank" rel="noopener noreferrer">Imprint</a>
+  <a href="https://www.appliedtechnologies.de/datenschutzerklaerung/" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+</div>
