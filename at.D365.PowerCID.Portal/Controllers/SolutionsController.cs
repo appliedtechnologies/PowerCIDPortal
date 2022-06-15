@@ -114,13 +114,12 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             else
             {
-                bool isPatch = dbContext.Solutions.FirstOrDefault(s => s.Id == key).GetType().Name.Contains("Patch");
                 Data.Models.Action createdAction;
 
                 try
                 {
                     if (ExportExists(key))
-                        createdAction = await solutionService.Import(key, targetEnvironmentId, this.msIdCurrentUser, isPatch);
+                        createdAction = await solutionService.Import(key, targetEnvironmentId, this.msIdCurrentUser);
                     else
                         createdAction = await solutionService.Export(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: false, targetEnvironmentId);
                 }

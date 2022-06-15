@@ -57,37 +57,23 @@ namespace at.D365.PowerCID.Portal.Services
                 Name = $"{solution.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
                 TargetEnvironment = solution.ApplicationNavigation.DevelopmentEnvironment,
                 Type = 1,
-                Status = 2,
+                Status = 1,
                 StartTime = DateTime.Now,
                 Solution = solution.Id,
-                ExportOnly = exportOnly
+                ExportOnly = exportOnly,
+                ImportTargetEnvironment = targetEnvironmentForImport
             };
 
             dbContext.Add(newAction);
-
-            var asyncJobManaged = await this.StartExportInDataverse(solution.UniqueName, true, solution.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, newAction, tenantMsIdCurrentUser, solution.ApplicationNavigation.DevelopmentEnvironment, targetEnvironmentForImport);
-            var asyncJobUnmanaged = await this.StartExportInDataverse(solution.UniqueName, false, solution.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, newAction, tenantMsIdCurrentUser, solution.ApplicationNavigation.DevelopmentEnvironment, targetEnvironmentForImport);
-
-
-            asyncJobManaged.ActionNavigation = newAction;
-            asyncJobUnmanaged.ActionNavigation = newAction;
-            asyncJobUnmanaged.ImportTargetEnvironment = null;
-
-            dbContext.Add(asyncJobManaged);
-
-            dbContext.Add(asyncJobUnmanaged);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
             return newAction;
         }
 
-        public async Task<Data.Models.Action> Import(int key, int targetEnvironmentId, Guid msIdCurrentUser, bool isPatch)
+        public async Task<Data.Models.Action> Import(int key, int targetEnvironmentId, Guid msIdCurrentUser)
         {
 
             Solution solution = dbContext.Solutions.First(e => e.Id == key);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
-            Tenant tenant = dbContext.Environments.First(e => e.Id == targetEnvironmentId).TenantNavigation;
-            byte[] exportSolutionFile = await GetSolutionFromGitHub(tenant, solution);
-            string basicUrl = dbContext.Environments.First(e => e.Id == targetEnvironmentId).BasicUrl;
 
             await this.CheckImportPermission(user.Id, targetEnvironmentId);
 
@@ -96,20 +82,13 @@ namespace at.D365.PowerCID.Portal.Services
                 Name = $"{solution.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
                 TargetEnvironment = targetEnvironmentId,
                 Type = 2,
-                Status = 2,
+                Status = 1,
                 StartTime = DateTime.Now,
                 Solution = solution.Id
             };
 
             dbContext.Add(newAction);
-
-            AsyncJob asyncJobManaged = await this.StartImportInDataverse(exportSolutionFile, basicUrl, newAction, tenant.MsId.ToString(), targetEnvironmentId, isPatch);
-
-            asyncJobManaged.ActionNavigation = newAction;
-
-            dbContext.Add(asyncJobManaged);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
-
             return newAction;
         }
 
@@ -179,7 +158,7 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        private async Task<AsyncJob> StartExportInDataverse(string solutionUniqueName, bool isManaged, string basicUrl, Data.Models.Action action, Guid tenantMsIdCurrentUser, int environmentId, int targetEnvironment)
+        public async Task<AsyncJob> StartExportInDataverse(string solutionUniqueName, bool isManaged, string basicUrl, Data.Models.Action action, Guid tenantMsIdCurrentUser, int environmentId, int targetEnvironment)
         {
             // Payload
             JObject payload = new JObject();
@@ -205,7 +184,6 @@ namespace at.D365.PowerCID.Portal.Services
                     AsyncOperationId = (Guid)reponseData["AsyncOperationId"],
                     JobId = (Guid)reponseData["ExportJobId"],
                     IsManaged = isManaged,
-                    ImportTargetEnvironment = targetEnvironment == 0 ? null : targetEnvironment
                 };
 
                 return asyncJob;
@@ -219,13 +197,14 @@ namespace at.D365.PowerCID.Portal.Services
                 throw new Exception("User does not have permission to import on target environment.");
         }
 
-        private async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, string basicUrl, Data.Models.Action action, string tenantMsId, int environmentId, bool isPatch)
+        public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Data.Models.Action action)
         {
+            bool isPatch = this.dbContext.Solutions.FirstOrDefault(s => s.Id == action.Solution).GetType().Name.Contains("Patch");
             Upgrade upgrade;
             upgrade = isPatch == false ? (Upgrade)action.SolutionNavigation : default;
-            bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, basicUrl, tenantMsId);
+            bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, action.TargetEnvironmentNavigation.BasicUrl, action.TargetEnvironmentNavigation.TenantNavigation.MsId.ToString());
 
-            EntityCollection solutionComponentParameters = await this.GetSolutionComponentsForImport(environmentId, action.SolutionNavigation.Application);
+            EntityCollection solutionComponentParameters = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
 
             ImportSolutionAsyncRequest importSolutionAsyncRequest = new ImportSolutionAsyncRequest{
                 CustomizationFile = solutionFileData,
@@ -235,7 +214,7 @@ namespace at.D365.PowerCID.Portal.Services
                 ComponentParameters = solutionComponentParameters
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
                 ImportSolutionAsyncResponse response = (ImportSolutionAsyncResponse)dataverseClient.Execute(importSolutionAsyncRequest);
 
                 AsyncJob asyncJob = new AsyncJob

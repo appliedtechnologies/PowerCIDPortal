@@ -20,6 +20,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public DateTime CreatedOn { get; set; }
         public DateTime? FinishTime { get; set; }
         public bool? ExportOnly { get; set; }
+        public int? ImportTargetEnvironment { get; set; }
 
         public virtual User CreatedByNavigation { get; set; }
         public virtual Solution SolutionNavigation { get; set; }

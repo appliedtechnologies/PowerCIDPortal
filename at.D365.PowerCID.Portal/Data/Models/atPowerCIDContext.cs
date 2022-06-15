@@ -161,12 +161,6 @@ namespace at.D365.PowerCID.Portal.Data.Models
                     .HasForeignKey(d => d.Action)
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_AsyncJob_Action");
-
-                entity.HasOne(d => d.ImportTargetEnvironmentNavigation)
-                    .WithMany(p => p.AsyncJobs)
-                    .HasForeignKey(d => d.ImportTargetEnvironment)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK_AsyncJob_Environment");
             });
 
             modelBuilder.Entity<DeploymentPath>(entity =>
@@ -244,6 +238,8 @@ namespace at.D365.PowerCID.Portal.Data.Models
                 entity.Property(e => e.StartTime).HasColumnName("Start Time");
 
                 entity.Property(e => e.TargetEnvironment).HasColumnName("Target Environment");
+
+                entity.Property(e => e.ImportTargetEnvironment).HasColumnName("Import Target Environment");
 
                 entity.HasOne(d => d.CreatedByNavigation)
                     .WithMany(p => p.Actions)
