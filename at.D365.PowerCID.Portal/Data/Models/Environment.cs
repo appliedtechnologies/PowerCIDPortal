@@ -11,7 +11,6 @@ namespace at.D365.PowerCID.Portal.Data.Models
         {
             Actions = new HashSet<Action>();
             ApplicationDevelopmentEnviromentNavigation = new HashSet<Application>();
-            AsyncJobs = new HashSet<AsyncJob>();
         }
 
         public int Id { get; set; }
@@ -33,9 +32,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public virtual User CreatedByNavigation { get; set; }
         public virtual User ModifiedByNavigation { get; set; }
         public virtual Tenant TenantNavigation { get; set; }
-        public virtual ICollection<AsyncJob> AsyncJobs { get; set; }
-        public virtual ICollection<Action> Actions { get; set; }
-
+        public virtual ICollection<Action> Actions { get; set; }        
         public virtual ICollection<UserEnvironment> UserEnvironments { get; set; }
         public virtual ICollection<User> Users { get; set; }
         public virtual ICollection<Publisher> Publishers { get; set; }
