@@ -241,8 +241,6 @@ namespace at.D365.PowerCID.Portal.Services
                                     // Completed Success
                                     if ((string)responseData["statecode"] == "3" && (string)responseData["statuscode"] == "30")
                                     {
-                                        bool isPatch = asyncJob.ActionNavigation.SolutionNavigation.GetType().Name.Contains("Patch");
-
                                         // Export
                                         if (asyncJob.ActionNavigation.Type == 1)
                                         {
@@ -256,14 +254,14 @@ namespace at.D365.PowerCID.Portal.Services
                                             {
                                                 try
                                                 {
-                                                    await this.solutionService.Import((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ImportTargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId, isPatch);
+                                                    await this.solutionService.Import((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.ImportTargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
                                                 }
                                                 catch (Exception e)
                                                 {
                                                     dbContext.Actions.Add(new Data.Models.Action
                                                     {
                                                         Name = $"{asyncJob.ActionNavigation.SolutionNavigation.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
-                                                        TargetEnvironment = (int)asyncJob.ImportTargetEnvironment,
+                                                        TargetEnvironment = (int)asyncJob.ActionNavigation.ImportTargetEnvironment,
                                                         Type = 2,
                                                         Status = 3,
                                                         Result = 2,
@@ -277,6 +275,7 @@ namespace at.D365.PowerCID.Portal.Services
                                         else
                                         {
                                             // Upgrade Apply Manually
+                                            bool isPatch = asyncJob.ActionNavigation.SolutionNavigation.GetType().Name.Contains("Patch");
                                             if (!isPatch)
                                             {
                                                 Upgrade upgrade = (Upgrade)asyncJob.ActionNavigation.SolutionNavigation;

@@ -128,6 +128,7 @@ namespace at.D365.PowerCID.Portal
             services.AddScoped<EnvironmentVariableService>();
 
             services.AddHostedService<AsyncJobService>();
+            services.AddHostedService<ActionService>();
         }
 
 
