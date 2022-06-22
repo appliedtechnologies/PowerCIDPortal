@@ -95,6 +95,7 @@
           (click)="onClickActionInfo(lastAction)"
         ></i>
         <i
+          *ngIf="autoRefreshInterval == null"
           class="dx-icon-refresh clickable-icon"
           title="start auto-refresh"
           (click)="onClickStartAutoRefresh(lastAction)"
@@ -168,6 +169,11 @@
             class="dx-icon-info clickable-icon"
             title="show details"
             (click)="onClickActionInfo(lastAction)"
+          ></i>
+          <i
+            class="dx-icon-clear clickable-icon"
+            title="cancel import"
+            (click)="onClickCancelImport(lastAction)"
           ></i>
           <i
             *ngIf="autoRefreshInterval == null"

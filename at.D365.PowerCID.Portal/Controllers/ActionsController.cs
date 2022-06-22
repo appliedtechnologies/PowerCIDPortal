@@ -67,6 +67,29 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Updated(entity);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> CancelImport([FromODataUri] int key)
+        {
+            var action = await this.dbContext.Actions.FirstOrDefaultAsync(e => e.Id == key && e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if(action == null)
+                return Forbid();
+
+            if(action.Status == 3 || action.Type == 1)
+                return BadRequest();
+
+            if(action.AsyncJobs.Count > 0)
+                this.dbContext.RemoveRange(action.AsyncJobs);
+
+            action.Status = 3;
+            action.Result = 2;
+            action.FinishTime = System.DateTime.Now;
+            action.ErrorMessage = "canceled manually in Power CID Portal - no effect on any operations that may already have started on the environment";
+
+            await this.dbContext.SaveChangesAsync();            
+
+            return Ok();
+        }
+
         private bool ActionExists(int key)
         {
             return base.dbContext.Applications.Any(p => p.Id == key);
