@@ -84,6 +84,7 @@ namespace at.D365.PowerCID.Portal
             builder.EntityType<Environment>().Action("GetDataversePublishers");
 
             builder.EntityType<Application>().Collection.Action("PullExisting").Parameter<Environment>("environment");
+
             var addApplication = builder.EntityType<Application>().Collection.Action("SaveApplication");
             addApplication.Parameter<string>("applicationUniqueName");
             addApplication.Parameter<Environment>("environment");
@@ -94,7 +95,7 @@ namespace at.D365.PowerCID.Portal
             import.Parameter<int>("deploymentPathId");
 
             builder.EntityType<Solution>().Action("GetSolutionAsBase64String");
-
+            builder.EntityType<Action>().Action("CancelImport");
 
             builder.EntityType<Tenant>().Action("GetGitHubRepositories");
 

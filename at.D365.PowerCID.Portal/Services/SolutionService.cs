@@ -194,7 +194,7 @@ namespace at.D365.PowerCID.Portal.Services
         {
             UserEnvironment userEnvironment = await this.dbContext.UserEnvironments.FindAsync(userId, environmentId);
             if (userEnvironment == null)
-                throw new Exception("User does not have permission to import on target environment.");
+                throw new Exception("User does not have permission within PowerCID Portal to import on target environment. Your administrator can assign the permission via Power CID Portal user management.");
         }
 
         public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Data.Models.Action action)
