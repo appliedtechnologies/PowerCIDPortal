@@ -67,7 +67,7 @@ namespace at.D365.PowerCID.Portal.Services
             if(existingConnectionReferences.Count() == 0)
                 return 1;
 
-            var connectionReferencesInDb = this.dbContext.ConnectionReferences.Where(e => existingConnectionReferencesMsIds.Contains(e.MsId));
+            var connectionReferencesInDb = this.dbContext.ConnectionReferences.Where(e => existingConnectionReferencesMsIds.Contains(e.MsId) && e.Application == applicationId);
 
             if(existingConnectionReferencesMsIds.All(e => connectionReferencesInDb.FirstOrDefault(x => x.MsId == e) != null) && connectionReferencesInDb.All(e => e.ConnectionReferenceEnvironments.Any(x => x.Environment == environmentId && x.ConnectionId != null && x.ConnectionId != String.Empty)))
                 return 1;
@@ -81,9 +81,9 @@ namespace at.D365.PowerCID.Portal.Services
             {
                 if((int)solutionComponent["componenttype"] == 10029) //10029 is type of a connection reference´
                 {
-                    var connectionReferenceId = new Guid((string)solutionComponent["objectid"]);
+                    var connectionReferenceMsId = new Guid((string)solutionComponent["objectid"]);
                     
-                    var connectionReference = await this.GetConnectionReferenceFromDataverse(connectionReferenceId, basicUrl, tenantMsId);
+                    var connectionReference = await this.GetConnectionReferenceFromDataverse(connectionReferenceMsId, basicUrl, tenantMsId);
                     connectionReference.Application = applicationId;
                     connectionReferences.Add(connectionReference);
                 }

@@ -35,9 +35,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(ModelState);
             }
-            if (dbContext.EnvironmentVariables.Any(x => x.MsId == environmentVariable.MsId))
+            if (dbContext.EnvironmentVariables.Any(x => x.MsId == environmentVariable.MsId && x.Application == environmentVariable.Application))
             {
-                return BadRequest("Environment Variable already exists with this Ms Id");
+                return BadRequest("Environment Variable already exists with this Ms Id and Application");
             }
 
             base.dbContext.EnvironmentVariables.Add(environmentVariable);
