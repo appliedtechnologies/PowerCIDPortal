@@ -35,9 +35,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(ModelState);
             }
-            if (dbContext.ConnectionReferences.Any(x => x.MsId == connectionReference.MsId))
+            if (dbContext.ConnectionReferences.Any(x => x.MsId == connectionReference.MsId && x.Application == connectionReference.Application))
             {
-                return BadRequest("Connection References already exists with this Ms Id");
+                return BadRequest("Connection References already exists with this Ms Id and Application");
             }
 
             base.dbContext.ConnectionReferences.Add(connectionReference);

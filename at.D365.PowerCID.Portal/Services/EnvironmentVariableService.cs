@@ -49,8 +49,8 @@ namespace at.D365.PowerCID.Portal.Services
             foreach (Solution solution in application.Solutions.Reverse())
             {
                 var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl, tenantMsId);
-                var connectionReferencesOfSolution = await this.GetEnvironemntVariablesBySolutionComponents(solutionComponents, applicationId, basicUrl, tenantMsId);
-                environmentVariables.AddRange(connectionReferencesOfSolution.Except(environmentVariables));
+                var environmentVariablesOfSolution = await this.GetEnvironemntVariablesBySolutionComponents(solutionComponents, applicationId, basicUrl, tenantMsId);
+                environmentVariables.AddRange(environmentVariablesOfSolution.Except(environmentVariables));
 
                 if(!solution.IsPatch())
                     break;
@@ -82,9 +82,9 @@ namespace at.D365.PowerCID.Portal.Services
             {
                 if((int)solutionComponent["componenttype"] == 380) //380 is type of a environment variable definition
                 {
-                    var connectionReferenceId = new Guid((string)solutionComponent["objectid"]);
+                    var environmentVariableId = new Guid((string)solutionComponent["objectid"]);
                     
-                    var environmentVariable = await this.GetEnvironmentVariableFromDataverse(connectionReferenceId, basicUrl, tenantMsId);
+                    var environmentVariable = await this.GetEnvironmentVariableFromDataverse(environmentVariableId, basicUrl, tenantMsId);
                     environmentVariable.Application = applicationId;
                     environmentVariables.Add(environmentVariable);
                 }
