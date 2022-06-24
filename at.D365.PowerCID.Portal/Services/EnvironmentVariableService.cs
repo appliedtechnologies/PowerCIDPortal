@@ -68,7 +68,7 @@ namespace at.D365.PowerCID.Portal.Services
             if(existingEnvironmentVariables.Count() == 0)
                 return 1;
 
-            var environmentVariablesInDb = this.dbContext.EnvironmentVariables.Where(e => existingEnvironmentVariablesMsIds.Contains(e.MsId));
+            var environmentVariablesInDb = this.dbContext.EnvironmentVariables.Where(e => existingEnvironmentVariablesMsIds.Contains(e.MsId) && e.Application == applicationId);
 
             if(existingEnvironmentVariablesMsIds.All(e => environmentVariablesInDb.FirstOrDefault(x => x.MsId == e) != null) && environmentVariablesInDb.All(e => e.EnvironmentVariableEnvironments.Any(x => x.Environment == environmentId && x.Value != null && x.Value != String.Empty)))
                 return 1;
@@ -82,9 +82,9 @@ namespace at.D365.PowerCID.Portal.Services
             {
                 if((int)solutionComponent["componenttype"] == 380) //380 is type of a environment variable definition
                 {
-                    var environmentVariableId = new Guid((string)solutionComponent["objectid"]);
+                    var environmentVariableMsId = new Guid((string)solutionComponent["objectid"]);
                     
-                    var environmentVariable = await this.GetEnvironmentVariableFromDataverse(environmentVariableId, basicUrl, tenantMsId);
+                    var environmentVariable = await this.GetEnvironmentVariableFromDataverse(environmentVariableMsId, basicUrl, tenantMsId);
                     environmentVariable.Application = applicationId;
                     environmentVariables.Add(environmentVariable);
                 }
