@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.OData.Extensions;
 using Microsoft.OData.Edm;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.Identity.Web;
+using Azureblue.ApplicationInsights.RequestLogging;
+using Microsoft.AspNetCore.Http;
 
 namespace at.D365.PowerCID.Portal
 {
@@ -130,6 +132,9 @@ namespace at.D365.PowerCID.Portal
 
             services.AddHostedService<AsyncJobService>();
             services.AddHostedService<ActionService>();
+
+            //log request/response body to application insights
+            services.AddAppInsightsHttpBodyLogging();
         }
 
 
@@ -147,6 +152,10 @@ namespace at.D365.PowerCID.Portal
                 app.UseExceptionHandler("/Error");
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
+
+                //enable log request/response body to application insights
+                if(bool.Parse(Configuration.GetSection("DownstreamApis:GraphApi").Value))
+                    app.UseAppInsightsHttpBodyLogging();     
             }
 
             app.UseHttpsRedirection();
