@@ -154,7 +154,7 @@ namespace at.D365.PowerCID.Portal
                 app.UseHsts();
 
                 //enable log request/response body to application insights
-                if(bool.Parse(Configuration.GetSection("DownstreamApis:GraphApi").Value))
+                if(bool.Parse(Configuration.GetSection("LogRequestResponseBodys").Value))
                     app.UseAppInsightsHttpBodyLogging();     
             }
 
