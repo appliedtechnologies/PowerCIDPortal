@@ -42,7 +42,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             Application application = this.dbContext.Applications.First(e => e.Id == patch.Application);
             string displayNameDataversePatch = $"{application.Name}_{patch.Name}";
             Solution lastSolution = application.Solutions.OrderByDescending(e => e.CreatedOn).FirstOrDefault();
-            patch.Version = lastSolution == null ? VersionHelper.GetNextBuildVersion("1.0.0.0") : VersionHelper.GetNextBuildVersion(lastSolution.Version);
+            if(patch.Version == null)
+                patch.Version = lastSolution == null ? VersionHelper.GetNextBuildVersion("1.0.0.0") : VersionHelper.GetNextBuildVersion(lastSolution.Version);
 
             await this.CreatePatchInDataverse(application.SolutionUniqueName, displayNameDataversePatch, application.DevelopmentEnvironmentNavigation.BasicUrl, patch);
             patch.UrlMakerportal = $"https://make.powerapps.com/environments/{application.DevelopmentEnvironmentNavigation.MsId}/solutions/{patch.MsId}";
