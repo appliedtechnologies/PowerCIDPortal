@@ -6,24 +6,28 @@ using at.D365.PowerCID.Portal.Data.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Action = at.D365.PowerCID.Portal.Data.Models.Action;
 
 namespace at.D365.PowerCID.Portal.Services
 {
     public class ActionService : IHostedService, IDisposable
     {
+        private readonly ILogger _logger;
         private readonly IConfiguration configuration;
         private readonly SolutionService solutionService;
         private readonly atPowerCIDContext dbContext;
         private System.Timers.Timer timer;
 
-        public ActionService(IServiceProvider serviceProvider)
+        public ActionService(IServiceProvider serviceProvider, ILogger<ActionService> logger)
         {
             var scope = serviceProvider.CreateScope();
 
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
+
+            _logger = logger;
         }
 
         public void Dispose()
@@ -107,8 +111,9 @@ namespace at.D365.PowerCID.Portal.Services
                         await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                     }
                 }
-                catch(Exception e){
+                catch(Exception e){                  
                     //TODO logging
+                    _logger.LogWarning(e, "LogWarning: Error while processing the Task BackgroundWork");
                     continue;
                 }
             }

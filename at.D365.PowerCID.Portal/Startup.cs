@@ -129,6 +129,9 @@ namespace at.D365.PowerCID.Portal
 
             services.AddHostedService<AsyncJobService>();
             services.AddHostedService<ActionService>();
+
+            services.AddApplicationInsightsTelemetry();
+
         }
 
 

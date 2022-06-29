@@ -15,11 +15,13 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Services
 {
     public class AsyncJobService : IHostedService, IDisposable
     {
+        private readonly ILogger _logger;
         private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
         private readonly IDownstreamWebApi downstreamWebApi;
@@ -29,7 +31,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         private System.Timers.Timer timer;
 
-        public AsyncJobService(IServiceProvider serviceProvider)
+        public AsyncJobService(IServiceProvider serviceProvider, ILogger<AsyncJobService> logger)
         {
             this.serviceProvider = serviceProvider;
 
@@ -40,6 +42,8 @@ namespace at.D365.PowerCID.Portal.Services
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
+
+            _logger = logger;
         }
 
         public void Dispose()
@@ -194,6 +198,7 @@ namespace at.D365.PowerCID.Portal.Services
                 foreach (var environmentGroup in asyncJobsByEnvironment)
                 {
                     try{
+                        //throw new Exception();
                         var environmentId = environmentGroup.Key;
                         Tenant tenant = dbContext.Tenants.FirstOrDefault(t => t.Environments.Any(e => e.Id == environmentId));
                         string configAuthority = configuration["AzureAd:Instance"] + tenant.MsId;
@@ -210,6 +215,7 @@ namespace at.D365.PowerCID.Portal.Services
                         {
                             try{
                                 // Applying Upgrade Status überprüfen
+                                //throw new Exception();
                                 if (asyncJob.AsyncOperationId == null)
                                 {
                                     JObject responseMessageData = await GetSolutionHistory(asyncJob, token);
@@ -318,12 +324,14 @@ namespace at.D365.PowerCID.Portal.Services
                             }
                             catch(Exception e){
                                 //TODO logging
+                                _logger.LogWarning(e, "LogWarning: Error while processing Foreach asyncJob in environmentGroup");
                                 continue;
                             }
                         }
                     }
                     catch(Exception e){
                         //TODO logging
+                        _logger.LogWarning(e, "LogWarning: Error while processing Foreach environmentGroup in asyncJobsByEnvironment");
                         continue;
                     }
                 }
