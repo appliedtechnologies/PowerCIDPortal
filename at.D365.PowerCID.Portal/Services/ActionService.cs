@@ -66,9 +66,10 @@ namespace at.D365.PowerCID.Portal.Services
                     {
                         await DoBackgroundWork(cancellationToken);
                     }
-                    catch (System.Exception)
+                    catch (System.Exception e)
                     {
                         // TODO Logging;
+                         _logger.LogWarning(e, "LogWarning: Error while processing the Task ScheduleBackgroundJob");
                     }
                 }
 
