@@ -26,8 +26,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
-
-            _logger = logger;
+            this._logger = logger;
         }
 
         public void Dispose()
