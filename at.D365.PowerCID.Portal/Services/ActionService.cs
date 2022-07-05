@@ -100,11 +100,13 @@ namespace at.D365.PowerCID.Portal.Services
                         byte[] exportSolutionFile = await this.solutionService.GetSolutionFromGitHub(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
                         AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
 
-                        asyncJobManaged.ActionNavigation = queuedAction;
+                        if(await this.solutionService.HasImportStarted((Guid)asyncJobManaged.JobId, queuedAction.TargetEnvironmentNavigation.BasicUrl)){
+                            asyncJobManaged.ActionNavigation = queuedAction;
 
-                        dbContext.Add(asyncJobManaged);
-                        queuedAction.Status = 2;
-                        await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+                            dbContext.Add(asyncJobManaged);
+                            queuedAction.Status = 2;
+                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+                        }
                     }
                 }
                 catch(Exception e){

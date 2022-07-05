@@ -15,6 +15,7 @@ using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Octokit.GraphQL;
@@ -101,6 +102,15 @@ namespace at.D365.PowerCID.Portal.Services
 
             await this.CreateUpgradeInDataverse(application.SolutionUniqueName, application.Name, application.DevelopmentEnvironmentNavigation.BasicUrl, application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId, upgrade);
             upgrade.UrlMakerportal = $"https://make.powerapps.com/environments/{application.DevelopmentEnvironmentNavigation.MsId}/solutions/{upgrade.MsId}";
+        }
+
+        public async Task<bool> HasImportStarted(Guid jobId, string basicUrl)
+        {
+            var solutionHistory = await this.GetSolutionHistory(jobId, basicUrl);
+            if(solutionHistory != null)
+                return true;
+            else
+                return false;
         }
 
         public async Task<byte[]> GetSolutionFromGitHub(Tenant tenant, Solution solution)
@@ -290,6 +300,19 @@ namespace at.D365.PowerCID.Portal.Services
             JObject responseMessageData = await responseMessage.Content.ReadAsAsync<JObject>();
             return (int)responseMessageData["@odata.count"] > 0;
         }
+
+        private async Task<Entity> GetSolutionHistory(Guid jobId, string basicUrl)
+        {            
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+                var query = new QueryExpression("importjob"){
+                    ColumnSet = new ColumnSet("importjobid"),
+                };
+                query.Criteria.AddCondition("importjobid", ConditionOperator.Equal, new [] {jobId.ToString()});
+                
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+                return response.Entities.FirstOrDefault();
+            }
+        } 
 
         #region httpMethoden
         private async Task<HttpResponseMessage> HttpGetRequest(string apiUri, string token)
