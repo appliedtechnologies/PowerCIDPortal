@@ -21,6 +21,12 @@ namespace at.D365.PowerCID.Portal.Services
 
         public ActionService(IServiceProvider serviceProvider, ILogger<ActionService> logger)
         {
+            #region - MethodCallTracer -
+
+            _logger.LogTrace("Constructor)");
+
+            #endregion - MethodCallTracer -
+
             var scope = serviceProvider.CreateScope();
 
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
@@ -38,7 +44,7 @@ namespace at.D365.PowerCID.Portal.Services
         {
             #region - MethodCallTracer -
 
-            _logger.LogDebug("Begin: Task StartAsync(CancellationToken cancellationToken)");
+            _logger.LogTrace("Begin: Task StartAsync(CancellationToken cancellationToken)");
 
             #endregion - MethodCallTracer -
 
@@ -48,7 +54,13 @@ namespace at.D365.PowerCID.Portal.Services
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             timer?.Stop();
-            _logger.LogInformation("Jobservice completed in {0}");
+
+            #region - LogInfo -
+
+            _logger.LogInformation("Actionservice completed in {0}", timer.Interval);           
+
+            #endregion - LogDebug -
+
             await Task.CompletedTask;
         }
 
@@ -72,10 +84,9 @@ namespace at.D365.PowerCID.Portal.Services
                     {
                         await DoBackgroundWork(cancellationToken);
                     }
-                    catch (System.Exception e)
+                    catch (System.Exception ex)
                     {
-                        // TODO Logging;
-                         _logger.LogWarning(e, "LogWarning: Error while processing the Task ScheduleBackgroundJob");
+                         _logger.LogError("Error while processing the Task ScheduleBackgroundJob: {0}", ex);
                     }
                 }
 
@@ -90,20 +101,34 @@ namespace at.D365.PowerCID.Portal.Services
 
         private async Task DoBackgroundWork(CancellationToken cancellationToken)
         {
+            #region - MethodCallTracer -
+
+                _logger.LogTrace("Begin: Task DoBackgroundWork(CancellationToken cancellationToken)");
+
+            #endregion - MethodCallTracer -
+
             foreach (Action queuedAction in this.dbContext.Actions.Where(e => e.Status == 1).ToList())
             {
                 try{
+                                           
                     if(queuedAction.Type == 1) //export
                     {
+                    
                         var asyncJobManaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
                         var asyncJobUnmanaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
 
                         asyncJobManaged.ActionNavigation = queuedAction;
                         asyncJobUnmanaged.ActionNavigation = queuedAction;
 
+                        #region - LogDebug -
+
+                            _logger.LogDebug("queuedAction.CreatedByNavigation.MsId: '{0}'", queuedAction.CreatedByNavigation.MsId);
+
+                        #endregion - LogDebug -
+
                         dbContext.Add(asyncJobManaged);
                         dbContext.Add(asyncJobUnmanaged);
-                        queuedAction.Status = 2;
+                        queuedAction.Status = 2;                       
                         await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                     }
                     else if(queuedAction.Type == 2) //import 
@@ -118,9 +143,8 @@ namespace at.D365.PowerCID.Portal.Services
                         await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                     }
                 }
-                catch(Exception e){                  
-                    //TODO logging
-                    _logger.LogWarning(e, "LogWarning: Error while processing the Task BackgroundWork");
+                catch(Exception ex){                  
+                    _logger.LogError("Error while processing the Task BackgroundWork: {0}", ex);
                     continue;
                 }
             }
