@@ -13,7 +13,7 @@ namespace at.D365.PowerCID.Portal.Services
 {
     public class ActionService : IHostedService, IDisposable
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<ActionService> _logger;
         private readonly IConfiguration configuration;
         private readonly SolutionService solutionService;
         private readonly atPowerCIDContext dbContext;
@@ -21,11 +21,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         public ActionService(IServiceProvider serviceProvider, ILogger<ActionService> logger)
         {
-            #region - MethodCallTracer -
 
-            _logger.LogTrace("Constructor)");
-
-            #endregion - MethodCallTracer -
 
             var scope = serviceProvider.CreateScope();
 
