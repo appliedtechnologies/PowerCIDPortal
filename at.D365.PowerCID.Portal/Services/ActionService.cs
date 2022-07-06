@@ -36,12 +36,19 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            #region - MethodCallTracer -
+
+            _logger.LogDebug("Begin: Task StartAsync(CancellationToken cancellationToken)");
+
+            #endregion - MethodCallTracer -
+
             await ScheduleBackgroundJob(cancellationToken);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             timer?.Stop();
+            _logger.LogInformation("Jobservice completed in {0}");
             await Task.CompletedTask;
         }
 

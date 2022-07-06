@@ -28,7 +28,6 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly IConfiguration configuration;
         private readonly GitHubService gitHubService;
         private readonly SolutionService solutionService;
-
         private System.Timers.Timer timer;
 
         public AsyncJobService(IServiceProvider serviceProvider, ILogger<AsyncJobService> logger)
@@ -58,11 +57,19 @@ namespace at.D365.PowerCID.Portal.Services
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             timer?.Stop();
+            _logger.LogInformation("Jobservice completed in {0}");
             await Task.CompletedTask;
         }
 
         private async Task<string> GetToken(string configAuthority, string[] scopes)
         {
+
+            #region - MethodCallTracer -
+
+            _logger.LogDebug("Begin: Task<string> GetToken(string configAuthority, string[] scopes)");
+
+            #endregion - MethodCallTracer -
+
             IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.Create(configuration["AzureAd:ClientId"])
                 .WithClientSecret(configuration["AzureAd:ClientSecret"])
                 .WithAuthority(new Uri(configAuthority))
@@ -94,6 +101,12 @@ namespace at.D365.PowerCID.Portal.Services
 
         private async Task<HttpResponseMessage> HttpGetRequest(string apiUri, string token)
         {
+            #region - MethodCallTracer -
+
+            _logger.LogDebug("Begin: Task < HttpResponseMessage > HttpGetRequest(string apiUri, string token");
+
+            #endregion - MethodCallTracer -
+
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -105,6 +118,12 @@ namespace at.D365.PowerCID.Portal.Services
 
         private async Task<HttpResponseMessage> HttpPostRequest(string apiUri, string token, StringContent content)
         {
+            #region - MethodCallTracer -
+
+            _logger.LogDebug("Begin: Task<HttpResponseMessage> HttpPostRequest(string apiUri, string token, StringContent content)");
+
+            #endregion - MethodCallTracer -
+
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -360,10 +379,11 @@ namespace at.D365.PowerCID.Portal.Services
                     {
                         await DoWork(cancellationToken);
                     }
-                    catch (System.Exception)
+                    catch (System.Exception e)
                     {
 
                         // TODO Logging;
+                        _logger.LogWarning(e, "LogWarning: Error while processing the Task ScheduleJob");
                     }
 
                 }
