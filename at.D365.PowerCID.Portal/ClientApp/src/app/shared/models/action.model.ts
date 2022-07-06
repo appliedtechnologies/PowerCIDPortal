@@ -26,4 +26,5 @@ export interface Action {
   TypeNavigation?: ActionType;
   AsyncOperationId?: string;
   JobId?: string;
+  Progress?: number;
 }
