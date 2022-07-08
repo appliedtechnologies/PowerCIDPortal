@@ -2,19 +2,15 @@ using at.D365.PowerCID.Portal.Data.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Octokit;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Xrm.Sdk;
+using Microsoft.PowerPlatform.Dataverse.Client;
+using Microsoft.Xrm.Sdk.Query;
+using System;
+using Environment = at.D365.PowerCID.Portal.Data.Models.Environment;
 
 namespace at.D365.PowerCID.Portal.Services
 {
@@ -106,55 +102,22 @@ namespace at.D365.PowerCID.Portal.Services
                 {
                     try{
                         var environmentId = environmentGroup.Key;
-                        Tenant tenant = dbContext.Tenants.FirstOrDefault(t => t.Environments.Any(e => e.Id == environmentId));
-                        string configAuthority = configuration["AzureAd:Instance"] + tenant.MsId;
-                        string[] scope = new string[] { dbContext.Environments.FirstOrDefault(e => e.Id == environmentId).BasicUrl + "/.default" };
-                        string token = await GetToken(configAuthority, scope);
+                        Environment environment = dbContext.Environments.Find(environmentId);
 
                         foreach (AsyncJob asyncJob in environmentGroup)
                         {
                             try{
-                                // Applying Upgrade Status überprüfen
-                                if (asyncJob.AsyncOperationId == null)
-                                {
-                                    JObject responseMessageData = await GetSolutionHistory(asyncJob, token);
-                                    string endtime = (string)responseMessageData["value"][0]["msdyn_endtime"];
-
-                                    if (endtime != null)
+                                switch(asyncJob.ActionNavigation.Type){
+                                    case 1: //export
                                     {
-                                        int errorCode = (int)responseMessageData["value"][0]["msdyn_errorcode"];
+                                        Entity asyncOperationInDataverse = await this.GetCurrentAsyncOperationFromDataverse(environment.BasicUrl, (Guid)asyncJob.AsyncOperationId);
 
-                                        if (errorCode != 0)
-                                        {
-                                            string errorMessage = (string)responseMessageData["value"][0]["msdyn_exceptionmessage"];
-                                            UpdateFailedAction(asyncJob, errorMessage);
-                                        }
-                                        else
-                                        {
-                                            UpdateSuccessfulAction(asyncJob);
-                                        }
-                                        dbContext.Remove(asyncJob);
-                                    }
-                                }
-                                else
-                                {
-                                    //Async job verarbeiten
-                                    string apiUri = asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl + configuration["DownstreamApis:DataverseApi:BaseUrl"] + $"asyncoperations({asyncJob.AsyncOperationId})";
-                                    HttpResponseMessage response = await HttpGetRequest(apiUri, token);
-                                    JObject responseData = await response.Content.ReadAsAsync<JObject>();
-
-                                    // Completed Success
-                                    if ((string)responseData["statecode"] == "3" && (string)responseData["statuscode"] == "30")
-                                    {
-                                        // Export
-                                        if (asyncJob.ActionNavigation.Type == 1)
-                                        {
+                                        if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30){ // Completed Success
                                             string exportSolutionFile = await this.solutionService.DownloadSolutionFileFromDataverse(asyncJob);
-                                            await this.gitHubService.SaveSolutionFile(asyncJob, exportSolutionFile, tenant);
+                                            await this.gitHubService.SaveSolutionFile(asyncJob, exportSolutionFile, environment.TenantNavigation);
                                             UpdateSuccessfulAction(asyncJob);
-                                            await dbContext.SaveChangesAsync(asyncJob.ActionNavigation.CreatedByNavigation.MsId);
 
-                                            // Export with Import | Start Import
+                                            // Export with Import --> Start Import
                                             if (asyncJob.ActionNavigation.ExportOnly == false && asyncJob.IsManaged == true)
                                             {
                                                 try
@@ -176,50 +139,82 @@ namespace at.D365.PowerCID.Portal.Services
                                                     });
                                                 }
                                             }
+                                            dbContext.AsyncJobs.Remove(asyncJob);
                                         }
-                                        else
+                                        else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
                                         {
-                                            // Upgrade Apply Manually
+                                            await UpdateFailedAction(asyncJob, (string)asyncOperationInDataverse["friendlymessage"]);
+                                            dbContext.AsyncJobs.Remove(asyncJob);
+                                        }
+                                    }
+                                    break;
+                                    case 2: //import
+                                    {
+                                        Entity asyncOperationInDataverse = await this.GetCurrentAsyncOperationFromDataverse(environment.BasicUrl, (Guid)asyncJob.AsyncOperationId);
+
+                                        if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30){ // Completed Success
+                                            UpdateSuccessfulAction(asyncJob);
+
+                                            // Upgrade Solution without manuelly upgrade apply --> Start Apply Upgrade
                                             bool isPatch = asyncJob.ActionNavigation.SolutionNavigation.GetType().Name.Contains("Patch");
                                             if (!isPatch)
                                             {
                                                 Upgrade upgrade = (Upgrade)asyncJob.ActionNavigation.SolutionNavigation;
                                                 if (upgrade.ApplyManually == false && asyncJob.IsManaged == true && asyncJob.ActionNavigation.Status != 4)
                                                 {
-                                                    await DeleteAndPromote(asyncJob, token);
+                                                    try
+                                                    {
+                                                        await this.solutionService.AddApplyUpgradeAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.TargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
+                                                    }
+                                                    catch (Exception e)
+                                                    {
+                                                        dbContext.Actions.Add(new Data.Models.Action
+                                                        {
+                                                            Name = $"{asyncJob.ActionNavigation.SolutionNavigation.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
+                                                            TargetEnvironment = (int)asyncJob.ActionNavigation.ImportTargetEnvironment,
+                                                            Type = 3,
+                                                            Status = 3,
+                                                            Result = 2,
+                                                            ErrorMessage = e.Message,
+                                                            StartTime = DateTime.Now,
+                                                            Solution = asyncJob.ActionNavigation.Solution,
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                            dbContext.AsyncJobs.Remove(asyncJob);
+                                        }
+                                        else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
+                                        {
+                                            await UpdateFailedAction(asyncJob, (string)asyncOperationInDataverse["friendlymessage"]);
+                                            dbContext.AsyncJobs.Remove(asyncJob);
+                                        }
+                                    }
+                                    break;
+                                    case 3: //appling upgrade
+                                        /*JObject responseMessageData = await GetSolutionHistory(asyncJob, token);
+                                        string endtime = (string)responseMessageData["value"][0]["msdyn_endtime"];
 
-                                                    AsyncJob newAsyncJob = await CreateAsyncJobForApplyingUpgrade(asyncJob, token);
-                                                    dbContext.Add(newAsyncJob);
-                                                }
-                                                else
-                                                {
-                                                    UpdateSuccessfulAction(asyncJob);
-                                                }
+                                        if (endtime != null)
+                                        {
+                                            int errorCode = (int)responseMessageData["value"][0]["msdyn_errorcode"];
+
+                                            if (errorCode != 0)
+                                            {
+                                                string errorMessage = (string)responseMessageData["value"][0]["msdyn_exceptionmessage"];
+                                                UpdateFailedAction(asyncJob, errorMessage);
                                             }
                                             else
                                             {
                                                 UpdateSuccessfulAction(asyncJob);
                                             }
-
-                                        }
-
-                                        dbContext.AsyncJobs.Remove(asyncJob);
-                                    }
-
-                                    // Completed Failed
-                                    else if ((string)responseData["statecode"] == "3" && (string)responseData["statuscode"] == "31")
-                                    {
-                                        string friendlyMessage = (string)responseData["friendlymessage"];
-                                        string exceptionMessage = null;
-                                        if (friendlyMessage == String.Empty)
-                                        {
-                                            exceptionMessage = await GetExceptionMessage(asyncJob, token);
-                                        }
-                                        UpdateFailedAction(asyncJob, friendlyMessage == String.Empty ? exceptionMessage : friendlyMessage);
-                                        dbContext.AsyncJobs.Remove(asyncJob);
-                                    }
-
+                                            dbContext.Remove(asyncJob);
+                                        }*/
+                                        break;
+                                    default:
+                                        throw new Exception($"Unknow ActionType: {asyncJob.ActionNavigation.Type}");
                                 }
+                                await dbContext.SaveChangesAsync(asyncJob.ActionNavigation.CreatedByNavigation.MsId);                              
                             }
                             catch(Exception e){
                                 //TODO logging
@@ -232,11 +227,39 @@ namespace at.D365.PowerCID.Portal.Services
                         continue;
                     }
                 }
-                await dbContext.SaveChangesAsync();
             }
         }
 
-        private async Task<AsyncJob> CreateAsyncJobForApplyingUpgrade(AsyncJob asyncJob, string token)
+        private void UpdateSuccessfulAction(AsyncJob asyncJob)
+        {
+            asyncJob.ActionNavigation.Status = 3;
+            asyncJob.ActionNavigation.Result = 1;
+            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
+        }
+
+        private async Task UpdateFailedAction(AsyncJob asyncJob, string friendlyErrormessage)
+        {
+            asyncJob.ActionNavigation.Status = 3;
+            asyncJob.ActionNavigation.Result = 2;
+            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
+
+            asyncJob.ActionNavigation.ErrorMessage = friendlyErrormessage;
+            if (asyncJob.ActionNavigation.ErrorMessage == String.Empty)
+            {
+                asyncJob.ActionNavigation.ErrorMessage = await GetExceptionMessage(asyncJob);
+            }
+        }
+
+        private async Task<Entity> GetCurrentAsyncOperationFromDataverse(string basicUrl, Guid asyncOperationId){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+                Entity response = await dataverseClient.RetrieveAsync("asyncoperation", asyncOperationId, new ColumnSet("asyncoperationid", "statecode", "statuscode", "friendlymessage"));
+                return response;
+            }
+        }
+
+        //down: TODO
+
+        /*private async Task<AsyncJob> CreateAsyncJobForApplyingUpgrade(AsyncJob asyncJob, string token)
         {
             Guid activityId = await GetActivitiyId(asyncJob, token);
 
@@ -249,75 +272,6 @@ namespace at.D365.PowerCID.Portal.Services
 
             return newAsyncJob;
         }
-
-        private async Task<string> GetToken(string configAuthority, string[] scopes)
-        {
-            IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.Create(configuration["AzureAd:ClientId"])
-                .WithClientSecret(configuration["AzureAd:ClientSecret"])
-                .WithAuthority(new Uri(configAuthority))
-                .Build();
-
-
-            AuthenticationResult result = null;
-            try
-            {
-                result = await app.AcquireTokenForClient(scopes)
-                                 .ExecuteAsync();
-            }
-            catch (MsalUiRequiredException e)
-            {
-                throw new Exception(e.Message);
-                // The application doesn't have sufficient permissions.
-                // - Did you declare enough app permissions during app creation?
-                // - Did the tenant admin grant permissions to the application?
-            }
-            catch (MsalServiceException e) when (e.Message.Contains("AADSTS70011"))
-            {
-                throw new Exception(e.Message);
-                // Invalid scope. The scope has to be in the form "https://resourceurl/.default"
-                // Mitigation: Change the scope to be as expected.
-            }
-
-            return result.AccessToken;
-        }
-
-        private async Task<HttpResponseMessage> HttpGetRequest(string apiUri, string token)
-        {
-            HttpClient httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            // Call the web API.
-            HttpResponseMessage response = await httpClient.GetAsync(apiUri);
-
-            return response;
-        }
-
-        private async Task<HttpResponseMessage> HttpPostRequest(string apiUri, string token, StringContent content)
-        {
-            HttpClient httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            // Call the web API.
-            HttpResponseMessage response = await httpClient.PostAsync(apiUri, content);
-
-            return response;
-        }
-
-        private void UpdateSuccessfulAction(AsyncJob asyncJob)
-        {
-            asyncJob.ActionNavigation.Status = 3;
-            asyncJob.ActionNavigation.Result = 1;
-            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
-        }
-
-        private void UpdateFailedAction(AsyncJob asyncJob, string errorMessage)
-        {
-            asyncJob.ActionNavigation.Status = 3;
-            asyncJob.ActionNavigation.Result = 2;
-            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
-            asyncJob.ActionNavigation.ErrorMessage = errorMessage;
-        }
-
 
         private async Task DeleteAndPromote(AsyncJob asyncJob, string token)
         {
@@ -342,14 +296,26 @@ namespace at.D365.PowerCID.Portal.Services
             var responseMessage = await HttpGetRequest(apiUri, token);
             JObject responseMessageData = await responseMessage.Content.ReadAsAsync<JObject>();
             return responseMessageData;
-        }
+        }*/
 
-        private async Task<string> GetExceptionMessage(AsyncJob asyncJob, string token)
+        private async Task<string> GetExceptionMessage(AsyncJob asyncJob)
         {
-            string apiUri = asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl + configuration["DownstreamApis:DataverseApi:BaseUrl"] + $"msdyn_solutionhistories?$orderby=msdyn_starttime%20desc&$filter=msdyn_name%20eq%20%27{asyncJob.ActionNavigation.SolutionNavigation.UniqueName}%27&$top=1";
-            var responseMessage = await HttpGetRequest(apiUri, token);
-            JObject responseMessageData = await responseMessage.Content.ReadAsAsync<JObject>();
-            return (string)responseMessageData["value"][0]["msdyn_exceptionmessage"];
+            using(var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+                var query = new QueryExpression("msdyn_solutionhistory"){
+                    ColumnSet = new ColumnSet("msdyn_exceptionmessage"),
+                    PageInfo = new PagingInfo(){
+                        Count = 1,
+                        PageNumber = 1 
+                    }
+                };
+                query.Criteria.AddCondition("msdyn_name", ConditionOperator.Equal, new [] {asyncJob.ActionNavigation.SolutionNavigation.UniqueName});
+                query.Criteria.AddCondition("msdyn_solutionversion", ConditionOperator.Equal, new [] {asyncJob.ActionNavigation.SolutionNavigation.Version});
+
+                query.AddOrder("msdyn_starttime", OrderType.Descending);
+
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+                return (string)response.Entities.FirstOrDefault()?["msdyn_exceptionmessage"];
+            }
         }
     }
 }

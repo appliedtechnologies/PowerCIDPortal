@@ -88,6 +88,28 @@ namespace at.D365.PowerCID.Portal.Services
             return newAction;
         }
 
+        public async Task<Data.Models.Action> AddApplyUpgradeAction(int key, int targetEnvironmentId, Guid msIdCurrentUser)
+        {
+            Solution solution = dbContext.Solutions.First(e => e.Id == key);
+            User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
+
+            await this.CheckImportPermission(user.Id, targetEnvironmentId);
+
+            Data.Models.Action newAction = new Data.Models.Action
+            {
+                Name = $"{solution.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
+                TargetEnvironment = targetEnvironmentId,
+                Type = 3,
+                Status = 1,
+                StartTime = DateTime.Now,
+                Solution = solution.Id
+            };
+
+            dbContext.Add(newAction);
+            await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
+            return newAction;
+        }
+
         public async Task CreateUpgrade(Upgrade upgrade, string version)
         {
             Application application = this.dbContext.Applications.FirstOrDefault(e => e.Id == upgrade.Application);
@@ -172,7 +194,7 @@ namespace at.D365.PowerCID.Portal.Services
         {
             UserEnvironment userEnvironment = await this.dbContext.UserEnvironments.FindAsync(userId, environmentId);
             if (userEnvironment == null)
-                throw new Exception("User does not have permission within PowerCID Portal to import on target environment. Your administrator can assign the permission via Power CID Portal user management.");
+                throw new Exception("User does not have permission within PowerCID Portal to import/apply upgrade on target environment. Your administrator can assign the permission via Power CID Portal user management.");
         }
 
         private async Task CreateUpgradeInDataverse(string solutionUniqueName, string solutionDisplayName, string basicUrl, Guid tenantMsId, Upgrade upgrade)
