@@ -15,6 +15,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly IConfiguration configuration;
         private readonly SolutionService solutionService;
         private readonly atPowerCIDContext dbContext;
+        private readonly GitHubService gitHubService;
         private System.Timers.Timer timer;
 
         public ActionService(IServiceProvider serviceProvider)
@@ -24,6 +25,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
+            this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
         }
 
         public void Dispose()
@@ -97,7 +99,7 @@ namespace at.D365.PowerCID.Portal.Services
                     }
                     else if(queuedAction.Type == 2) //import 
                     {
-                        byte[] exportSolutionFile = await this.solutionService.GetSolutionFromGitHub(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
+                        byte[] exportSolutionFile = await this.gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
                         AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
 
                         asyncJobManaged.ActionNavigation = queuedAction;

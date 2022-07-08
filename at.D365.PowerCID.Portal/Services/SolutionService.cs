@@ -15,6 +15,7 @@ using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Octokit.GraphQL;
@@ -25,8 +26,6 @@ namespace at.D365.PowerCID.Portal.Services
     {
         private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
-        private readonly IDownstreamWebApi downstreamWebApi;
-        private readonly GitHubService gitHubService;
         private readonly ConnectionReferenceService connectionReferenceService;
         private readonly EnvironmentVariableService environmentVariableService;
         private readonly IConfiguration configuration;
@@ -35,14 +34,12 @@ namespace at.D365.PowerCID.Portal.Services
             this.serviceProvider = serviceProvider;
             var scope = serviceProvider.CreateScope();
             this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
-            this.downstreamWebApi = scope.ServiceProvider.GetRequiredService<IDownstreamWebApi>();
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-            this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
             this.connectionReferenceService = scope.ServiceProvider.GetRequiredService<ConnectionReferenceService>();
             this.environmentVariableService = scope.ServiceProvider.GetRequiredService<EnvironmentVariableService>();
         }
 
-        public async Task<Data.Models.Action> Export(int key, Guid tenantMsIdCurrentUser, Guid msIdCurrentUser, bool exportOnly, int targetEnvironmentForImport = 0)
+        public async Task<Data.Models.Action> AddExportAction(int key, Guid tenantMsIdCurrentUser, Guid msIdCurrentUser, bool exportOnly, int targetEnvironmentForImport = 0)
         {
             if (!exportOnly && targetEnvironmentForImport != 0)
             {
@@ -69,9 +66,8 @@ namespace at.D365.PowerCID.Portal.Services
             return newAction;
         }
 
-        public async Task<Data.Models.Action> Import(int key, int targetEnvironmentId, Guid msIdCurrentUser)
+        public async Task<Data.Models.Action> AddImportAction(int key, int targetEnvironmentId, Guid msIdCurrentUser)
         {
-
             Solution solution = dbContext.Solutions.First(e => e.Id == key);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
@@ -103,99 +99,29 @@ namespace at.D365.PowerCID.Portal.Services
             upgrade.UrlMakerportal = $"https://make.powerapps.com/environments/{application.DevelopmentEnvironmentNavigation.MsId}/solutions/{upgrade.MsId}";
         }
 
-        public async Task<byte[]> GetSolutionFromGitHub(Tenant tenant, Solution solution)
-        {
-            (var installation, var installationClient) = await this.gitHubService.GetInstallationWithClient(tenant.GitHubInstallationId);
-
-            string path = $"applications/{ solution.ApplicationNavigation.Id }_{ solution.ApplicationNavigation.SolutionUniqueName }/{ solution.Version }/{solution.Name}_managed.zip";
-            string[] gitHubRepositoryName = tenant.GitHubRepositoryName.Split('/');
-            string repositoryName = gitHubRepositoryName[1];
-            string owner = gitHubRepositoryName[0];
-
-            var connection = await this.gitHubService.GetGraphQLConnetion(tenant.GitHubInstallationId);
-            var query = new Query()
-                .RepositoryOwner(owner)
-                .Repository(repositoryName)
-                .Object($"HEAD:{path}")
-                .Select(x => new {
-                    x.Oid
-                })
-                .Compile();
-            var reuslt = await connection.Run(query);
-
-            var solutionZipFileBase64 = (await installationClient.Git.Blob.Get(owner, repositoryName, reuslt.Oid)).Content;
-            return Convert.FromBase64String(solutionZipFileBase64);
-        }
-
-        public async Task<string> GetSolutionFromGitHubAsBase64String(Tenant tenant, Solution solution)
-        {
-            var solutionZipFile = await this.GetSolutionFromGitHub(tenant, solution);
-            return Convert.ToBase64String(solutionZipFile);
-        }
-
-        private async Task CreateUpgradeInDataverse(string solutionUniqueName, string solutionDisplayName, string basicUrl, Guid tenantMsId, Upgrade upgrade)
-        {
-            JObject newSolution = new JObject();
-            newSolution.Add("DisplayName", solutionDisplayName);
-            newSolution.Add("ParentSolutionUniqueName", solutionUniqueName);
-            newSolution.Add("VersionNumber", upgrade.Version);
-
-            StringContent solutionContent = new StringContent(JsonConvert.SerializeObject(newSolution), Encoding.UTF8, mediaType: "application/json");
-
-            string apiUri = basicUrl + configuration["DownstreamApis:DataverseApi:BaseUrl"] + "/CloneAsSolution";
-            string configAuthority = configuration["AzureAd:Instance"] + tenantMsId;
-            string[] scope = new string[] { basicUrl + "/.default" };
-            string token = await GetToken(configAuthority, scope);
-            HttpResponseMessage response = await HttpPostRequest(apiUri, token, solutionContent);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception($"Could not create Upgrade in Dataverse: {response.ReasonPhrase}");
-            }
-            else
-            {
-                upgrade.MsId = (Guid)(await response.Content.ReadAsAsync<JObject>())["SolutionId"];
-                upgrade.UniqueName = solutionUniqueName;
-            }
-        }
-
         public async Task<AsyncJob> StartExportInDataverse(string solutionUniqueName, bool isManaged, string basicUrl, Data.Models.Action action, Guid tenantMsIdCurrentUser, int environmentId, int targetEnvironment)
         {
-            // Payload
-            JObject payload = new JObject();
-            payload.Add("Managed", isManaged);
-            payload.Add("SolutionName", solutionUniqueName);
-            StringContent payloadJson = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, mediaType: "application/json");
+            ExportSolutionAsyncRequest exportSolutionRequest = new ExportSolutionAsyncRequest{
+                Managed = isManaged,
+                SolutionName = solutionUniqueName
+            };
 
-            // Http Request
-            string configAuthority = configuration["AzureAd:Instance"] + tenantMsIdCurrentUser;
-            string[] scope = new string[] { dbContext.Environments.FirstOrDefault(e => e.Id == environmentId).BasicUrl + "/.default" };
-            string token = await GetToken(configAuthority, scope);
-            HttpResponseMessage response = await HttpPostRequest(basicUrl + configuration["DownstreamApis:DataverseApi:BaseUrl"] + "/ExportSolutionAsync", token, payloadJson);
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+                try {
+                    ExportSolutionAsyncResponse response = (ExportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(exportSolutionRequest);
+                    AsyncJob asyncJob = new AsyncJob
+                    {
+                        AsyncOperationId = response.AsyncOperationId,
+                        JobId = response.ExportJobId,
+                        IsManaged = isManaged,
+                    };
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception("Could not start Export in Dataverse");
+                    return asyncJob;
+                }
+                catch(Exception e){
+                    throw new Exception("Could not start Export in Dataverse");
+                }
             }
-            else
-            {
-                JObject reponseData = await response.Content.ReadAsAsync<JObject>();
-                AsyncJob asyncJob = new AsyncJob
-                {
-                    AsyncOperationId = (Guid)reponseData["AsyncOperationId"],
-                    JobId = (Guid)reponseData["ExportJobId"],
-                    IsManaged = isManaged,
-                };
-
-                return asyncJob;
-            }
-        }
-
-        private async Task CheckImportPermission(int userId, int environmentId)
-        {
-            UserEnvironment userEnvironment = await this.dbContext.UserEnvironments.FindAsync(userId, environmentId);
-            if (userEnvironment == null)
-                throw new Exception("User does not have permission within PowerCID Portal to import on target environment. Your administrator can assign the permission via Power CID Portal user management.");
         }
 
         public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Data.Models.Action action)
@@ -216,7 +142,7 @@ namespace at.D365.PowerCID.Portal.Services
             };
 
             using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
-                ImportSolutionAsyncResponse response = (ImportSolutionAsyncResponse)dataverseClient.Execute(importSolutionAsyncRequest);
+                ImportSolutionAsyncResponse response = (ImportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(importSolutionAsyncRequest);
 
                 AsyncJob asyncJob = new AsyncJob
                 {
@@ -226,6 +152,46 @@ namespace at.D365.PowerCID.Portal.Services
                 };
 
                 return asyncJob;
+            }
+        }
+
+        public async Task<string> DownloadSolutionFileFromDataverse(AsyncJob asyncJob)
+        {
+            DownloadSolutionExportDataRequest downloadSolutionExportDataRequest = new DownloadSolutionExportDataRequest{
+                ExportJobId = (Guid)asyncJob.JobId
+            };
+
+            using(var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+                DownloadSolutionExportDataResponse response = (DownloadSolutionExportDataResponse)await dataverseClient.ExecuteAsync(downloadSolutionExportDataRequest);
+                string base64 = Convert.ToBase64String(response.ExportSolutionFile);
+                return base64;
+            }
+        }
+
+        private async Task CheckImportPermission(int userId, int environmentId)
+        {
+            UserEnvironment userEnvironment = await this.dbContext.UserEnvironments.FindAsync(userId, environmentId);
+            if (userEnvironment == null)
+                throw new Exception("User does not have permission within PowerCID Portal to import on target environment. Your administrator can assign the permission via Power CID Portal user management.");
+        }
+
+        private async Task CreateUpgradeInDataverse(string solutionUniqueName, string solutionDisplayName, string basicUrl, Guid tenantMsId, Upgrade upgrade)
+        {
+            CloneAsSolutionRequest cloneAsSolutionRequest = new CloneAsSolutionRequest{
+                DisplayName = solutionDisplayName,
+                ParentSolutionUniqueName = solutionUniqueName,
+                VersionNumber = upgrade.Version
+            };
+
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+                try {
+                    CloneAsSolutionResponse response = (CloneAsSolutionResponse)await dataverseClient.ExecuteAsync(cloneAsSolutionRequest);
+                    upgrade.MsId = response.SolutionId;
+                    upgrade.UniqueName = solutionUniqueName;
+                }
+                catch(Exception e){
+                    throw new Exception($"Could not create Upgrade in Dataverse: {e.Message}");
+                }
             }
         }
 
@@ -281,69 +247,16 @@ namespace at.D365.PowerCID.Portal.Services
 
         private async Task<bool> ExistsSolutionInTargetEnvironment(string solutionUniqueName, string basicUrl, string tenantMsId)
         {
-            string apiUri = basicUrl + configuration["DownstreamApis:DataverseApi:BaseUrl"] + $"solutions?$filter=uniquename%20eq%20%27{solutionUniqueName}%27&$count=true";
-            string configAuthority = configuration["AzureAd:Instance"] + tenantMsId;
-            string[] scope = new string[] { basicUrl + "/.default" };
-            string token = await this.GetToken(configAuthority, scope);
-            var responseMessage = await HttpGetRequest(apiUri, token);
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+                var query = new QueryExpression("solution"){
+                    ColumnSet = new ColumnSet("uniquename"),
+                };
+                query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, new [] {solutionUniqueName});
 
-            JObject responseMessageData = await responseMessage.Content.ReadAsAsync<JObject>();
-            return (int)responseMessageData["@odata.count"] > 0;
-        }
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
 
-        #region httpMethoden
-        private async Task<HttpResponseMessage> HttpGetRequest(string apiUri, string token)
-        {
-            HttpClient httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            // Call the web API.
-            HttpResponseMessage response = await httpClient.GetAsync(apiUri);
-
-            return response;
-        }
-
-        private async Task<HttpResponseMessage> HttpPostRequest(string apiUri, string token, StringContent content)
-        {
-            HttpClient httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            // Call the web API.
-            HttpResponseMessage response = await httpClient.PostAsync(apiUri, content);
-
-            return response;
-        }
-
-        private async Task<string> GetToken(string configAuthority, string[] scopes)
-        {
-            IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.Create(configuration["AzureAd:ClientId"])
-                .WithClientSecret(configuration["AzureAd:ClientSecret"])
-                .WithAuthority(new Uri(configAuthority))
-                .Build();
-
-
-            AuthenticationResult result = null;
-            try
-            {
-                result = await app.AcquireTokenForClient(scopes)
-                                 .ExecuteAsync();
+                return response.Entities.Count > 0;
             }
-            catch (MsalUiRequiredException e)
-            {
-                throw new Exception(e.Message);
-                // The application doesn't have sufficient permissions.
-                // - Did you declare enough app permissions during app creation?
-                // - Did the tenant admin grant permissions to the application?
-            }
-            catch (MsalServiceException e) when (e.Message.Contains("AADSTS70011"))
-            {
-                throw new Exception(e.Message);
-                // Invalid scope. The scope has to be in the form "https://resourceurl/.default"
-                // Mitigation: Change the scope to be as expected.
-            }
-
-            return result.AccessToken;
         }
-        #endregion
     }
 }

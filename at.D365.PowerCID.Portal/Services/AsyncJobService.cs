@@ -58,133 +58,44 @@ namespace at.D365.PowerCID.Portal.Services
             await Task.CompletedTask;
         }
 
-        private async Task<string> GetToken(string configAuthority, string[] scopes)
+        protected async Task ScheduleJob(CancellationToken cancellationToken)
         {
-            IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.Create(configuration["AzureAd:ClientId"])
-                .WithClientSecret(configuration["AzureAd:ClientSecret"])
-                .WithAuthority(new Uri(configAuthority))
-                .Build();
-
-
-            AuthenticationResult result = null;
-            try
+            var next = DateTimeOffset.Now.AddSeconds(int.Parse(configuration["AsyncJobIntervalSeconds"]));
+            var delay = next - DateTimeOffset.Now;
+            if (delay.TotalMilliseconds <= 0) // prevent non-positive values from being passed into Timer
             {
-                result = await app.AcquireTokenForClient(scopes)
-                                 .ExecuteAsync();
+                await ScheduleJob(cancellationToken);
             }
-            catch (MsalUiRequiredException e)
+            timer = new System.Timers.Timer(delay.TotalMilliseconds);
+            timer.Elapsed += async (sender, args) =>
             {
-                throw new Exception(e.Message);
-                // The application doesn't have sufficient permissions.
-                // - Did you declare enough app permissions during app creation?
-                // - Did the tenant admin grant permissions to the application?
-            }
-            catch (MsalServiceException e) when (e.Message.Contains("AADSTS70011"))
-            {
-                throw new Exception(e.Message);
-                // Invalid scope. The scope has to be in the form "https://resourceurl/.default"
-                // Mitigation: Change the scope to be as expected.
-            }
+                timer.Dispose(); // reset and dispose timer
+                timer = null;
 
-            return result.AccessToken;
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await DoBackgroundWork(cancellationToken);
+                    }
+                    catch (System.Exception)
+                    {
+
+                        // TODO Logging;
+                    }
+
+                }
+
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    await ScheduleJob(cancellationToken); // reschedule next
+                }
+            };
+            timer.Start();
+            await Task.CompletedTask;
         }
 
-        private async Task<HttpResponseMessage> HttpGetRequest(string apiUri, string token)
-        {
-            HttpClient httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            // Call the web API.
-            HttpResponseMessage response = await httpClient.GetAsync(apiUri);
-
-            return response;
-        }
-
-        private async Task<HttpResponseMessage> HttpPostRequest(string apiUri, string token, StringContent content)
-        {
-            HttpClient httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            // Call the web API.
-            HttpResponseMessage response = await httpClient.PostAsync(apiUri, content);
-
-            return response;
-        }
-
-        private void UpdateSuccessfulAction(AsyncJob asyncJob)
-        {
-            asyncJob.ActionNavigation.Status = 3;
-            asyncJob.ActionNavigation.Result = 1;
-            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
-        }
-
-        private void UpdateFailedAction(AsyncJob asyncJob, string errorMessage)
-        {
-            asyncJob.ActionNavigation.Status = 3;
-            asyncJob.ActionNavigation.Result = 2;
-            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
-            asyncJob.ActionNavigation.ErrorMessage = errorMessage;
-        }
-
-
-        private async Task<string> DownloadSolution(AsyncJob asyncJob, string token, JObject reponseData)
-        {
-            //ApiUrl
-            string apiUri = asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl + configuration["DownstreamApis:DataverseApi:BaseUrl"] + "/DownloadSolutionExportData";
-
-            //payload
-            JObject payload = new JObject();
-            payload.Add("ExportJobId", asyncJob.JobId);
-            StringContent payloadJson = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, mediaType: "application/json");
-
-            // Request
-            var exportResponse = await HttpPostRequest(apiUri, token, payloadJson);
-
-            //Respone
-            JObject exportReponseData = await exportResponse.Content.ReadAsAsync<JObject>();
-            string exportSolutionFile = (string)exportReponseData["ExportSolutionFile"];
-
-            return exportSolutionFile;
-        }
-
-
-        private void SaveSolutionInGitHub(AsyncJob asyncJob, string exportSolutionFile, GitHubClient installationClient, string owner, string repositoryName)
-        {
-            string managed = asyncJob.IsManaged == true ? "managed" : "unmanaged";
-
-            try
-            {
-                // 1. Get the SHA of the latest commit of the main branch.
-                var headMasterRef = "heads/main";
-                var masterReference = installationClient.Git.Reference.Get(owner, repositoryName, headMasterRef).Result; // Get reference of master branch
-                var latestCommit = installationClient.Git.Commit.Get(owner, repositoryName,
-                masterReference.Object.Sha).Result; // Get the lastet commit of this branch
-                var nt = new NewTree { BaseTree = latestCommit.Tree.Sha };
-
-                //2. Create the blob(s) corresponding to your file(s)
-                var textBlob = new NewBlob { Encoding = EncodingType.Base64, Content = exportSolutionFile };
-                var textBlobRef = installationClient.Git.Blob.Create(owner, repositoryName, textBlob);
-
-                // 3. Create a new tree with:
-                nt.Tree.Add(new NewTreeItem { Path = $"applications/{ asyncJob.ActionNavigation.SolutionNavigation.ApplicationNavigation.Id }_{ asyncJob.ActionNavigation.SolutionNavigation.ApplicationNavigation.SolutionUniqueName }/{ asyncJob.ActionNavigation.SolutionNavigation.Version }/{asyncJob.ActionNavigation.SolutionNavigation.Name}_{managed}.zip", Mode = FileMode.File, Type = TreeType.Blob, Sha = textBlobRef.Result.Sha });
-                var newTree = installationClient.Git.Tree.Create(owner, repositoryName, nt).Result;
-
-                // 4. Create the commit with the SHAs of the tree and the reference of master branchS
-                // Create Commit
-                var newCommit = new NewCommit($"Commit {managed} Export for ActionId {asyncJob.Action} and AsyncJob MsId {asyncJob.JobId}", newTree.Sha, masterReference.Object.Sha);
-                var commit = installationClient.Git.Commit.Create(owner, repositoryName, newCommit).Result;
-
-                // 5. Update the reference of master branch with the SHA of the commit
-                // Update HEAD with the commit
-                installationClient.Git.Reference.Update(owner, repositoryName, headMasterRef, new ReferenceUpdate(commit.Sha));
-            }
-            catch (Exception e)
-            {
-                throw new Exception(e.Message);
-            }
-        }
-
-        private async Task DoWork(CancellationToken cancellationToken)
+        private async Task DoBackgroundWork(CancellationToken cancellationToken)
         {
 
             var asyncJobsByEnvironment = dbContext.AsyncJobs.ToList().GroupBy(e => e.ActionNavigation.TargetEnvironment);
@@ -199,12 +110,6 @@ namespace at.D365.PowerCID.Portal.Services
                         string configAuthority = configuration["AzureAd:Instance"] + tenant.MsId;
                         string[] scope = new string[] { dbContext.Environments.FirstOrDefault(e => e.Id == environmentId).BasicUrl + "/.default" };
                         string token = await GetToken(configAuthority, scope);
-
-                        string[] gitHubRepositoryName = tenant.GitHubRepositoryName.Split('/');
-                        string repositoryName = gitHubRepositoryName[1];
-                        string owner = gitHubRepositoryName[0];
-
-                        (var installation, var installationClient) = await gitHubService.GetInstallationWithClient(tenant.GitHubInstallationId);
 
                         foreach (AsyncJob asyncJob in environmentGroup)
                         {
@@ -244,8 +149,8 @@ namespace at.D365.PowerCID.Portal.Services
                                         // Export
                                         if (asyncJob.ActionNavigation.Type == 1)
                                         {
-                                            string exportSolutionFile = await DownloadSolution(asyncJob, token, responseData);
-                                            SaveSolutionInGitHub(asyncJob, exportSolutionFile, installationClient, owner, repositoryName);
+                                            string exportSolutionFile = await this.solutionService.DownloadSolutionFileFromDataverse(asyncJob);
+                                            await this.gitHubService.SaveSolutionFile(asyncJob, exportSolutionFile, tenant);
                                             UpdateSuccessfulAction(asyncJob);
                                             await dbContext.SaveChangesAsync(asyncJob.ActionNavigation.CreatedByNavigation.MsId);
 
@@ -254,7 +159,7 @@ namespace at.D365.PowerCID.Portal.Services
                                             {
                                                 try
                                                 {
-                                                    await this.solutionService.Import((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.ImportTargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
+                                                    await this.solutionService.AddImportAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.ImportTargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
                                                 }
                                                 catch (Exception e)
                                                 {
@@ -331,45 +236,6 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-
-
-        protected async Task ScheduleJob(CancellationToken cancellationToken)
-        {
-            var next = DateTimeOffset.Now.AddSeconds(int.Parse(configuration["AsyncJobIntervalSeconds"]));
-            var delay = next - DateTimeOffset.Now;
-            if (delay.TotalMilliseconds <= 0) // prevent non-positive values from being passed into Timer
-            {
-                await ScheduleJob(cancellationToken);
-            }
-            timer = new System.Timers.Timer(delay.TotalMilliseconds);
-            timer.Elapsed += async (sender, args) =>
-            {
-                timer.Dispose(); // reset and dispose timer
-                timer = null;
-
-                if (!cancellationToken.IsCancellationRequested)
-                {
-                    try
-                    {
-                        await DoWork(cancellationToken);
-                    }
-                    catch (System.Exception)
-                    {
-
-                        // TODO Logging;
-                    }
-
-                }
-
-                if (!cancellationToken.IsCancellationRequested)
-                {
-                    await ScheduleJob(cancellationToken); // reschedule next
-                }
-            };
-            timer.Start();
-            await Task.CompletedTask;
-        }
-
         private async Task<AsyncJob> CreateAsyncJobForApplyingUpgrade(AsyncJob asyncJob, string token)
         {
             Guid activityId = await GetActivitiyId(asyncJob, token);
@@ -383,6 +249,75 @@ namespace at.D365.PowerCID.Portal.Services
 
             return newAsyncJob;
         }
+
+        private async Task<string> GetToken(string configAuthority, string[] scopes)
+        {
+            IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.Create(configuration["AzureAd:ClientId"])
+                .WithClientSecret(configuration["AzureAd:ClientSecret"])
+                .WithAuthority(new Uri(configAuthority))
+                .Build();
+
+
+            AuthenticationResult result = null;
+            try
+            {
+                result = await app.AcquireTokenForClient(scopes)
+                                 .ExecuteAsync();
+            }
+            catch (MsalUiRequiredException e)
+            {
+                throw new Exception(e.Message);
+                // The application doesn't have sufficient permissions.
+                // - Did you declare enough app permissions during app creation?
+                // - Did the tenant admin grant permissions to the application?
+            }
+            catch (MsalServiceException e) when (e.Message.Contains("AADSTS70011"))
+            {
+                throw new Exception(e.Message);
+                // Invalid scope. The scope has to be in the form "https://resourceurl/.default"
+                // Mitigation: Change the scope to be as expected.
+            }
+
+            return result.AccessToken;
+        }
+
+        private async Task<HttpResponseMessage> HttpGetRequest(string apiUri, string token)
+        {
+            HttpClient httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            // Call the web API.
+            HttpResponseMessage response = await httpClient.GetAsync(apiUri);
+
+            return response;
+        }
+
+        private async Task<HttpResponseMessage> HttpPostRequest(string apiUri, string token, StringContent content)
+        {
+            HttpClient httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            // Call the web API.
+            HttpResponseMessage response = await httpClient.PostAsync(apiUri, content);
+
+            return response;
+        }
+
+        private void UpdateSuccessfulAction(AsyncJob asyncJob)
+        {
+            asyncJob.ActionNavigation.Status = 3;
+            asyncJob.ActionNavigation.Result = 1;
+            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
+        }
+
+        private void UpdateFailedAction(AsyncJob asyncJob, string errorMessage)
+        {
+            asyncJob.ActionNavigation.Status = 3;
+            asyncJob.ActionNavigation.Result = 2;
+            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
+            asyncJob.ActionNavigation.ErrorMessage = errorMessage;
+        }
+
 
         private async Task DeleteAndPromote(AsyncJob asyncJob, string token)
         {
