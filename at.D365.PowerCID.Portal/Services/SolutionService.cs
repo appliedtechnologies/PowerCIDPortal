@@ -132,7 +132,7 @@ namespace at.D365.PowerCID.Portal.Services
                 SolutionName = solutionUniqueName
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 try {
                     ExportSolutionAsyncResponse response = (ExportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(exportSolutionRequest);
                     AsyncJob asyncJob = new AsyncJob
@@ -168,7 +168,7 @@ namespace at.D365.PowerCID.Portal.Services
                 ComponentParameters = solutionComponentParameters
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 ImportSolutionAsyncResponse response = (ImportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(importSolutionAsyncRequest);
 
                 AsyncJob asyncJob = new AsyncJob
@@ -183,24 +183,14 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public async Task<AsyncJob> DeleteAndPromoteInDataverse(Action action)
+        public async Task DeleteAndPromoteInDataverse(Action action)
         {
             DeleteAndPromoteRequest deleteAndPromoteRequest = new DeleteAndPromoteRequest{
                 UniqueName = action.SolutionNavigation.UniqueName
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 DeleteAndPromoteResponse response = (DeleteAndPromoteResponse)await dataverseClient.ExecuteAsync(deleteAndPromoteRequest);
-                Guid solutionHistoryId = await this.solutionHistoryService.GetIdForDeleteAndPromote(action.SolutionNavigation, action.TargetEnvironmentNavigation.BasicUrl);
-
-                AsyncJob asyncJob = new AsyncJob
-                {
-                    JobId = solutionHistoryId,
-                    IsManaged = true,
-                    Action = action.Id
-                };
-
-                return asyncJob;
             }
         }
 
@@ -210,7 +200,7 @@ namespace at.D365.PowerCID.Portal.Services
                 ExportJobId = (Guid)asyncJob.JobId
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 DownloadSolutionExportDataResponse response = (DownloadSolutionExportDataResponse)await dataverseClient.ExecuteAsync(downloadSolutionExportDataRequest);
                 string base64 = Convert.ToBase64String(response.ExportSolutionFile);
                 return base64;
@@ -232,7 +222,7 @@ namespace at.D365.PowerCID.Portal.Services
                 VersionNumber = upgrade.Version
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 try {
                     CloneAsSolutionResponse response = (CloneAsSolutionResponse)await dataverseClient.ExecuteAsync(cloneAsSolutionRequest);
                     upgrade.MsId = response.SolutionId;
@@ -296,7 +286,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         private async Task<bool> ExistsSolutionInTargetEnvironment(string solutionUniqueName, string basicUrl, string tenantMsId)
         {
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 var query = new QueryExpression("solution"){
                     ColumnSet = new ColumnSet("uniquename"),
                 };

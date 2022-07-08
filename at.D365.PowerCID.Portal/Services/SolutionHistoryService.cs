@@ -26,7 +26,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<Entity> GetEntryById(Guid solutionHistoryId, string basicUrl)
         {
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 Entity response = await dataverseClient.RetrieveAsync("msdyn_solutionhistory", solutionHistoryId, new ColumnSet("msdyn_status", "msdyn_endtime", "msdyn_result", "msdyn_exceptionmessage"));
                 return response;
             }
@@ -34,7 +34,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<string> GetExceptionMessage(AsyncJob asyncJob)
         {
-            using(var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 var query = new QueryExpression("msdyn_solutionhistory"){
                     ColumnSet = new ColumnSet("msdyn_exceptionmessage"),
                     PageInfo = new PagingInfo(){
@@ -49,28 +49,6 @@ namespace at.D365.PowerCID.Portal.Services
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
                 return (string)response.Entities.FirstOrDefault()?["msdyn_exceptionmessage"];
-            }
-        }
-
-        public async Task<Guid> GetIdForDeleteAndPromote(Solution solution, string basicUrl)
-        {
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
-                var query = new QueryExpression("msdyn_solutionhistory"){
-                    ColumnSet = new ColumnSet("msdyn_solutionhistoryid"),
-                    PageInfo = new PagingInfo(){
-                        Count = 1,
-                        PageNumber = 1 
-                    }
-                };
-                query.Criteria.AddCondition("msdyn_name", ConditionOperator.Equal, new [] {solution.UniqueName});
-                query.Criteria.AddCondition("msdyn_solutionversion", ConditionOperator.Equal, new [] {solution.Version});
-                query.Criteria.AddCondition("msdyn_operation", ConditionOperator.Equal, new [] {1});
-                query.Criteria.AddCondition("msdyn_suboperation", ConditionOperator.Equal, new [] {2});
-
-                query.AddOrder("msdyn_starttime", OrderType.Descending);
-
-                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
-                return Guid.Parse((string)response.Entities.FirstOrDefault()?["msdyn_solutionhistoryid"]);
             }
         }
     }

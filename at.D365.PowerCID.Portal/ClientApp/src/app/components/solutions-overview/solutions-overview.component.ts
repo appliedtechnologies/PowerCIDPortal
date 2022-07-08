@@ -418,7 +418,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   private startAutoRefresh(action: Action) {
-    let buffer = 5;
+    let buffer = 1;
     this.autoRefreshHintButtonInstance.option("visible", true);
     this.autoRefreshCancelButtonInstance.option("visible", true);
     this.autoRefreshInterval = window.setInterval(() => {

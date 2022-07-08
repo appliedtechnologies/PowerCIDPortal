@@ -18,11 +18,10 @@ namespace at.D365.PowerCID.Portal.Services
     {
         private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
-        private readonly IDownstreamWebApi downstreamWebApi;
         private readonly IConfiguration configuration;
         private readonly GitHubService gitHubService;
         private readonly SolutionService solutionService;
-        private readonly SolutionHistoryService solutionHistoryService;
+        private readonly ActionService actionService;
 
         private System.Timers.Timer timer;
 
@@ -33,11 +32,10 @@ namespace at.D365.PowerCID.Portal.Services
             var scope = serviceProvider.CreateScope();
 
             this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
-            this.downstreamWebApi = scope.ServiceProvider.GetRequiredService<IDownstreamWebApi>();
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
-            this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
+            this.actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
         }
 
         public void Dispose()
@@ -117,7 +115,7 @@ namespace at.D365.PowerCID.Portal.Services
                                         if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30){ // Completed Success
                                             string exportSolutionFile = await this.solutionService.DownloadSolutionFileFromDataverse(asyncJob);
                                             await this.gitHubService.SaveSolutionFile(asyncJob, exportSolutionFile, environment.TenantNavigation);
-                                            UpdateSuccessfulAction(asyncJob);
+                                            this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
 
                                             // Export with Import --> Start Import
                                             if (asyncJob.ActionNavigation.ExportOnly == false && asyncJob.IsManaged == true)
@@ -145,7 +143,7 @@ namespace at.D365.PowerCID.Portal.Services
                                         }
                                         else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
                                         {
-                                            await UpdateFailedAction(asyncJob, (string)asyncOperationInDataverse["friendlymessage"]);
+                                            await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
                                             dbContext.AsyncJobs.Remove(asyncJob);
                                         }
                                     }
@@ -155,7 +153,7 @@ namespace at.D365.PowerCID.Portal.Services
                                         Entity asyncOperationInDataverse = await this.GetCurrentAsyncOperationFromDataverse((Guid)asyncJob.AsyncOperationId, environment.BasicUrl);
 
                                         if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30){ // Completed Success
-                                            UpdateSuccessfulAction(asyncJob);
+                                            this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
 
                                             // Upgrade Solution without manuelly upgrade apply --> Start Apply Upgrade
                                             bool isPatch = asyncJob.ActionNavigation.SolutionNavigation.GetType().Name.Contains("Patch");
@@ -188,26 +186,13 @@ namespace at.D365.PowerCID.Portal.Services
                                         }
                                         else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
                                         {
-                                            await UpdateFailedAction(asyncJob, (string)asyncOperationInDataverse["friendlymessage"]);
+                                            await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
                                             dbContext.AsyncJobs.Remove(asyncJob);
                                         }
                                     }
                                     break;
-                                    case 3: //appling upgrade
-                                        Entity solutionHistoryEntry = await this.solutionHistoryService.GetEntryById((Guid)asyncJob.JobId, environment.BasicUrl);
-
-                                        if (solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
-                                        {
-                                            if (((OptionSetValue)solutionHistoryEntry["msdyn_result"]).Value == 0)
-                                                await UpdateFailedAction(asyncJob, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
-                                            else
-                                                UpdateSuccessfulAction(asyncJob);
-
-                                            dbContext.Remove(asyncJob);
-                                        }
-                                        break;
                                     default:
-                                        throw new Exception($"Unknow ActionType: {asyncJob.ActionNavigation.Type}");
+                                        throw new Exception($"Unknow ActionType for AsyncJob: {asyncJob.ActionNavigation.Type}");
                                 }
                                 await dbContext.SaveChangesAsync(asyncJob.ActionNavigation.CreatedByNavigation.MsId);                              
                             }
@@ -225,28 +210,8 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        private void UpdateSuccessfulAction(AsyncJob asyncJob)
-        {
-            asyncJob.ActionNavigation.Status = 3;
-            asyncJob.ActionNavigation.Result = 1;
-            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
-        }
-
-        private async Task UpdateFailedAction(AsyncJob asyncJob, string friendlyErrormessage)
-        {
-            asyncJob.ActionNavigation.Status = 3;
-            asyncJob.ActionNavigation.Result = 2;
-            asyncJob.ActionNavigation.FinishTime = DateTime.Now;
-
-            asyncJob.ActionNavigation.ErrorMessage = friendlyErrormessage;
-            if (asyncJob.ActionNavigation.ErrorMessage == String.Empty)
-            {
-                asyncJob.ActionNavigation.ErrorMessage = await this.solutionHistoryService.GetExceptionMessage(asyncJob);
-            }
-        }
-
         private async Task<Entity> GetCurrentAsyncOperationFromDataverse(Guid asyncOperationId, string basicUrl){
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 Entity response = await dataverseClient.RetrieveAsync("asyncoperation", asyncOperationId, new ColumnSet("asyncoperationid", "statecode", "statuscode", "friendlymessage"));
                 return response;
             }

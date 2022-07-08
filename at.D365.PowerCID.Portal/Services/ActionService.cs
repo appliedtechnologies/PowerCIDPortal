@@ -16,6 +16,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly SolutionService solutionService;
         private readonly atPowerCIDContext dbContext;
         private readonly GitHubService gitHubService;
+        private readonly SolutionHistoryService solutionHistoryService;
         private System.Timers.Timer timer;
 
         public ActionService(IServiceProvider serviceProvider)
@@ -26,6 +27,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
             this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
+            this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
         }
 
         public void Dispose()
@@ -42,6 +44,26 @@ namespace at.D365.PowerCID.Portal.Services
         {
             timer?.Stop();
             await Task.CompletedTask;
+        }
+
+        public void UpdateSuccessfulAction(Action action)
+        {
+            action.Status = 3;
+            action.Result = 1;
+            action.FinishTime = DateTime.Now;
+        }
+
+        public async Task UpdateFailedAction(Action action, string friendlyErrormessage, AsyncJob asyncJobForExeptionMessage = null)
+        {
+            action.Status = 3;
+            action.Result = 2;
+            action.FinishTime = DateTime.Now;
+
+            action.ErrorMessage = friendlyErrormessage;
+            if (action.ErrorMessage == String.Empty && asyncJobForExeptionMessage != null)
+            {
+                action.ErrorMessage = await this.solutionHistoryService.GetExceptionMessage(asyncJobForExeptionMessage);
+            }
         }
 
         private async Task ScheduleBackgroundJob(CancellationToken cancellationToken)
@@ -92,6 +114,9 @@ namespace at.D365.PowerCID.Portal.Services
 
                             dbContext.Add(asyncJobManaged);
                             dbContext.Add(asyncJobUnmanaged);
+
+                            queuedAction.Status = 2;
+                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                         }
                         break;
                         case 2: //import 
@@ -100,23 +125,29 @@ namespace at.D365.PowerCID.Portal.Services
                             AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
 
                             dbContext.Add(asyncJobManaged);
+
+                            queuedAction.Status = 2;
+                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                         }
                         break;
                         case 3:
                         {
-                            AsyncJob asyncJob = await this.solutionService.DeleteAndPromoteInDataverse(queuedAction);
+                            queuedAction.Status = 2;
+                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                            dbContext.Add(asyncJob);
+                            await this.solutionService.DeleteAndPromoteInDataverse(queuedAction); //no async process
+
+                            this.UpdateSuccessfulAction(queuedAction);
+                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                         }  
                         break;
                         default: 
                             throw new Exception($"Unknow ActionType: {queuedAction.Type}");
-                    } 
-
-                    queuedAction.Status = 2;
-                    await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+                    }             
                 }
                 catch(Exception e){
+                    await this.UpdateFailedAction(queuedAction, e.Message);
+                    await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                     //TODO logging
                     continue;
                 }

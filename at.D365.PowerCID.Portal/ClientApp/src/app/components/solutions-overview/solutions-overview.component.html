@@ -82,6 +82,7 @@
           (click)="onClickDeploySolution(cellInfo, true)"
           title="renew export"
         ></i>
+        {{ lastAction.TypeNavigation.Type }}
         {{ lastAction.StatusNavigation.Status }}
         {{ lastAction.ResultNavigation?.Result }}
       </div>
@@ -100,6 +101,7 @@
           title="start auto-refresh"
           (click)="onClickStartAutoRefresh(lastAction)"
         ></i>
+        {{ lastAction.TypeNavigation.Type }}
         {{ lastAction.StatusNavigation.Status }}
         {{ lastAction.ResultNavigation?.Result }}
       </div>
@@ -117,6 +119,7 @@
           (click)="onClickDeploySolution(cellInfo, true)"
           title="renew export"
         ></i>
+        {{ lastAction.TypeNavigation.Type }}
         {{ lastAction.StatusNavigation.Status }}
         {{ lastAction.ResultNavigation?.Result }}
       </div>
@@ -158,6 +161,7 @@
             title="show details"
             (click)="onClickActionInfo(lastAction)"
           ></i>
+          {{ lastAction.TypeNavigation.Type }}
           {{ lastAction.StatusNavigation.Status }}
           {{ lastAction.ResultNavigation?.Result }}
         </div>
@@ -181,6 +185,7 @@
             title="start auto-refresh"
             (click)="onClickStartAutoRefresh(lastAction)"
           ></i>
+          {{ lastAction.TypeNavigation.Type }}
           {{ lastAction.StatusNavigation.Status }}
           {{ lastAction.ResultNavigation?.Result }}
         </div>
@@ -198,6 +203,7 @@
             (click)="onClickDeploySolution(cellInfo, false)"
             title="try deployment again"
           ></i>
+          {{ lastAction.TypeNavigation.Type }}
           {{ lastAction.StatusNavigation.Status }}
           {{ lastAction.ResultNavigation?.Result }}
         </div>
