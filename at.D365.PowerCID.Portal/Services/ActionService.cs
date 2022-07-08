@@ -84,34 +84,37 @@ namespace at.D365.PowerCID.Portal.Services
             foreach (Action queuedAction in this.dbContext.Actions.Where(e => e.Status == 1).ToList())
             {
                 try{
-                    if(queuedAction.Type == 1) //export
-                    {
-                        var asyncJobManaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
-                        var asyncJobUnmanaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
+                    switch(queuedAction.Type){
+                        case 1: //export
+                        {
+                            var asyncJobManaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
+                            var asyncJobUnmanaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
 
-                        asyncJobManaged.ActionNavigation = queuedAction;
-                        asyncJobUnmanaged.ActionNavigation = queuedAction;
+                            dbContext.Add(asyncJobManaged);
+                            dbContext.Add(asyncJobUnmanaged);
+                        }
+                        break;
+                        case 2: //import 
+                        {
+                            byte[] exportSolutionFile = await this.gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
+                            AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
 
-                        dbContext.Add(asyncJobManaged);
-                        dbContext.Add(asyncJobUnmanaged);
-                        queuedAction.Status = 2;
-                        await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
-                    }
-                    else if(queuedAction.Type == 2) //import 
-                    {
-                        byte[] exportSolutionFile = await this.gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
-                        AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
+                            dbContext.Add(asyncJobManaged);
+                        }
+                        break;
+                        case 3:
+                        {
+                            AsyncJob asyncJob = await this.solutionService.DeleteAndPromoteInDataverse(queuedAction);
 
-                        asyncJobManaged.ActionNavigation = queuedAction;
+                            dbContext.Add(asyncJob);
+                        }  
+                        break;
+                        default: 
+                            throw new Exception($"Unknow ActionType: {queuedAction.Type}");
+                    } 
 
-                        dbContext.Add(asyncJobManaged);
-                        queuedAction.Status = 2;
-                        await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
-                    }
-                    else if(queuedAction.Type == 3){
-                        /*await DeleteAndPromote(asyncJob, token);
-                        AsyncJob newAsyncJob = await CreateAsyncJobForApplyingUpgrade(asyncJob, token);*/
-                    }
+                    queuedAction.Status = 2;
+                    await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                 }
                 catch(Exception e){
                     //TODO logging

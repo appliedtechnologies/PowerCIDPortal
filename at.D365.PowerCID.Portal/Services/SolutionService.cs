@@ -19,6 +19,7 @@ using Microsoft.Xrm.Sdk.Query;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Octokit.GraphQL;
+using Action = at.D365.PowerCID.Portal.Data.Models.Action;
 
 namespace at.D365.PowerCID.Portal.Services
 {
@@ -29,6 +30,8 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly ConnectionReferenceService connectionReferenceService;
         private readonly EnvironmentVariableService environmentVariableService;
         private readonly IConfiguration configuration;
+        private readonly SolutionHistoryService solutionHistoryService;
+
         public SolutionService(IServiceProvider serviceProvider)
         {
             this.serviceProvider = serviceProvider;
@@ -37,6 +40,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.connectionReferenceService = scope.ServiceProvider.GetRequiredService<ConnectionReferenceService>();
             this.environmentVariableService = scope.ServiceProvider.GetRequiredService<EnvironmentVariableService>();
+            this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
         }
 
         public async Task<Data.Models.Action> AddExportAction(int key, Guid tenantMsIdCurrentUser, Guid msIdCurrentUser, bool exportOnly, int targetEnvironmentForImport = 0)
@@ -136,6 +140,7 @@ namespace at.D365.PowerCID.Portal.Services
                         AsyncOperationId = response.AsyncOperationId,
                         JobId = response.ExportJobId,
                         IsManaged = isManaged,
+                        Action = action.Id
                     };
 
                     return asyncJob;
@@ -146,7 +151,7 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Data.Models.Action action)
+        public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Action action)
         {
             bool isPatch = this.dbContext.Solutions.FirstOrDefault(s => s.Id == action.Solution).GetType().Name.Contains("Patch");
             Upgrade upgrade;
@@ -170,7 +175,29 @@ namespace at.D365.PowerCID.Portal.Services
                 {
                     AsyncOperationId = response.AsyncOperationId,
                     JobId = Guid.Parse(response.ImportJobKey),
-                    IsManaged = true
+                    IsManaged = true,
+                    Action = action.Id
+                };
+
+                return asyncJob;
+            }
+        }
+
+        public async Task<AsyncJob> DeleteAndPromoteInDataverse(Action action)
+        {
+            DeleteAndPromoteRequest deleteAndPromoteRequest = new DeleteAndPromoteRequest{
+                UniqueName = action.SolutionNavigation.UniqueName
+            };
+
+            using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], false)){
+                DeleteAndPromoteResponse response = (DeleteAndPromoteResponse)await dataverseClient.ExecuteAsync(deleteAndPromoteRequest);
+                Guid solutionHistoryId = await this.solutionHistoryService.GetIdForDeleteAndPromote(action.SolutionNavigation, action.TargetEnvironmentNavigation.BasicUrl);
+
+                AsyncJob asyncJob = new AsyncJob
+                {
+                    JobId = solutionHistoryId,
+                    IsManaged = true,
+                    Action = action.Id
                 };
 
                 return asyncJob;

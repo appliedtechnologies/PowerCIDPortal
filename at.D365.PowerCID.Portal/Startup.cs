@@ -127,6 +127,7 @@ namespace at.D365.PowerCID.Portal
             //custom services
             services.AddScoped<GitHubService>();
             services.AddScoped<SolutionService>();
+            services.AddScoped<SolutionHistoryService>();
             services.AddScoped<ConnectionReferenceService>();
             services.AddScoped<EnvironmentVariableService>();
 
