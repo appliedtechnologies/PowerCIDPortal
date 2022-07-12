@@ -50,7 +50,7 @@ namespace at.D365.PowerCID.Portal.Services
             {
                 var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl, tenantMsId);
                 var environmentVariablesOfSolution = await this.GetEnvironemntVariablesBySolutionComponents(solutionComponents, applicationId, basicUrl, tenantMsId);
-                environmentVariables.AddRange(environmentVariablesOfSolution.Except(environmentVariables));
+                environmentVariables.AddRange(environmentVariablesOfSolution.Where(e => environmentVariables.All(x => e.MsId != x.MsId)));
 
                 if(!solution.IsPatch())
                     break;
