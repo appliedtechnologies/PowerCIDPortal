@@ -37,7 +37,7 @@ namespace at.D365.PowerCID.Portal.Services
             {
                 var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl, tenantMsId);
                 var connectionReferencesOfSolution = await this.GetConnectionReferencesBySolutionComponents(solutionComponents, applicationId, basicUrl, tenantMsId);
-                connectionReferences.AddRange(connectionReferencesOfSolution.Except(connectionReferences));
+                connectionReferences.AddRange(connectionReferencesOfSolution.Where(e => connectionReferences.All(x => e.MsId != x.MsId)));
 
                 if(!solution.IsPatch())
                     break;
