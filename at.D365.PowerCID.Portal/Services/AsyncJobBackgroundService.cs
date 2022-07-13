@@ -14,7 +14,7 @@ using Environment = at.D365.PowerCID.Portal.Data.Models.Environment;
 
 namespace at.D365.PowerCID.Portal.Services
 {
-    public class AsyncJobService : IHostedService, IDisposable
+    public class AsyncJobBackgroundService : IHostedService, IDisposable
     {
         private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
@@ -25,7 +25,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         private System.Timers.Timer timer;
 
-        public AsyncJobService(IServiceProvider serviceProvider)
+        public AsyncJobBackgroundService(IServiceProvider serviceProvider)
         {
             this.serviceProvider = serviceProvider;
 

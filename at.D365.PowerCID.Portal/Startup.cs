@@ -130,9 +130,10 @@ namespace at.D365.PowerCID.Portal
             services.AddScoped<SolutionHistoryService>();
             services.AddScoped<ConnectionReferenceService>();
             services.AddScoped<EnvironmentVariableService>();
+            services.AddScoped<ActionService>();
 
-            services.AddHostedService<AsyncJobService>();
-            services.AddHostedService<ActionService>();
+            services.AddHostedService<AsyncJobBackgroundService>();
+            services.AddHostedService<ActionBackgroundService>();
 
             //log request/response body to application insights
             services.AddAppInsightsHttpBodyLogging();

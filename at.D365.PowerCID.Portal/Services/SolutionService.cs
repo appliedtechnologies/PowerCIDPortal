@@ -30,7 +30,6 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly ConnectionReferenceService connectionReferenceService;
         private readonly EnvironmentVariableService environmentVariableService;
         private readonly IConfiguration configuration;
-        private readonly SolutionHistoryService solutionHistoryService;
 
         public SolutionService(IServiceProvider serviceProvider)
         {
@@ -40,7 +39,6 @@ namespace at.D365.PowerCID.Portal.Services
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.connectionReferenceService = scope.ServiceProvider.GetRequiredService<ConnectionReferenceService>();
             this.environmentVariableService = scope.ServiceProvider.GetRequiredService<EnvironmentVariableService>();
-            this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
         }
 
         public async Task<Data.Models.Action> AddExportAction(int key, Guid tenantMsIdCurrentUser, Guid msIdCurrentUser, bool exportOnly, int targetEnvironmentForImport = 0)
