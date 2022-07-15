@@ -29,6 +29,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly atPowerCIDContext dbContext;
         private readonly ConnectionReferenceService connectionReferenceService;
         private readonly EnvironmentVariableService environmentVariableService;
+        private readonly SolutionHistoryService solutionHistoryService;
         private readonly IConfiguration configuration;
 
         public SolutionService(IServiceProvider serviceProvider)
@@ -39,6 +40,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.connectionReferenceService = scope.ServiceProvider.GetRequiredService<ConnectionReferenceService>();
             this.environmentVariableService = scope.ServiceProvider.GetRequiredService<EnvironmentVariableService>();
+            this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
         }
 
         public async Task<Data.Models.Action> AddExportAction(int key, Guid tenantMsIdCurrentUser, Guid msIdCurrentUser, bool exportOnly, int targetEnvironmentForImport = 0)
@@ -181,14 +183,29 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public async Task DeleteAndPromoteInDataverse(Action action)
+        public async Task<AsyncJob> DeleteAndPromoteInDataverse(Action action)
         {
             DeleteAndPromoteRequest deleteAndPromoteRequest = new DeleteAndPromoteRequest{
                 UniqueName = action.SolutionNavigation.UniqueName
             };
 
             using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                DeleteAndPromoteResponse response = (DeleteAndPromoteResponse)await dataverseClient.ExecuteAsync(deleteAndPromoteRequest);
+                try{
+                    DeleteAndPromoteResponse response = (DeleteAndPromoteResponse)await dataverseClient.ExecuteAsync(deleteAndPromoteRequest);
+                    return null;
+                }
+                catch(TimeoutException){
+                    Guid solutionHistoryId = await this.solutionHistoryService.GetIdForDeleteAndPromote(action.SolutionNavigation, action.TargetEnvironmentNavigation.BasicUrl);
+
+                    AsyncJob asyncJob = new AsyncJob
+                    {
+                        JobId = solutionHistoryId,
+                        IsManaged = true,
+                        Action = action.Id
+                    };
+
+                    return asyncJob;
+                }
             }
         }
 

@@ -117,9 +117,13 @@ namespace at.D365.PowerCID.Portal.Services
                             queuedAction.Status = 2;
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                            await this.solutionService.DeleteAndPromoteInDataverse(queuedAction); //no async process
+                            AsyncJob asyncJob = await this.solutionService.DeleteAndPromoteInDataverse(queuedAction);
 
-                            this.actionService.UpdateSuccessfulAction(queuedAction);
+                            if(asyncJob == null)
+                                this.actionService.UpdateSuccessfulAction(queuedAction);
+                            else
+                                dbContext.Add(asyncJob);
+                                
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                         }  
                         break;

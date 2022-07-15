@@ -22,6 +22,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly GitHubService gitHubService;
         private readonly SolutionService solutionService;
         private readonly ActionService actionService;
+        private readonly SolutionHistoryService solutionHistoryService;
 
         private System.Timers.Timer timer;
 
@@ -36,6 +37,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
             this.actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
+            this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
         }
 
         public void Dispose()
@@ -188,6 +190,21 @@ namespace at.D365.PowerCID.Portal.Services
                                         {
                                             await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
                                             dbContext.AsyncJobs.Remove(asyncJob);
+                                        }
+                                    }
+                                    break;
+                                    case 3: //appling upgrade
+                                    {
+                                        Entity solutionHistoryEntry = await this.solutionHistoryService.GetEntryById((Guid)asyncJob.JobId, environment.BasicUrl);
+
+                                        if (solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
+                                        {
+                                            if (((OptionSetValue)solutionHistoryEntry["msdyn_result"]).Value == 0)
+                                                await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
+                                            else
+                                                this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
+
+                                            dbContext.Remove(asyncJob);
                                         }
                                     }
                                     break;
