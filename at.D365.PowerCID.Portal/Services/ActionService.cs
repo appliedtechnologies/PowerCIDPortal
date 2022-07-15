@@ -12,7 +12,7 @@ namespace at.D365.PowerCID.Portal.Services
 {
     public class ActionService
     {
-        private readonly ILogger<ActionService> _logger;
+        private readonly ILogger<ActionService> logger;
         private readonly IConfiguration configuration;
         private readonly SolutionService solutionService;
         private readonly atPowerCIDContext dbContext;
@@ -28,7 +28,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
             this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
-            this._logger = logger;
+            this.logger = logger;
         }
 
         public void UpdateSuccessfulAction(Action action)

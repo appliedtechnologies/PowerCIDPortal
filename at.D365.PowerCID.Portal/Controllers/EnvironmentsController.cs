@@ -10,26 +10,26 @@ using Microsoft.AspNetCore.OData.Deltas;
 using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
-using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
     [Authorize]
     public class EnvironmentsController : BaseController
     {
-        private readonly ILogger<EnvironmentsController> _logger;
+        private readonly ILogger<EnvironmentsController> logger;
         public EnvironmentsController(ILogger<EnvironmentsController> logger, atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
-            this._logger = logger;
+            this.logger = logger;
         }
 
         // GET: odata/Environments
         [EnableQuery]
         public IQueryable<at.D365.PowerCID.Portal.Data.Models.Environment> Get()
         {
-            _logger.LogTrace("Begin: Get Environments");
+            logger.LogTrace("Begin: Get Environments");
             return base.dbContext.Environments.Where(e => e.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
@@ -132,7 +132,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         private void UpdateEnvironmentIfNeeded(Environment pulledEnvironment)
         {
 
-            _logger.LogTrace("Begin: UpdateEnvironmentIfNeeded(Environment pulledEnvironment)");
+            logger.LogTrace("Begin: UpdateEnvironmentIfNeeded(Environment pulledEnvironment)");
 
             Environment currentDbEnvironment = this.dbContext.Environments.First(e => e.MsId == pulledEnvironment.MsId);
 
@@ -145,7 +145,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private async Task<IEnumerable<Environment>> GetExistingEnvironments()
         {
-            _logger.LogTrace("Begin: Task<IEnumerable<Environment>> GetExistingEnvironments()");
+            logger.LogTrace("Begin: Task<IEnumerable<Environment>> GetExistingEnvironments()");
 
             var environmentsRepsonse = await this.downstreamWebApi.CallWebApiForUserAsync(
                 "AzureManagementApi",

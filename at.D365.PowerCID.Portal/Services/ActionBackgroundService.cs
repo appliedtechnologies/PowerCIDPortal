@@ -6,12 +6,14 @@ using at.D365.PowerCID.Portal.Data.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Action = at.D365.PowerCID.Portal.Data.Models.Action;
 
 namespace at.D365.PowerCID.Portal.Services
 {
     public class ActionBackgroundService : IHostedService, IDisposable
     {
+        private readonly ILogger logger;
         private readonly IConfiguration configuration;
         private readonly SolutionService solutionService;
         private readonly atPowerCIDContext dbContext;
@@ -20,7 +22,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly ActionService actionService;
         private System.Timers.Timer timer;
 
-        public ActionBackgroundService(IServiceProvider serviceProvider)
+        public ActionBackgroundService(IServiceProvider serviceProvider, ILogger logger)
         {
             var scope = serviceProvider.CreateScope();
 
@@ -30,6 +32,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
             this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
             this.actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
+            this.logger = logger;
         }
 
         public void Dispose()
@@ -128,13 +131,13 @@ namespace at.D365.PowerCID.Portal.Services
                         }  
                         break;
                         default: 
-                            throw new Exception($"Unknow ActionType: {queuedAction.Type}");
+                            throw new Exception($"unknow ActionType: {queuedAction.Type}");
                     }             
                 }
                 catch(Exception e){
                     await this.actionService.UpdateFailedAction(queuedAction, e.Message);
                     await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
-                    //TODO logging
+                    logger.LogError(e, "error while processing Action");
                     continue;
                 }
             }
