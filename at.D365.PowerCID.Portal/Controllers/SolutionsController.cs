@@ -109,7 +109,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             if (IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId, targetEnvironmentId, key) == false)
             {
-                return BadRequest("Cant skip a previous deploymentenvironment");
+                return BadRequest("Can't skip a previous deploymentenvironment");
             }
 
             else
@@ -132,6 +132,34 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> ApplyUpgrade([FromODataUri] int key, ODataActionParameters parameters, [FromServices] SolutionService solutionService)
+        {
+            var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if(solution == null)
+                return Forbid();
+
+            if(solution.IsPatch())
+                return BadRequest("Can't apply upgrade for patch solution");
+
+            int targetEnvironmentId = (int)parameters["targetEnvironmentId"];
+            if (ImportExistsOnEnvironment(key, targetEnvironmentId) == false)
+                return BadRequest("Can't skip import before applying an upgrade");
+
+            Data.Models.Action createdAction;
+
+            try
+            {
+                createdAction = await solutionService.AddApplyUpgradeAction(key, targetEnvironmentId, this.msIdCurrentUser);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
+            return Ok(createdAction);
+        }
+
         private bool IsPreviousDeploymentEnvironmentResultSuccessful(int deploymentPathId, int targetEnvironmentId, int solutionId)
         {
             int stepNumber = dbContext.DeploymentPathEnvironments.FirstOrDefault(x => x.DeploymentPath == deploymentPathId && x.Environment == targetEnvironmentId).StepNumber;
@@ -147,6 +175,11 @@ namespace at.D365.PowerCID.Portal.Controllers
         private bool ExportExists(int solutionId)
         {
             return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.Type == 1 && a.Result == 1);
+        }
+
+        private bool ImportExistsOnEnvironment(int solutionId, int environmentId)
+        {
+            return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.TargetEnvironment == environmentId && a.Type == 2 && a.Result == 1);
         }
 
         private bool SolutionExists(int key)

@@ -96,6 +96,9 @@ namespace at.D365.PowerCID.Portal
             import.Parameter<int>("targetEnvironmentId");
             import.Parameter<int>("deploymentPathId");
 
+            var applyUpgrade = builder.EntityType<Solution>().Action("ApplyUpgrade").ReturnsFromEntitySet<Action>("Actions");
+            applyUpgrade.Parameter<int>("targetEnvironmentId");
+
             builder.EntityType<Solution>().Action("GetSolutionAsBase64String");
             builder.EntityType<Action>().Action("CancelImport");
 
