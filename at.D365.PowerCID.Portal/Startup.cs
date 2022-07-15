@@ -96,6 +96,9 @@ namespace at.D365.PowerCID.Portal
             import.Parameter<int>("targetEnvironmentId");
             import.Parameter<int>("deploymentPathId");
 
+            var applyUpgrade = builder.EntityType<Solution>().Action("ApplyUpgrade").ReturnsFromEntitySet<Action>("Actions");
+            applyUpgrade.Parameter<int>("targetEnvironmentId");
+
             builder.EntityType<Solution>().Action("GetSolutionAsBase64String");
             builder.EntityType<Action>().Action("CancelImport");
 
@@ -127,11 +130,13 @@ namespace at.D365.PowerCID.Portal
             //custom services
             services.AddScoped<GitHubService>();
             services.AddScoped<SolutionService>();
+            services.AddScoped<SolutionHistoryService>();
             services.AddScoped<ConnectionReferenceService>();
             services.AddScoped<EnvironmentVariableService>();
+            services.AddScoped<ActionService>();
 
-            services.AddHostedService<AsyncJobService>();
-            services.AddHostedService<ActionService>();
+            services.AddHostedService<AsyncJobBackgroundService>();
+            services.AddHostedService<ActionBackgroundService>();
 
             //log request/response body to application insights
             services.AddAppInsightsHttpBodyLogging();

@@ -311,9 +311,6 @@ namespace at.D365.PowerCID.Portal.Data.Models
                 }, new ActionStatus {
                     Id = 3,
                     Status = "completed" 
-                }, new ActionStatus {
-                    Id = 4,
-                    Status = "applying upgrade" 
                 });
             });
 
@@ -332,7 +329,11 @@ namespace at.D365.PowerCID.Portal.Data.Models
                 }, new ActionType {
                     Id = 2,
                     Type = "import" 
-                });
+                }, new ActionType {
+                    Id = 3,
+                    Type = "applying upgrade" 
+                }
+                );
             });
 
             modelBuilder.Entity<Application>(entity =>
