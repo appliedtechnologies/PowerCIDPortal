@@ -244,12 +244,19 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     downloadLink.click();
   }
 
-  public onClickDeploySolution(cellInfo, exportOnly: boolean): void {
+  public onClickDeploySolution(cellInfo, exportOnly: boolean = false, applyUpgradeOnly: boolean = false): void {
+    let targetEnvironmentId = cellInfo.column.name.split(",")[1];
+
     if (exportOnly) {
       this.executeExport(cellInfo, exportOnly);
+    } else if(applyUpgradeOnly) {
+      this.layoutService.change(LayoutParameter.ShowLoading, true);
+      this.startApplyUpgrade(cellInfo.data.Id, targetEnvironmentId)
+        .then(() => {
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+        });
     } else {
       let deploymentPathId = cellInfo.column.name.split(",")[0];
-      let targetEnvironmentId = cellInfo.column.name.split(",")[1];
       this.layoutService.change(LayoutParameter.ShowLoading, true);
       this.applicationService.getDeploymentSettingsStatus(this.selectedApplication.Id, targetEnvironmentId).then((status) => {
         if (status == 0) {
@@ -417,8 +424,28 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
       });
   }
 
+  private startApplyUpgrade(solutionId: number, targetEnvironmentId): Promise<void> {
+    return this.solutionService
+      .applyUpgrade(solutionId, targetEnvironmentId)
+      .then((action) => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Apply upgrade started...",
+        });
+        this.startAutoRefresh(action);
+      })
+      .catch((error) => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: error.error.value
+            ? `An error occurred while starting an apply upgrade: ${error.error.value}`
+            : "An error occurred while starting an apply upgrade.",
+        });
+      });
+  }
+
   private startAutoRefresh(action: Action) {
-    let buffer = 5;
+    let buffer = 1;
     this.autoRefreshHintButtonInstance.option("visible", true);
     this.autoRefreshCancelButtonInstance.option("visible", true);
     this.autoRefreshInterval = window.setInterval(() => {
