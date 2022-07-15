@@ -24,9 +24,11 @@ export class ProtectedResourcesInterceptor implements HttpInterceptor {
     next: HttpHandler
   ): Observable<HttpEvent<any>> {
       try{
-        let url = new URL(req.url);
-        if (url.origin.includes("dynamics.com"))
-          this.addDataverseResource(url.origin);
+        if(req.url.includes("dynamics.com")){
+          let url = new URL(req.url);
+          if (url.origin.includes("dynamics.com"))
+            this.addDataverseResource(url.origin);
+        }
       }
       finally{
         return next.handle(req);

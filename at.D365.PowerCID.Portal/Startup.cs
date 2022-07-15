@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.OData.Extensions;
 using Microsoft.OData.Edm;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.Identity.Web;
+using Azureblue.ApplicationInsights.RequestLogging;
+using Microsoft.AspNetCore.Http;
 
 namespace at.D365.PowerCID.Portal
 {
@@ -84,6 +86,7 @@ namespace at.D365.PowerCID.Portal
             builder.EntityType<Environment>().Action("GetDataversePublishers");
 
             builder.EntityType<Application>().Collection.Action("PullExisting").Parameter<Environment>("environment");
+
             var addApplication = builder.EntityType<Application>().Collection.Action("SaveApplication");
             addApplication.Parameter<string>("applicationUniqueName");
             addApplication.Parameter<Environment>("environment");
@@ -93,8 +96,11 @@ namespace at.D365.PowerCID.Portal
             import.Parameter<int>("targetEnvironmentId");
             import.Parameter<int>("deploymentPathId");
 
-            builder.EntityType<Solution>().Action("GetSolutionAsBase64String");
+            var applyUpgrade = builder.EntityType<Solution>().Action("ApplyUpgrade").ReturnsFromEntitySet<Action>("Actions");
+            applyUpgrade.Parameter<int>("targetEnvironmentId");
 
+            builder.EntityType<Solution>().Action("GetSolutionAsBase64String");
+            builder.EntityType<Action>().Action("CancelImport");
 
             builder.EntityType<Tenant>().Action("GetGitHubRepositories");
 
@@ -127,11 +133,16 @@ namespace at.D365.PowerCID.Portal
             //custom services
             services.AddScoped<GitHubService>();
             services.AddScoped<SolutionService>();
+            services.AddScoped<SolutionHistoryService>();
             services.AddScoped<ConnectionReferenceService>();
             services.AddScoped<EnvironmentVariableService>();
+            services.AddScoped<ActionService>();
 
-            services.AddHostedService<AsyncJobService>();
-            services.AddHostedService<ActionService>();
+            services.AddHostedService<AsyncJobBackgroundService>();
+            services.AddHostedService<ActionBackgroundService>();
+
+            //log request/response body to application insights
+            services.AddAppInsightsHttpBodyLogging();
         }
 
 
@@ -149,6 +160,10 @@ namespace at.D365.PowerCID.Portal
                 app.UseExceptionHandler("/Error");
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
+
+                //enable log request/response body to application insights
+                if(bool.Parse(Configuration.GetSection("LogRequestResponseBodys").Value))
+                    app.UseAppInsightsHttpBodyLogging();     
             }
 
             app.UseHttpsRedirection();

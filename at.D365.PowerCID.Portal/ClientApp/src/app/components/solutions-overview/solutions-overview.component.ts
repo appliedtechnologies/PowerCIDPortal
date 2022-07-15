@@ -198,7 +198,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     );
   }
 
-  public onClickConfigureDeployment(environment: Environment){
+  public onClickConfigureDeployment(environment: Environment) {
     this.configureDeploymentEnvironment = environment;
     this.isConfigureDeploymentPopupVisible = true;
   }
@@ -244,29 +244,36 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     downloadLink.click();
   }
 
-  public onClickDeploySolution(cellInfo, exportOnly: boolean): void {
+  public onClickDeploySolution(cellInfo, exportOnly: boolean = false, applyUpgradeOnly: boolean = false): void {
+    let targetEnvironmentId = cellInfo.column.name.split(",")[1];
+
     if (exportOnly) {
       this.executeExport(cellInfo, exportOnly);
+    } else if(applyUpgradeOnly) {
+      this.layoutService.change(LayoutParameter.ShowLoading, true);
+      this.startApplyUpgrade(cellInfo.data.Id, targetEnvironmentId)
+        .then(() => {
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+        });
     } else {
       let deploymentPathId = cellInfo.column.name.split(",")[0];
-      let targetEnvironmentId = cellInfo.column.name.split(",")[1];
       this.layoutService.change(LayoutParameter.ShowLoading, true);
       this.applicationService.getDeploymentSettingsStatus(this.selectedApplication.Id, targetEnvironmentId).then((status) => {
-        if(status == 0) {
-            let confirmResult = confirm("Import without completed Deployment Settings (e.g. Connection References)?", "Incomplete Deployment Settings");
-            confirmResult.then((result) =>{
-              if(result == true){
-                this.startImport(cellInfo.data.Id, targetEnvironmentId, deploymentPathId)
-                  .then(() => {
-                    this.layoutService.change(LayoutParameter.ShowLoading, false);
-                  });
-              }
-              else{
-                this.layoutService.change(LayoutParameter.ShowLoading, false);
-              }
-            });
+        if (status == 0) {
+          let confirmResult = confirm("Import without completed Deployment Settings (e.g. Connection References)?", "Incomplete Deployment Settings");
+          confirmResult.then((result) => {
+            if (result == true) {
+              this.startImport(cellInfo.data.Id, targetEnvironmentId, deploymentPathId)
+                .then(() => {
+                  this.layoutService.change(LayoutParameter.ShowLoading, false);
+                });
+            }
+            else {
+              this.layoutService.change(LayoutParameter.ShowLoading, false);
+            }
+          });
         }
-        else{
+        else {
           this.startImport(cellInfo.data.Id, targetEnvironmentId, deploymentPathId)
             .then(() => {
               this.layoutService.change(LayoutParameter.ShowLoading, false);
@@ -275,7 +282,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
       });
     }
   }
-  
+
   public executeExport(cellInfo, exportOnly: boolean) {
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.solutionService
@@ -328,6 +335,25 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     this.startAutoRefresh(lastAction);
   }
 
+  public onClickCancelImport(lastAction: Action): void {
+    let result = confirm("Are you sure you want to cancel this import?<br /> This will not affect any operations already in progress in the environment.", "Confirm Cancellation");
+    result.then((dialogResult) => {
+      if (dialogResult) {
+        this.cancelAutoRefresh();
+        this.layoutService.change(LayoutParameter.ShowLoading, true);
+        this.actionService.cancelImport(lastAction.Id).then(() => {
+          this.dataGrid.instance.refresh();
+          this.layoutService.notify({ type: NotificationType.Success, message: "Import was canceled." });
+        }).catch(() => {
+          this.layoutService.notify({ type: NotificationType.Error, message: "Import could not be canceled." });
+          this.startAutoRefresh(lastAction);
+        }).finally(() =>{
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+        });
+      }
+    });
+  }
+
   public getLastActionForEnvironment(cellInfo): Action {
     let allActionOfSolution: Action[] = cellInfo.data.Actions;
     let targetEnvironmentId =
@@ -374,11 +400,11 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     return this.canImport;
   }
 
-  public onClickOpenMakerPortal(cellInfo: any): void{
+  public onClickOpenMakerPortal(cellInfo: any): void {
     window.open(cellInfo.data.UrlMakerportal, "_blank")
   }
 
-  private startImport(solutionId: number, targetEnvironmentId, deploymentPathId): Promise<void>{
+  private startImport(solutionId: number, targetEnvironmentId, deploymentPathId): Promise<void> {
     return this.solutionService
       .import(solutionId, targetEnvironmentId, deploymentPathId)
       .then((action) => {
@@ -398,8 +424,28 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
       });
   }
 
+  private startApplyUpgrade(solutionId: number, targetEnvironmentId): Promise<void> {
+    return this.solutionService
+      .applyUpgrade(solutionId, targetEnvironmentId)
+      .then((action) => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Apply upgrade started...",
+        });
+        this.startAutoRefresh(action);
+      })
+      .catch((error) => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: error.error.value
+            ? `An error occurred while starting an apply upgrade: ${error.error.value}`
+            : "An error occurred while starting an apply upgrade.",
+        });
+      });
+  }
+
   private startAutoRefresh(action: Action) {
-    let buffer = 5;
+    let buffer = 1;
     this.autoRefreshHintButtonInstance.option("visible", true);
     this.autoRefreshCancelButtonInstance.option("visible", true);
     this.autoRefreshInterval = window.setInterval(() => {
@@ -505,7 +551,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
             return {
               caption: d.Name,
               allowReordering: false,
-              name: d.Id.toString() + d.Name, 
+              name: d.Id.toString() + d.Name,
 
               columns: [
                 ...d.Environments.map((e) => {

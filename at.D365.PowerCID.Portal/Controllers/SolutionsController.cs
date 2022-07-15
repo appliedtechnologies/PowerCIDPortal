@@ -74,7 +74,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> GetSolutionAsBase64String([FromODataUri] int key, [FromServices] SolutionService solutionService)
+        public async Task<IActionResult> GetSolutionAsBase64String([FromODataUri] int key, [FromServices] GitHubService gitHubService)
         {
             if((await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
@@ -82,7 +82,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             Solution solution = dbContext.Solutions.FirstOrDefault(x => x.Id == key);
             Tenant tenant = dbContext.Solutions.FirstOrDefault(x => x.Id == key).ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation;
 
-            var solutionAsBase64String = await solutionService.GetSolutionFromGitHubAsBase64String(tenant, solution);
+            var solutionAsBase64String = await gitHubService.GetSolutionFileAsBase64String(tenant, solution);
             return Ok(solutionAsBase64String);
         }
 
@@ -92,7 +92,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if((await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            Data.Models.Action createdAction = await solutionService.Export(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: true);
+            Data.Models.Action createdAction = await solutionService.AddExportAction(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: true);
             return Ok(createdAction);
         }
 
@@ -109,7 +109,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             if (IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId, targetEnvironmentId, key) == false)
             {
-                return BadRequest("Cant skip a previous deploymentenvironment");
+                return BadRequest("Can't skip a previous deploymentenvironment");
             }
 
             else
@@ -119,9 +119,9 @@ namespace at.D365.PowerCID.Portal.Controllers
                 try
                 {
                     if (ExportExists(key))
-                        createdAction = await solutionService.Import(key, targetEnvironmentId, this.msIdCurrentUser);
+                        createdAction = await solutionService.AddImportAction(key, targetEnvironmentId, this.msIdCurrentUser);
                     else
-                        createdAction = await solutionService.Export(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: false, targetEnvironmentId);
+                        createdAction = await solutionService.AddExportAction(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: false, targetEnvironmentId);
                 }
                 catch (Exception e)
                 {
@@ -130,6 +130,34 @@ namespace at.D365.PowerCID.Portal.Controllers
 
                 return Ok(createdAction);
             }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ApplyUpgrade([FromODataUri] int key, ODataActionParameters parameters, [FromServices] SolutionService solutionService)
+        {
+            var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if(solution == null)
+                return Forbid();
+
+            if(solution.IsPatch())
+                return BadRequest("Can't apply upgrade for patch solution");
+
+            int targetEnvironmentId = (int)parameters["targetEnvironmentId"];
+            if (ImportExistsOnEnvironment(key, targetEnvironmentId) == false)
+                return BadRequest("Can't skip import before applying an upgrade");
+
+            Data.Models.Action createdAction;
+
+            try
+            {
+                createdAction = await solutionService.AddApplyUpgradeAction(key, targetEnvironmentId, this.msIdCurrentUser);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
+            return Ok(createdAction);
         }
 
         private bool IsPreviousDeploymentEnvironmentResultSuccessful(int deploymentPathId, int targetEnvironmentId, int solutionId)
@@ -147,6 +175,11 @@ namespace at.D365.PowerCID.Portal.Controllers
         private bool ExportExists(int solutionId)
         {
             return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.Type == 1 && a.Result == 1);
+        }
+
+        private bool ImportExistsOnEnvironment(int solutionId, int environmentId)
+        {
+            return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.TargetEnvironment == environmentId && a.Type == 2 && a.Result == 1);
         }
 
         private bool SolutionExists(int key)

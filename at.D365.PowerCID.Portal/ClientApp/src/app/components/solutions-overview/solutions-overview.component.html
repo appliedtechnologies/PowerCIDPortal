@@ -82,6 +82,7 @@
           (click)="onClickDeploySolution(cellInfo, true)"
           title="renew export"
         ></i>
+        {{ lastAction.TypeNavigation.Type }}
         {{ lastAction.StatusNavigation.Status }}
         {{ lastAction.ResultNavigation?.Result }}
       </div>
@@ -95,10 +96,12 @@
           (click)="onClickActionInfo(lastAction)"
         ></i>
         <i
+          *ngIf="autoRefreshInterval == null"
           class="dx-icon-refresh clickable-icon"
           title="start auto-refresh"
           (click)="onClickStartAutoRefresh(lastAction)"
         ></i>
+        {{ lastAction.TypeNavigation.Type }}
         {{ lastAction.StatusNavigation.Status }}
         {{ lastAction.ResultNavigation?.Result }}
       </div>
@@ -116,6 +119,7 @@
           (click)="onClickDeploySolution(cellInfo, true)"
           title="renew export"
         ></i>
+        {{ lastAction.TypeNavigation.Type }}
         {{ lastAction.StatusNavigation.Status }}
         {{ lastAction.ResultNavigation?.Result }}
       </div>
@@ -157,6 +161,13 @@
             title="show details"
             (click)="onClickActionInfo(lastAction)"
           ></i>
+          <i
+            *ngIf="lastAction.Type == 2 && (lastAction.SolutionNavigation | isPatch) == false"
+            class="at-icon powercid-icon-handcart clickable-icon"
+            (click)="onClickDeploySolution(cellInfo, false, true)"
+            title="apply upgrade"
+          ></i>
+          {{ lastAction.TypeNavigation.Type }}
           {{ lastAction.StatusNavigation.Status }}
           {{ lastAction.ResultNavigation?.Result }}
         </div>
@@ -170,16 +181,22 @@
             (click)="onClickActionInfo(lastAction)"
           ></i>
           <i
+            class="dx-icon-clear clickable-icon"
+            title="cancel import"
+            (click)="onClickCancelImport(lastAction)"
+          ></i>
+          <i
             *ngIf="autoRefreshInterval == null"
             class="dx-icon-refresh clickable-icon"
             title="start auto-refresh"
             (click)="onClickStartAutoRefresh(lastAction)"
           ></i>
+          {{ lastAction.TypeNavigation.Type }}
           {{ lastAction.StatusNavigation.Status }}
           {{ lastAction.ResultNavigation?.Result }}
         </div>
         <div
-          *ngIf="lastAction.Result != 1 && lastAction.Status == 3"
+          *ngIf="(lastAction.Result != 1 && lastAction.Status == 3)"
           class="card dx-card dx-theme-text-color card-error"
         >
           <i
@@ -189,9 +206,10 @@
           ></i>
           <i
             class="at-icon powercid-icon-handcart clickable-icon"
-            (click)="onClickDeploySolution(cellInfo, false)"
+            (click)="onClickDeploySolution(cellInfo, false, lastAction.Type == 3)"
             title="try deployment again"
           ></i>
+          {{ lastAction.TypeNavigation.Type }}
           {{ lastAction.StatusNavigation.Status }}
           {{ lastAction.ResultNavigation?.Result }}
         </div>
@@ -202,7 +220,7 @@
         <span>
           <i
             class="at-icon powercid-icon-handcart clickable-icon"
-            (click)="onClickDeploySolution(cellInfo, false)"
+            (click)="onClickDeploySolution(cellInfo)"
             title="deploy here"
           ></i>
           deploy here
