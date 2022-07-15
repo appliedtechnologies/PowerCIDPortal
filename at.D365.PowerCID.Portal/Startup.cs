@@ -110,6 +110,9 @@ namespace at.D365.PowerCID.Portal
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+             //logger
+            services.AddApplicationInsightsTelemetry();
+
             services.AddHttpContextAccessor();
             services.AddMicrosoftIdentityWebApiAuthentication(Configuration, "AzureAd")
                 .EnableTokenAcquisitionToCallDownstreamApi()

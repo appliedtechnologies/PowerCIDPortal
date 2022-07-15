@@ -2,23 +2,33 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using at.D365.PowerCID.Portal.Data.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Action = at.D365.PowerCID.Portal.Data.Models.Action;
 
 namespace at.D365.PowerCID.Portal.Services
 {
     public class ActionService
     {
+        private readonly ILogger<ActionService> logger;
+        private readonly IConfiguration configuration;
+        private readonly SolutionService solutionService;
+        private readonly atPowerCIDContext dbContext;
+        private System.Timers.Timer timer;
         private readonly IServiceProvider serviceProvider;
         private readonly SolutionHistoryService solutionHistoryService;
 
-        public ActionService(IServiceProvider serviceProvider)
+        public ActionService(IServiceProvider serviceProvider, ILogger<ActionService> logger)
         {
-            this.serviceProvider = serviceProvider;
             var scope = serviceProvider.CreateScope();
 
+            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+            this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
+            this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
             this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
+            this.logger = logger;
         }
 
         public void UpdateSuccessfulAction(Action action)

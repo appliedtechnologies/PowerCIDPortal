@@ -11,11 +11,13 @@ using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using Environment = at.D365.PowerCID.Portal.Data.Models.Environment;
+using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Services
 {
     public class AsyncJobBackgroundService : IHostedService, IDisposable
     {
+        private readonly ILogger logger;
         private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
         private readonly IConfiguration configuration;
@@ -26,7 +28,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         private System.Timers.Timer timer;
 
-        public AsyncJobBackgroundService(IServiceProvider serviceProvider)
+        public AsyncJobBackgroundService(IServiceProvider serviceProvider, ILogger<AsyncJobBackgroundService> logger)
         {
             this.serviceProvider = serviceProvider;
 
@@ -38,6 +40,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
             this.actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
             this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
+            this.logger = logger;
         }
 
         public void Dispose()
@@ -53,6 +56,7 @@ namespace at.D365.PowerCID.Portal.Services
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             timer?.Stop();
+            logger.LogInformation("Jobservice completed in {0}");
             await Task.CompletedTask;
         }
 
@@ -76,10 +80,9 @@ namespace at.D365.PowerCID.Portal.Services
                     {
                         await DoBackgroundWork(cancellationToken);
                     }
-                    catch (System.Exception)
+                    catch (System.Exception e)
                     {
-
-                        // TODO Logging;
+                        logger.LogWarning(e, "LogWarning: Error while processing the Task ScheduleJob");
                     }
 
                 }
@@ -214,13 +217,13 @@ namespace at.D365.PowerCID.Portal.Services
                                 await dbContext.SaveChangesAsync(asyncJob.ActionNavigation.CreatedByNavigation.MsId);                              
                             }
                             catch(Exception e){
-                                //TODO logging
+                                logger.LogError(e, "error while processing AsyncJob (foreach AsyncJob )");
                                 continue;
                             }
                         }
                     }
                     catch(Exception e){
-                        //TODO logging
+                        logger.LogError(e, "error while processing AsyncJob (foreach environmentGroup)");
                         continue;
                     }
                 }
