@@ -22,7 +22,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly ActionService actionService;
         private System.Timers.Timer timer;
 
-        public ActionBackgroundService(IServiceProvider serviceProvider, ILogger logger)
+        public ActionBackgroundService(IServiceProvider serviceProvider, ILogger<ActionBackgroundService> logger)
         {
             var scope = serviceProvider.CreateScope();
 
