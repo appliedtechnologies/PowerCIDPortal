@@ -202,7 +202,7 @@ namespace at.D365.PowerCID.Portal.Services
 
                                         if (solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
                                         {
-                                            if (((OptionSetValue)solutionHistoryEntry["msdyn_result"]).Value == 0)
+                                            if ((bool)solutionHistoryEntry["msdyn_result"] == false)
                                                 await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
                                             else
                                                 this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
