@@ -62,14 +62,18 @@ namespace at.D365.PowerCID.Portal.Services
                         PageNumber = 1 
                     }
                 };
-                query.Criteria.AddCondition("msdyn_name", ConditionOperator.Equal, new [] {solution.UniqueName});
-                query.Criteria.AddCondition("msdyn_solutionversion", ConditionOperator.Equal, new [] {solution.Version});
-                query.Criteria.AddCondition("msdyn_operation", ConditionOperator.Equal, new [] {1});
+                query.Criteria.AddCondition("msdyn_name", ConditionOperator.Equal, solution.UniqueName);
+                query.Criteria.AddCondition("msdyn_operation", ConditionOperator.Equal, 1);
 
                 query.AddOrder("msdyn_starttime", OrderType.Descending);
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
-                return Guid.Parse((string)response.Entities.FirstOrDefault()?["msdyn_solutionhistoryid"]);
+                var solutionHistoryEntry = response.Entities.FirstOrDefault();
+
+                if(solutionHistoryEntry == null)
+                    throw new Exception("Can not get Solution History entry for DeleteAndPromote");
+
+                return (Guid)solutionHistoryEntry["msdyn_solutionhistoryid"];
             }
         }
     }
