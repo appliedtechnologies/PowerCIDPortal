@@ -114,7 +114,7 @@
   height="auto"
   [showTitle]="true"
   title="Action Details"
-  [closeOnOutsideClick]="true"
+  [hideOnOutsideClick]="true"
   [(visible)]="this.isActionDetailPopupVisible"
 >
   <app-action-detail [actionId]="selectedActionId"></app-action-detail>
@@ -126,7 +126,7 @@
   height="auto"
   [showTitle]="true"
   [title]="'Details: ' + this.selectedSolution?.Name"
-  [closeOnOutsideClick]="true"
+  [hideOnOutsideClick]="true"
   [(visible)]="isSolutionDetailPopupVisible"
   [dragEnabled]="false"
 >

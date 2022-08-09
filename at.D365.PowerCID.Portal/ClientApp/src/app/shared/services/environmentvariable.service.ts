@@ -22,7 +22,7 @@ export class EnvironmentVariableService {
   public getExistingForApplication(applicationId: number): Promise<EnvironmentVariable[]>{
     return this.getStore().load({
       filter: ["Application", "=", applicationId],
-      expand: "EnvironmentVariableEnvironments"
+      expand: ["EnvironmentVariableEnvironments"]
     });
   }
 
