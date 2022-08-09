@@ -37,6 +37,13 @@
       }"
     ></dxi-item>
     <dxi-item
+      [label]="{ text: 'Duration' }"
+      editorType="dxTextBox"
+      [editorOptions]="{
+        value: this.actionService.getDurationString(this.action)
+      }"
+    ></dxi-item>
+    <dxi-item
       dataField="ErrorMessage"
       editorType="dxTextArea"
       [editorOptions]="{ height: 100 }"

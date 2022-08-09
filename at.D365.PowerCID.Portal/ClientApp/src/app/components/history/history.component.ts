@@ -40,6 +40,7 @@ export class HistoryComponent implements OnInit {
     private environmentService: EnvironmentService,
     private userService: UserService
   ) {
+    this.calculateDuration = this.calculateDuration.bind(this);
   }
   
   public ngOnInit(): void {  
@@ -117,8 +118,7 @@ export class HistoryComponent implements OnInit {
   }
 
   public calculateDuration(rowData: Action): string {
-    let duration = rowData.FinishTime.valueOf() - rowData.StartTime.valueOf();
-    return TimeHelper.millisecondsToString(duration);
+    return this.actionService.getDurationString(rowData);
   }
 
   public createdByFullName(user: User): string {
