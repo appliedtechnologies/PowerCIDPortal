@@ -34,13 +34,7 @@
     [visible]="this.isAdd"
     itemType="button"
     horizontalAlignment="left"
-    [buttonOptions]="{
-      icon: 'save',
-      text: 'Save',
-      type: 'success',
-      onClick: this.onClickSaveSolution.bind(this),
-      width: '100%'
-    }"
+    [buttonOptions]="buttonOptionsSaveAdd"
   ></dxi-item>
 
   <dxi-item
