@@ -29,12 +29,21 @@ export class SolutionDetailComponent implements OnChanges {
 
   public isUpgrade: boolean;
   public isAdd: boolean;
+  public buttonOptionsSaveAdd: any;
 
   constructor(
     private patchService: PatchService,
     private upgradeService: UpgradeService,
     private layoutService: LayoutService
-  ) {}
+  ) {
+    this.buttonOptionsSaveAdd = {
+      icon: 'save',
+      text: 'Save',
+      type: 'success',
+      onClick: this.onClickSaveSolution.bind(this),
+      width: '100%'
+    };
+  }
 
   public onClickSaveSolution(e) {
     let validation = e.validationGroup.validate();
