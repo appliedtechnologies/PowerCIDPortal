@@ -2,6 +2,7 @@ import { Component, Input, OnInit, ViewChild } from "@angular/core";
 import { DxDataGridComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import ODataStore from "devextreme/data/odata/store";
+import { TimeHelper } from "src/app/shared/helper/time.helper";
 import { Action } from "src/app/shared/models/action.model";
 import { Application } from "src/app/shared/models/application.model";
 import { Solution } from "src/app/shared/models/solution.model";
@@ -113,6 +114,11 @@ export class HistoryComponent implements OnInit {
 
   public onClickRefresh(): void {
     this.dataGrid.instance.refresh();
+  }
+
+  public calculateDuration(rowData: Action): string {
+    let duration = rowData.FinishTime.valueOf() - rowData.StartTime.valueOf();
+    return TimeHelper.millisecondsToString(duration);
   }
 
   public createdByFullName(user: User): string {

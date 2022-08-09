@@ -12,8 +12,8 @@ export interface Action {
   Type?: number;
   Status?: number;
   Result?: number;
-  StartTime?: string;
-  FinishTime?: string;
+  StartTime?: Date;
+  FinishTime?: Date;
   Solution?: number;
   ErrorMessage?: string;
   CreatedBy?: number;
