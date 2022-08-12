@@ -20,11 +20,13 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Octokit.GraphQL;
 using Action = at.D365.PowerCID.Portal.Data.Models.Action;
+using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Services
 {
     public class SolutionService
     {
+        private readonly ILogger logger;
         private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
         private readonly ConnectionReferenceService connectionReferenceService;
@@ -32,7 +34,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly SolutionHistoryService solutionHistoryService;
         private readonly IConfiguration configuration;
 
-        public SolutionService(IServiceProvider serviceProvider)
+        public SolutionService(IServiceProvider serviceProvider, ILogger<SolutionService> logger)
         {
             this.serviceProvider = serviceProvider;
             var scope = serviceProvider.CreateScope();
@@ -41,10 +43,13 @@ namespace at.D365.PowerCID.Portal.Services
             this.connectionReferenceService = scope.ServiceProvider.GetRequiredService<ConnectionReferenceService>();
             this.environmentVariableService = scope.ServiceProvider.GetRequiredService<EnvironmentVariableService>();
             this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
+            this.logger = logger;
         }
 
         public async Task<Data.Models.Action> AddExportAction(int key, Guid tenantMsIdCurrentUser, Guid msIdCurrentUser, bool exportOnly, int targetEnvironmentForImport = 0)
         {
+            logger.LogDebug("Begin: SolutionService AddExportAction(key = {key}, exportOnly = {exportOnly} )");
+
             if (!exportOnly && targetEnvironmentForImport != 0)
             {
                 User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
@@ -67,6 +72,9 @@ namespace at.D365.PowerCID.Portal.Services
 
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
+
+             logger.LogDebug("End: SolutionService AddExportAction() Return: ne  )");
+
             return newAction;
         }
 

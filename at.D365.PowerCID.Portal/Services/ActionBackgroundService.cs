@@ -37,22 +37,36 @@ namespace at.D365.PowerCID.Portal.Services
 
         public void Dispose()
         {
+            logger.LogDebug("Begin: ActionBackgroundService Dispose()");
+
             timer?.Dispose();
+
+            logger.LogDebug("End: ActionBackgroundService Dispose()");
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            logger.LogDebug("Begin: ActionBackgroundService StartAsync()");
+
             await ScheduleBackgroundJob(cancellationToken);
+
+            logger.LogDebug("End: ActionBackgroundService StartAsync()");
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
+            logger.LogDebug("Begin: ActionBackgroundService StopAsync()");
+
             timer?.Stop();
             await Task.CompletedTask;
+
+            logger.LogDebug("End: ActionBackgroundService StopAsync()");
         }
 
         private async Task ScheduleBackgroundJob(CancellationToken cancellationToken)
         {
+            logger.LogDebug("Begin: ActionBackgroundService ScheduleBackgroundJob()");
+
             var next = DateTimeOffset.Now.AddSeconds(int.Parse(configuration["ActionBackgroundJobIntervalSeconds"]));
             var delay = next - DateTimeOffset.Now;
             if (delay.TotalMilliseconds <= 0) // prevent non-positive values from being passed into Timer
@@ -71,9 +85,9 @@ namespace at.D365.PowerCID.Portal.Services
                     {
                         await DoBackgroundWork(cancellationToken);
                     }
-                    catch (System.Exception)
+                    catch (System.Exception e)
                     {
-                        // TODO Logging;
+                         logger.LogError($"Error: ActionBackgroundService ScheduleBackgroundJob() {e}");
                     }
                 }
 
@@ -84,16 +98,23 @@ namespace at.D365.PowerCID.Portal.Services
             };
             timer.Start();
             await Task.CompletedTask; 
+
+             logger.LogDebug("End: ActionBackgroundService ScheduleBackgroundJob()");
         }
 
         private async Task DoBackgroundWork(CancellationToken cancellationToken)
         {
+
+            logger.LogDebug("Begin: ActionBackgroundService DoBackgroundWork()");
+
             foreach (Action queuedAction in this.dbContext.Actions.Where(e => e.Status == 1).ToList())
             {
                 try{
                     switch(queuedAction.Type){
                         case 1: //export
                         {
+                            logger.LogDebug("Export started: ActionBackgroundService DoBackgroundWork()");
+
                             var asyncJobManaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
                             var asyncJobUnmanaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
 
@@ -101,11 +122,15 @@ namespace at.D365.PowerCID.Portal.Services
                             dbContext.Add(asyncJobUnmanaged);
 
                             queuedAction.Status = 2;
-                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);                          
+
+                            logger.LogDebug("Export completed: ActionBackgroundService DoBackgroundWork()");
                         }
                         break;
                         case 2: //import 
                         {
+                            logger.LogDebug("Import started: ActionBackgroundService DoBackgroundWork()");
+
                             byte[] exportSolutionFile = await this.gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
                             AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
 
@@ -113,10 +138,14 @@ namespace at.D365.PowerCID.Portal.Services
 
                             queuedAction.Status = 2;
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+
+                            logger.LogDebug("Imported completed: ActionBackgroundService DoBackgroundWork()");
                         }
                         break;
-                        case 3:
+                        case 3:  //appling upgrade
                         {
+                            logger.LogDebug("Appling upgrade started: ActionBackgroundService DoBackgroundWork()");
+
                             queuedAction.Status = 2;
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
@@ -128,6 +157,8 @@ namespace at.D365.PowerCID.Portal.Services
                                 dbContext.Add(asyncJob);
                                 
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+
+                            logger.LogDebug("Appling upgrade completed: ActionBackgroundService DoBackgroundWork()");
                         }  
                         break;
                         default: 
@@ -137,10 +168,13 @@ namespace at.D365.PowerCID.Portal.Services
                 catch(Exception e){
                     await this.actionService.UpdateFailedAction(queuedAction, e.Message);
                     await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
-                    logger.LogError(e, "error while processing Action");
+
+                    logger.LogError("Error: ActionBackgroundService DoBackgroundWork() Detailed: {e}");
+                    
                     continue;
                 }
             }
+
         }
     }
 }

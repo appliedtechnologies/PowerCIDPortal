@@ -45,23 +45,38 @@ namespace at.D365.PowerCID.Portal.Services
 
         public void Dispose()
         {
+            logger.LogDebug("Begin: AsyncJobBackgroundService Dispose()");
+
             timer?.Dispose();
+
+            logger.LogDebug("End: AsyncJobBackgroundService Dispose()");
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            logger.LogDebug("Begin: AsyncJobBackgroundService StartAsync()");
+
             await ScheduleJob(cancellationToken);
+
+            logger.LogDebug("End: AsyncJobBackgroundService StartAsync()");
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
+            logger.LogDebug("Begin: AsyncJobBackgroundService StopAsync()");
+
             timer?.Stop();
             logger.LogInformation("Jobservice completed in {0}");
             await Task.CompletedTask;
+
+            logger.LogDebug("End: AsyncJobBackgroundService StopAsync()");
         }
 
         protected async Task ScheduleJob(CancellationToken cancellationToken)
         {
+
+            logger.LogDebug("Begin: AsyncJobBackgroundService ScheduleJob()");
+
             var next = DateTimeOffset.Now.AddSeconds(int.Parse(configuration["AsyncJobIntervalSeconds"]));
             var delay = next - DateTimeOffset.Now;
             if (delay.TotalMilliseconds <= 0) // prevent non-positive values from being passed into Timer
@@ -82,7 +97,7 @@ namespace at.D365.PowerCID.Portal.Services
                     }
                     catch (System.Exception e)
                     {
-                        logger.LogWarning(e, "LogWarning: Error while processing the Task ScheduleJob");
+                        logger.LogWarning(e, "LogWarning: Error while processing the Task ScheduleJob()");
                     }
 
                 }
@@ -94,10 +109,15 @@ namespace at.D365.PowerCID.Portal.Services
             };
             timer.Start();
             await Task.CompletedTask;
+
+            logger.LogDebug("End: AsyncJobBackgroundService ScheduleJob()");
+
         }
 
         private async Task DoBackgroundWork(CancellationToken cancellationToken)
         {
+
+            logger.LogDebug("Begin: AsyncJobBackgroundService DoBackgroundWork()");
 
             var asyncJobsByEnvironment = dbContext.AsyncJobs.ToList().GroupBy(e => e.ActionNavigation.TargetEnvironment);
 
@@ -152,6 +172,7 @@ namespace at.D365.PowerCID.Portal.Services
                                             dbContext.AsyncJobs.Remove(asyncJob);
                                         }
                                     }
+                                    logger.LogDebug("AsyncJobBackgroundService DoBackgroundWork() Export completed");
                                     break;
                                     case 2: //import
                                     {
@@ -195,6 +216,7 @@ namespace at.D365.PowerCID.Portal.Services
                                             dbContext.AsyncJobs.Remove(asyncJob);
                                         }
                                     }
+                                    logger.LogDebug("AsyncJobBackgroundService DoBackgroundWork() Import completed");
                                     break;
                                     case 3: //appling upgrade
                                     {
@@ -210,24 +232,26 @@ namespace at.D365.PowerCID.Portal.Services
                                             dbContext.Remove(asyncJob);
                                         }
                                     }
+                                    logger.LogDebug("AsyncJobBackgroundService DoBackgroundWork() Appling upgrade completed");
                                     break;
                                     default:
                                         throw new Exception($"Unknow ActionType for AsyncJob: {asyncJob.ActionNavigation.Type}");
                                 }
                                 await dbContext.SaveChangesAsync(asyncJob.ActionNavigation.CreatedByNavigation.MsId);                              
                             }
-                            catch(Exception e){
-                                logger.LogError(e, "error while processing AsyncJob (foreach AsyncJob )");
+                            catch(Exception e){                               
+                                logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() asyncjob id = {asyncJob.Id} Detailed: {e}");
                                 continue;
                             }
                         }
                     }
                     catch(Exception e){
-                        logger.LogError(e, "error while processing AsyncJob (foreach environmentGroup)");
+                        logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() environmentgroup key = {environmentGroup.Key} Detailed: {e}");
                         continue;
                     }
                 }
-            }
+                   logger.LogDebug("End: AsyncJobBackgroundService DoBackgroundWork()");
+            }      
         }
 
         private async Task<Entity> GetCurrentAsyncOperationFromDataverse(Guid asyncOperationId, string basicUrl){

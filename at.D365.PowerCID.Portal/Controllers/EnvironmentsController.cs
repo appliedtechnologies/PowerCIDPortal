@@ -29,13 +29,16 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<at.D365.PowerCID.Portal.Data.Models.Environment> Get()
         {
-            logger.LogTrace("Begin: Get Environments");
+            logger.LogDebug("Begin: EnvironmentsController Get()");
+
             return base.dbContext.Environments.Where(e => e.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Environment> environment)
         {
+            logger.LogDebug($"Begin: EnvironmentsController Patch(key = {key}");
+            
             if((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
@@ -67,6 +70,8 @@ namespace at.D365.PowerCID.Portal.Controllers
                         throw;
                     }
                 }
+
+                logger.LogDebug($"End: EnvironmentsController Patch() Entity Id = {entity.Id}");
 
                 return Updated(entity);
             }

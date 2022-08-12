@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Octokit;
 using Octokit.GraphQL;
 using ProductHeaderValue = Octokit.ProductHeaderValue;
+using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Services
 {
@@ -14,13 +15,15 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly string privateKey;
         private readonly string userAgend;
         private readonly string version;
+        private readonly ILogger logger;
 
-        public GitHubService(IConfiguration config)
+        public GitHubService(IConfiguration config, ILogger<GitHubService> logger)
         {
             this.appId = config.GetValue<int>("GitHubApp:Id");
             this.privateKey = config["GitHubApp:PrivateKey"];
             this.userAgend = config["GitHubApp:UserAgend"];
             this.version = GetType().Assembly.GetName().Version.ToString();
+            this.logger = logger;
         }
 
         public GitHubClient GetAppClient(){
