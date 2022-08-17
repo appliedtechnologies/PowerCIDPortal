@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Services
 {
@@ -17,17 +18,22 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly atPowerCIDContext dbContext;
         private readonly IDownstreamWebApi downstreamWebApi;
         private readonly IConfiguration configuration;
+        private readonly ILogger logger;
 
-        public EnvironmentVariableService(IServiceProvider serviceProvider)
+        public EnvironmentVariableService(IServiceProvider serviceProvider, ILogger<EnvironmentVariableService> logger)
         {
             this.serviceProvider = serviceProvider;
             var scope = serviceProvider.CreateScope();
             this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
             this.downstreamWebApi = scope.ServiceProvider.GetRequiredService<IDownstreamWebApi>();
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+            this.logger = logger;
         }
 
         public async Task CleanEnvironmentVariables(int applicationId){
+
+            logger.LogDebug($"Begin: EnvironmentVariableService CleanEnvironmentVariables(applicationId: {applicationId})");
+            
             var existsingEnvironmentVariablesInDataverse = await this.GetExistsingEnvironmentVariablesFromDataverse(applicationId);
 
             foreach (var environmentVariable in this.dbContext.EnvironmentVariables.Where(e => e.Application == applicationId))
@@ -36,10 +42,15 @@ namespace at.D365.PowerCID.Portal.Services
                     this.dbContext.EnvironmentVariables.Remove(environmentVariable);
             }
 
+            logger.LogDebug($"End: EnvironmentVariableService CleanEnvironmentVariables()");
+
             await this.dbContext.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<EnvironmentVariable>> GetExistsingEnvironmentVariablesFromDataverse(int applicationId){
+
+            logger.LogDebug($"Begin: EnvironmentVariableService GetExistsingEnvironmentVariablesFromDataverse(applicationId: {applicationId})");
+
             Application application = await this.dbContext.Applications.FindAsync(applicationId);
 
             List<EnvironmentVariable> environmentVariables = new List<EnvironmentVariable>();
@@ -55,6 +66,8 @@ namespace at.D365.PowerCID.Portal.Services
                 if(!solution.IsPatch())
                     break;
             } 
+
+            logger.LogDebug($"End: EnvironmentVariableService GetExistsingEnvironmentVariablesFromDataverse()");
 
             return environmentVariables;
         }

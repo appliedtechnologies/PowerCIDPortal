@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
+using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Services
 {
@@ -14,14 +15,17 @@ namespace at.D365.PowerCID.Portal.Services
     {
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
+        private readonly ILogger logger;
 
-        public SolutionHistoryService(IServiceProvider serviceProvider)
+        public SolutionHistoryService(IServiceProvider serviceProvider,  ILogger<SolutionHistoryService> logger)
         {
             this.serviceProvider = serviceProvider;
 
             var scope = serviceProvider.CreateScope();
 
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+            this.logger = logger;
         }
 
         public async Task<Entity> GetEntryById(Guid solutionHistoryId, string basicUrl)

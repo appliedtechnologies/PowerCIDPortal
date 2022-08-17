@@ -66,7 +66,6 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug("Begin: AsyncJobBackgroundService StopAsync()");
 
             timer?.Stop();
-            logger.LogInformation("Jobservice completed in {0}");
             await Task.CompletedTask;
 
             logger.LogDebug("End: AsyncJobBackgroundService StopAsync()");
@@ -97,7 +96,7 @@ namespace at.D365.PowerCID.Portal.Services
                     }
                     catch (System.Exception e)
                     {
-                        logger.LogWarning(e, "LogWarning: Error while processing the Task ScheduleJob()");
+                        logger.LogError($"Error: AsyncJobBackgroundService ScheduleJob() Exception: {e}");
                     }
 
                 }
@@ -172,7 +171,7 @@ namespace at.D365.PowerCID.Portal.Services
                                             dbContext.AsyncJobs.Remove(asyncJob);
                                         }
                                     }
-                                    logger.LogDebug("AsyncJobBackgroundService DoBackgroundWork() Export completed");
+                                    logger.LogInformation("Export completed: AsyncJobBackgroundService DoBackgroundWork() ");
                                     break;
                                     case 2: //import
                                     {
@@ -216,7 +215,7 @@ namespace at.D365.PowerCID.Portal.Services
                                             dbContext.AsyncJobs.Remove(asyncJob);
                                         }
                                     }
-                                    logger.LogDebug("AsyncJobBackgroundService DoBackgroundWork() Import completed");
+                                    logger.LogInformation("Import completed: AsyncJobBackgroundService DoBackgroundWork() ");
                                     break;
                                     case 3: //appling upgrade
                                     {
@@ -232,7 +231,7 @@ namespace at.D365.PowerCID.Portal.Services
                                             dbContext.Remove(asyncJob);
                                         }
                                     }
-                                    logger.LogDebug("AsyncJobBackgroundService DoBackgroundWork() Appling upgrade completed");
+                                    logger.LogInformation("Appling upgrade completed: AsyncJobBackgroundService DoBackgroundWork() ");
                                     break;
                                     default:
                                         throw new Exception($"Unknow ActionType for AsyncJob: {asyncJob.ActionNavigation.Type}");
@@ -240,17 +239,17 @@ namespace at.D365.PowerCID.Portal.Services
                                 await dbContext.SaveChangesAsync(asyncJob.ActionNavigation.CreatedByNavigation.MsId);                              
                             }
                             catch(Exception e){                               
-                                logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() asyncjob id = {asyncJob.Id} Detailed: {e}");
+                                logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() Exception: {e}");
                                 continue;
                             }
                         }
                     }
                     catch(Exception e){
-                        logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() environmentgroup key = {environmentGroup.Key} Detailed: {e}");
+                        logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() Exception: {e}");
                         continue;
                     }
                 }
-                   logger.LogDebug("End: AsyncJobBackgroundService DoBackgroundWork()");
+                   logger.LogDebug($"End: AsyncJobBackgroundService DoBackgroundWork()");
             }      
         }
 
