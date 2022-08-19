@@ -37,7 +37,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Environment> environment)
         {
-            logger.LogDebug($"Begin: EnvironmentsController Patch(key = {key}");
+            logger.LogDebug($"Begin: EnvironmentsController Patch(key: {key}");
             
             if((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();

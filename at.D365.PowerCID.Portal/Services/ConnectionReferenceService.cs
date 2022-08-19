@@ -31,7 +31,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<IEnumerable<ConnectionReference>> GetExistsingConnectionReferencesFromDataverse(int applicationId){
 
-            logger.LogDebug($"Begin: ConnectionReferenceService GetExistsingConnectionReferencesFromDataverse(applicationId = {applicationId})");
+            logger.LogDebug($"Begin: ConnectionReferenceService GetExistsingConnectionReferencesFromDataverse(applicationId: {applicationId})");
 
             Application application = await this.dbContext.Applications.FindAsync(applicationId);
 
@@ -49,14 +49,14 @@ namespace at.D365.PowerCID.Portal.Services
                     break;
             } 
 
-            logger.LogDebug($"End: ConnectionReferenceService GetExistsingConnectionReferencesFromDataverse()");
+            logger.LogDebug($"End: ConnectionReferenceService GetExistsingConnectionReferencesFromDataverse(applicationId: {applicationId})");
 
             return connectionReferences;
         }
 
         public async Task CleanConnectionReferences(int applicationId){
 
-            logger.LogDebug($"Begin: ConnectionReferenceService CleanConnectionReferences(applicationId = {applicationId})");
+            logger.LogDebug($"Begin: ConnectionReferenceService CleanConnectionReferences(applicationId: {applicationId})");
 
             var existsingConnectionReferencesInDataverse = await this.GetExistsingConnectionReferencesFromDataverse(applicationId);
 
@@ -66,9 +66,9 @@ namespace at.D365.PowerCID.Portal.Services
                     this.dbContext.ConnectionReferences.Remove(connectionReference);
             }
 
-            logger.LogDebug($"End: ConnectionReferenceService CleanConnectionReferences(applicationId = {applicationId})");
-
             await this.dbContext.SaveChangesAsync();
+
+            logger.LogDebug($"End: ConnectionReferenceService CleanConnectionReferences(applicationId: {applicationId})");
         }
 
         public async Task<int> GetStatus(int applicationId, int environmentId)
@@ -80,7 +80,8 @@ namespace at.D365.PowerCID.Portal.Services
             var existingConnectionReferencesMsIds = existingConnectionReferences.Select(e => e.MsId);
 
             if(existingConnectionReferences.Count() == 0){
-                logger.LogInformation("Configuration completed:  ConnectionReferenceService GetStatus()");
+                logger.LogInformation("Configuration incompleted:  ConnectionReferenceService GetStatus()");
+                logger.LogDebug($"End ConnectionReferenceService GetStatus(applicationId = {applicationId}, environmentId = {environmentId})");
                 return 1;
             }
                 
@@ -88,11 +89,14 @@ namespace at.D365.PowerCID.Portal.Services
             var connectionReferencesInDb = this.dbContext.ConnectionReferences.Where(e => existingConnectionReferencesMsIds.Contains(e.MsId) && e.Application == applicationId);
 
             if(existingConnectionReferencesMsIds.All(e => connectionReferencesInDb.FirstOrDefault(x => x.MsId == e) != null) && connectionReferencesInDb.All(e => e.ConnectionReferenceEnvironments.Any(x => x.Environment == environmentId && x.ConnectionId != null && x.ConnectionId != String.Empty))){
-                logger.LogInformation("Configuration completed:  ConnectionReferenceService GetStatus()");
+                logger.LogInformation("Configuration incompleted:  ConnectionReferenceService GetStatus()");
+                logger.LogDebug($"End ConnectionReferenceService GetStatus(applicationId = {applicationId}, environmentId = {environmentId})");
                 return 1;
             }
                
-            logger.LogInformation("Configuration incompleted:  ConnectionReferenceService GetStatus()");
+            logger.LogInformation("Configuration completed:  ConnectionReferenceService GetStatus()");
+
+            logger.LogDebug($"End ConnectionReferenceService GetStatus(applicationId = {applicationId}, environmentId = {environmentId})");
 
             return 0;
         }
@@ -114,7 +118,7 @@ namespace at.D365.PowerCID.Portal.Services
                 }
             }
 
-                logger.LogDebug($"End: ConnectionReferenceService GetConnectionReferencesBySolutionComponents()");
+                logger.LogDebug($"End: ConnectionReferenceService GetConnectionReferencesBySolutionComponents(applicationId: {applicationId}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()})");
 
             return connectionReferences;
         }
@@ -141,7 +145,7 @@ namespace at.D365.PowerCID.Portal.Services
                 MsId = connectionReferenceMsId
             };
 
-            logger.LogDebug($"End: ConnectionReferenceService GetConnectionReferenceFromDataverse()");
+            logger.LogDebug($"End: ConnectionReferenceService GetConnectionReferenceFromDataverse(connectionReferenceMsId: {connectionReferenceMsId.ToString()}, basicUrl: {basicUrl}, tenandMsId: {tenandMsId.ToString()})");
 
             return connectionReference;
         }
@@ -159,7 +163,7 @@ namespace at.D365.PowerCID.Portal.Services
                 options.Scopes = $"{basicUrl}/.default";
             });
 
-            logger.LogDebug($"End: ConnectionReferenceService GetSolutionComponentsFromDataverse()");
+            logger.LogDebug($"End: ConnectionReferenceService GetSolutionComponentsFromDataverse(solutionMsId: {solutionMsId.ToString()}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()})");
 
             return (await response.Content.ReadAsAsync<JObject>())["value"];
         }

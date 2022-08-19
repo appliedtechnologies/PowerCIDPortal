@@ -27,40 +27,58 @@ namespace at.D365.PowerCID.Portal.Services
         }
 
         public GitHubClient GetAppClient(){
+
+            logger.LogDebug("Begin: GitHubService GetAppClient()");
+
             var appJwt = this.GetAppJwt();
 
             var appClient = new GitHubClient(new ProductHeaderValue(userAgend)){
                 Credentials = new Credentials(appJwt, AuthenticationType.Bearer)
             };
 
+            logger.LogDebug("End: GitHubService GetAppClient()");
+
             return appClient;
         }
 
         public async Task<Tuple<Installation, GitHubClient>> GetInstallationWithClient(int installationId){
+
+            logger.LogDebug($"Begin: GitHubService GetInstallationWithClient(installationId: {installationId})");
+
             var appClient = this.GetAppClient();
             var installation = await appClient.GitHubApps.GetInstallationForCurrent(installationId);
             var installationTokenResponse = await appClient.GitHubApps.CreateInstallationToken(installationId);
 
             var installationClient = new GitHubClient(new ProductHeaderValue($"{userAgend}-Installation{installationId}")){
                 Credentials = new Credentials(installationTokenResponse.Token)
-            };        
+            };     
+
+            logger.LogDebug($"End: GitHubService GetInstallationWithClient(installationId: {installationId})");   
 
             return new Tuple<Installation, GitHubClient>(installation,installationClient);
         }
 
         public async Task<Octokit.GraphQL.Connection> GetGraphQLConnetion(int installationId){
+
+            logger.LogDebug($"Begin: GitHubService GetGraphQLConnetion(installationId: {installationId})");
+
             var appClient = this.GetAppClient();
             var installation = await appClient.GitHubApps.GetInstallationForCurrent(installationId);
             var installationTokenResponse = await appClient.GitHubApps.CreateInstallationToken(installationId);
 
             var productInformation = new Octokit.GraphQL.ProductHeaderValue($"{userAgend}-Installation{installationId}", this.version);
-            var connection = new Octokit.GraphQL.Connection(productInformation, installationTokenResponse.Token);      
+            var connection = new Octokit.GraphQL.Connection(productInformation, installationTokenResponse.Token);     
+
+            logger.LogDebug($"End: GitHubService GetGraphQLConnetion(installationId: {installationId})"); 
 
             return connection;
         }
 
         public async Task<byte[]> GetSolutionFileAsByteArray(Tenant tenant, Solution solution)
         {
+           
+            logger.LogDebug($"Begin: GitHubService GetSolutionFileAsByteArray(tenant id: {tenant.Id}, solution id: {solution.Id})");
+
             (var installation, var installationClient) = await this.GetInstallationWithClient(tenant.GitHubInstallationId);
 
             string path = $"applications/{ solution.ApplicationNavigation.Id }_{ solution.ApplicationNavigation.SolutionUniqueName }/{ solution.Version }/{solution.Name}_managed.zip";
@@ -80,17 +98,27 @@ namespace at.D365.PowerCID.Portal.Services
             var reuslt = await connection.Run(query);
 
             var solutionZipFileBase64 = (await installationClient.Git.Blob.Get(owner, repositoryName, reuslt.Oid)).Content;
+
+            logger.LogDebug($"End GitHubService GetSolutionFileAsByteArray(tenant id: {tenant.Id}, solution id: {solution.Id})");
+
             return Convert.FromBase64String(solutionZipFileBase64);
         }
 
         public async Task<string> GetSolutionFileAsBase64String(Tenant tenant, Solution solution)
         {
+            logger.LogDebug($"Begin: GitHubService  GetSolutionFileAsBase64String(tenant id: {tenant.Id}, solution id: {solution.Id})");
+
             var solutionZipFile = await this.GetSolutionFileAsByteArray(tenant, solution);
+
+            logger.LogDebug($"End: GitHubService  GetSolutionFileAsBase64String(tenant id: {tenant.Id}, solution id: {solution.Id})");
+
             return Convert.ToBase64String(solutionZipFile);
         }
 
         public async Task SaveSolutionFile(AsyncJob asyncJob, string exportSolutionFile, Tenant tenant)
         {
+            logger.LogDebug($"Begin: GitHubService SaveSolutionFile(asyncJob: {asyncJob} exportSolutionFile: {exportSolutionFile}, tenant id: {tenant.Id})");
+
             (var installation, var installationClient) = await this.GetInstallationWithClient(tenant.GitHubInstallationId);
             (var owner, var repositoryName) = this.SplitOwnerAndRepositoryName(tenant.GitHubRepositoryName);
 
@@ -119,17 +147,27 @@ namespace at.D365.PowerCID.Portal.Services
             // 5. Update the reference of master branch with the SHA of the commit
             // Update HEAD with the commit
             await installationClient.Git.Reference.Update(owner, repositoryName, headMasterRef, new ReferenceUpdate(commit.Sha));
+
+            logger.LogDebug($"End: GitHubService SaveSolutionFile(asyncJob: {asyncJob} exportSolutionFile: {exportSolutionFile}, tenant id: {tenant.Id})");
         }
 
         private Tuple<string, string> SplitOwnerAndRepositoryName(string ownerAndRepositoryName){
+
+            logger.LogDebug("Begin: GitHubService SplitOwnerAndRepositoryName(ownerAndRepositoryName: {ownerAndRepositoryName})");
+
             string[] gitHubRepositoryName = ownerAndRepositoryName.Split('/');
             string owner = gitHubRepositoryName[0];
             string repositoryName = gitHubRepositoryName[1];
+
+            logger.LogDebug("End: GitHubService SplitOwnerAndRepositoryName(ownerAndRepositoryName: {ownerAndRepositoryName})");
 
             return new Tuple<string, string>(owner,repositoryName);
         }
 
         private string GetAppJwt(){
+
+            logger.LogDebug("Begin: GitHubService GetAppJwt())");
+
             var generator = new GitHubJwt.GitHubJwtFactory(
                 new GitHubJwt.StringPrivateKeySource(this.privateKey),
                 new GitHubJwt.GitHubJwtFactoryOptions{
@@ -139,6 +177,9 @@ namespace at.D365.PowerCID.Portal.Services
             );
 
             var jwtToken = generator.CreateEncodedJwtToken();
+
+            logger.LogDebug("End: GitHubService GetAppJwt())");
+
             return jwtToken;
         }
     }

@@ -110,7 +110,6 @@ namespace at.D365.PowerCID.Portal.Services
             await Task.CompletedTask;
 
             logger.LogDebug("End: AsyncJobBackgroundService ScheduleJob()");
-
         }
 
         private async Task DoBackgroundWork(CancellationToken cancellationToken)
@@ -134,6 +133,9 @@ namespace at.D365.PowerCID.Portal.Services
                                 switch(asyncJob.ActionNavigation.Type){
                                     case 1: //export
                                     {
+
+                                        logger.LogInformation("Export started: AsyncJobBackgroundService DoBackgroundWork() ");
+
                                         Entity asyncOperationInDataverse = await this.GetCurrentAsyncOperationFromDataverse((Guid)asyncJob.AsyncOperationId, environment.BasicUrl);
 
                                         if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30){ // Completed Success
@@ -175,6 +177,8 @@ namespace at.D365.PowerCID.Portal.Services
                                     break;
                                     case 2: //import
                                     {
+                                        logger.LogInformation("Import started: AsyncJobBackgroundService DoBackgroundWork() ");
+
                                         Entity asyncOperationInDataverse = await this.GetCurrentAsyncOperationFromDataverse((Guid)asyncJob.AsyncOperationId, environment.BasicUrl);
 
                                         if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30){ // Completed Success
@@ -219,6 +223,8 @@ namespace at.D365.PowerCID.Portal.Services
                                     break;
                                     case 3: //appling upgrade
                                     {
+                                        logger.LogInformation("Appling upgrade started: AsyncJobBackgroundService DoBackgroundWork() ");
+                                        
                                         Entity solutionHistoryEntry = await this.solutionHistoryService.GetEntryById((Guid)asyncJob.JobId, environment.BasicUrl);
 
                                         if (solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
@@ -231,7 +237,7 @@ namespace at.D365.PowerCID.Portal.Services
                                             dbContext.Remove(asyncJob);
                                         }
                                     }
-                                    logger.LogInformation("Appling upgrade completed: AsyncJobBackgroundService DoBackgroundWork() ");
+                                    logger.LogInformation("Appling upgrade completed: AsyncJobBackgroundService DoBackgroundWork()");
                                     break;
                                     default:
                                         throw new Exception($"Unknow ActionType for AsyncJob: {asyncJob.ActionNavigation.Type}");
@@ -248,14 +254,20 @@ namespace at.D365.PowerCID.Portal.Services
                         logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() Exception: {e}");
                         continue;
                     }
-                }
-                   logger.LogDebug($"End: AsyncJobBackgroundService DoBackgroundWork()");
-            }      
+                }               
+            }  
+            logger.LogDebug($"End: AsyncJobBackgroundService DoBackgroundWork()");    
         }
 
         private async Task<Entity> GetCurrentAsyncOperationFromDataverse(Guid asyncOperationId, string basicUrl){
+
+                logger.LogDebug($"Begin: AsyncJobBackgroundService GetCurrentAsyncOperationFromDataverse(asyncOperationId: {asyncOperationId.ToString()}, basicUrl: {basicUrl})");
+
             using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 Entity response = await dataverseClient.RetrieveAsync("asyncoperation", asyncOperationId, new ColumnSet("asyncoperationid", "statecode", "statuscode", "friendlymessage"));
+
+                logger.LogDebug($"End: AsyncJobBackgroundService GetCurrentAsyncOperationFromDataverse(asyncOperationId: {asyncOperationId.ToString()}, basicUrl: {basicUrl})");
+
                 return response;
             }
         }

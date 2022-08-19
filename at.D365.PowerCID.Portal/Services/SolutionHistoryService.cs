@@ -30,14 +30,21 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<Entity> GetEntryById(Guid solutionHistoryId, string basicUrl)
         {
+            logger.LogDebug("Begin: SolutionHistoryService GetEntryById(solutionHistoryId: {solutionHistoryId}, basicUrl: {basicUrl})");
+
             using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 Entity response = await dataverseClient.RetrieveAsync("msdyn_solutionhistory", solutionHistoryId, new ColumnSet("msdyn_status", "msdyn_endtime", "msdyn_result", "msdyn_exceptionmessage"));
+
+                logger.LogDebug("End: SolutionHistoryService GetEntryById(solutionHistoryId: {solutionHistoryId}, basicUrl: {basicUrl})");
+
                 return response;
             }
         }
 
         public async Task<string> GetExceptionMessage(AsyncJob asyncJob)
         {
+            logger.LogDebug($"Begin: SolutionHistoryService GetExceptionMessage(asyncJob id: {asyncJob.Id})");
+
             using(var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 var query = new QueryExpression("msdyn_solutionhistory"){
                     ColumnSet = new ColumnSet("msdyn_exceptionmessage"),
@@ -52,12 +59,17 @@ namespace at.D365.PowerCID.Portal.Services
                 query.AddOrder("msdyn_starttime", OrderType.Descending);
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+
+                logger.LogDebug($"End: SolutionHistoryService GetExceptionMessage(asyncJob id: {asyncJob.Id})");
+
                 return (string)response.Entities.FirstOrDefault()?["msdyn_exceptionmessage"];
             }
         }
 
         public async Task<Guid> GetIdForDeleteAndPromote(Solution solution, string basicUrl)
         {
+            logger.LogDebug($"Begin: SolutionHistoryService GetIdForDeleteAndPromote(solution id: {solution.Id}, basicUrl: {basicUrl})");
+
             using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 var query = new QueryExpression("msdyn_solutionhistory"){
                     ColumnSet = new ColumnSet("msdyn_solutionhistoryid"),
@@ -73,6 +85,9 @@ namespace at.D365.PowerCID.Portal.Services
                 query.AddOrder("msdyn_starttime", OrderType.Descending);
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+
+                logger.LogDebug($"End: SolutionHistoryService GetIdForDeleteAndPromote(solution id: {solution.Id}, basicUrl: {basicUrl})");
+
                 return Guid.Parse((string)response.Entities.FirstOrDefault()?["msdyn_solutionhistoryid"]);
             }
         }

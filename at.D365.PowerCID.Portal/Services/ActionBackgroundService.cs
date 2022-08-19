@@ -87,7 +87,7 @@ namespace at.D365.PowerCID.Portal.Services
                     }
                     catch (System.Exception e)
                     {
-                         logger.LogError($"Error: ActionBackgroundService ScheduleBackgroundJob() {e}");
+                        logger.LogError($"Error: ActionBackgroundService ScheduleBackgroundJob() Exception: {e}");
                     }
                 }
 
@@ -113,7 +113,7 @@ namespace at.D365.PowerCID.Portal.Services
                     switch(queuedAction.Type){
                         case 1: //export
                         {
-                            logger.LogDebug("Export started: ActionBackgroundService DoBackgroundWork()");
+                            logger.LogInformation("Export started: ActionBackgroundService DoBackgroundWork()");
 
                             var asyncJobManaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
                             var asyncJobUnmanaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
@@ -124,12 +124,12 @@ namespace at.D365.PowerCID.Portal.Services
                             queuedAction.Status = 2;
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);                          
 
-                            logger.LogDebug("Export completed: ActionBackgroundService DoBackgroundWork()");
+                            logger.LogInformation("Export completed: ActionBackgroundService DoBackgroundWork()");
                         }
                         break;
                         case 2: //import 
                         {
-                            logger.LogDebug("Import started: ActionBackgroundService DoBackgroundWork()");
+                            logger.LogInformation("Import started: ActionBackgroundService DoBackgroundWork()");
 
                             byte[] exportSolutionFile = await this.gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
                             AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
@@ -139,12 +139,12 @@ namespace at.D365.PowerCID.Portal.Services
                             queuedAction.Status = 2;
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                            logger.LogDebug("Imported completed: ActionBackgroundService DoBackgroundWork()");
+                            logger.LogInformation("Imported completed: ActionBackgroundService DoBackgroundWork()");
                         }
                         break;
                         case 3:  //appling upgrade
                         {
-                            logger.LogDebug("Appling upgrade started: ActionBackgroundService DoBackgroundWork()");
+                            logger.LogInformation("Appling upgrade started: ActionBackgroundService DoBackgroundWork()");
 
                             queuedAction.Status = 2;
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
@@ -158,7 +158,7 @@ namespace at.D365.PowerCID.Portal.Services
                                 
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                            logger.LogDebug("Appling upgrade completed: ActionBackgroundService DoBackgroundWork()");
+                            logger.LogInformation("Appling upgrade completed: ActionBackgroundService DoBackgroundWork()");
                         }  
                         break;
                         default: 
@@ -169,12 +169,12 @@ namespace at.D365.PowerCID.Portal.Services
                     await this.actionService.UpdateFailedAction(queuedAction, e.Message);
                     await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                    logger.LogError("Error: ActionBackgroundService DoBackgroundWork() Detailed: {e}");
+                    logger.LogError($"Error: ActionBackgroundService DoBackgroundWork() Exception: {e}");
                     
                     continue;
                 }
             }
-
+            logger.LogDebug("End: ActionBackgroundService DoBackgroundWork()");
         }
     }
 }
