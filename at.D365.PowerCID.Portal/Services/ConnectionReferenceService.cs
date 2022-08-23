@@ -2,11 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.ServiceModel;
 using System.Threading.Tasks;
 using at.D365.PowerCID.Portal.Data.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Identity.Web;
+using Microsoft.PowerPlatform.Dataverse.Client;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
 using Newtonsoft.Json.Linq;
 
 namespace at.D365.PowerCID.Portal.Services
@@ -35,8 +39,8 @@ namespace at.D365.PowerCID.Portal.Services
 
             foreach (Solution solution in application.Solutions.Reverse())
             {
-                var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl, tenantMsId);
-                var connectionReferencesOfSolution = await this.GetConnectionReferencesBySolutionComponents(solutionComponents, applicationId, basicUrl, tenantMsId);
+                var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl);
+                var connectionReferencesOfSolution = await this.GetConnectionReferencesBySolutionComponents(solutionComponents, applicationId, basicUrl);
                 connectionReferences.AddRange(connectionReferencesOfSolution.Where(e => connectionReferences.All(x => e.MsId != x.MsId)));
 
                 if(!solution.IsPatch())
@@ -75,56 +79,54 @@ namespace at.D365.PowerCID.Portal.Services
             return 0;
         }
 
-        private async Task<IEnumerable<ConnectionReference>> GetConnectionReferencesBySolutionComponents(JToken solutionComponents, int applicationId, string basicUrl, Guid tenantMsId){
+        private async Task<IEnumerable<ConnectionReference>> GetConnectionReferencesBySolutionComponents(EntityCollection solutionComponents, int applicationId, string basicUrl){
             List<ConnectionReference> connectionReferences = new List<ConnectionReference>();
-            foreach (var solutionComponent in solutionComponents)
+            foreach (var solutionComponent in solutionComponents.Entities)   
             {
-                if((int)solutionComponent["componenttype"] == 10029) //10029 is type of a connection reference´
+                if(solutionComponent.FormattedValues["componenttype"] == null)
                 {
-                    var connectionReferenceMsId = new Guid((string)solutionComponent["objectid"]);
+                    try{
+                        var connectionReferenceMsId = (Guid)solutionComponent["objectid"];
                     
-                    var connectionReference = await this.GetConnectionReferenceFromDataverse(connectionReferenceMsId, basicUrl, tenantMsId);
-                    connectionReference.Application = applicationId;
-                    connectionReferences.Add(connectionReference);
+                        var connectionReference = await this.GetConnectionReferenceFromDataverse(connectionReferenceMsId, basicUrl);
+                        connectionReference.Application = applicationId;
+                        connectionReferences.Add(connectionReference);
+                    }
+                    catch(FaultException e){
+                        //TODO log not a connection reference, but this can be normal
+                        continue;
+                    }
                 }
             }
 
             return connectionReferences;
         }
         
-        private async Task<ConnectionReference> GetConnectionReferenceFromDataverse(Guid connectionReferenceMsId, string basicUrl, Guid tenandMsId){
-            var responseConnectionReference = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
-            {
-                options.Tenant = $"{tenandMsId}";
-                options.BaseUrl = basicUrl  + options.BaseUrl;
-                options.RelativePath = $"/connectionreferences?$filter=connectionreferenceid eq '{connectionReferenceMsId}'";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{basicUrl}/.default";
-            });
+        private async Task<ConnectionReference> GetConnectionReferenceFromDataverse(Guid connectionReferenceMsId, string basicUrl){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                Entity response = await dataverseClient.RetrieveAsync("connectionreference", connectionReferenceMsId, new ColumnSet("connectionreferencedisplayname", "connectionreferencelogicalname", "connectorid"));
+                var connectionReference = new ConnectionReference
+                {
+                    DisplayName = (string)response["connectionreferencedisplayname"],
+                    LogicalName = (string)response["connectionreferencelogicalname"],
+                    ConnectorId = (string)response["connectorid"],
+                    MsId = connectionReferenceMsId
+                };
 
-            var connectionReferenceJToken = (await responseConnectionReference.Content.ReadAsAsync<JObject>())["value"][0];
-            var connectionReference = new ConnectionReference
-            {
-                DisplayName = (string)connectionReferenceJToken["connectionreferencedisplayname"],
-                LogicalName = (string)connectionReferenceJToken["connectionreferencelogicalname"],
-                ConnectorId = (string)connectionReferenceJToken["connectorid"],
-                MsId = connectionReferenceMsId
-            };
-
-            return connectionReference;
+                return connectionReference;
+            }
         }
 
-        private async Task<JToken> GetSolutionComponentsFromDataverse(Guid solutionMsId, string basicUrl, Guid tenantMsId){
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
-            {
-                options.Tenant = $"{tenantMsId}";
-                options.BaseUrl = basicUrl  + options.BaseUrl;
-                options.RelativePath = $"/solutioncomponents?$filter=_solutionid_value eq '{solutionMsId}'";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{basicUrl}/.default";
-            });
+        private async Task<EntityCollection> GetSolutionComponentsFromDataverse(Guid solutionMsId, string basicUrl){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                var query = new QueryExpression("solutioncomponent"){
+                    ColumnSet = new ColumnSet("solutionid", "componenttype", "objectid"),
+                };
+                query.Criteria.AddCondition("solutionid", ConditionOperator.Equal, solutionMsId);
 
-            return (await response.Content.ReadAsAsync<JObject>())["value"];
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+                return response; 
+            }
         }
     }
 }
