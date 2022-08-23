@@ -12,13 +12,15 @@ using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.Logging;
+
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
     [Authorize]
     public class EnvironmentVariablesController : BaseController
     {
-        public EnvironmentVariablesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public EnvironmentVariablesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
         } 
 

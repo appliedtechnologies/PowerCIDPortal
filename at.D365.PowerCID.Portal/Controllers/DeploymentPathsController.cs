@@ -15,13 +15,15 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using Newtonsoft.Json.Linq;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
     [Authorize]
     public class DeploymentPathsController : BaseController
     {
-        public DeploymentPathsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public DeploymentPathsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
         }
 

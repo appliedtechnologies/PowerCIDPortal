@@ -8,13 +8,15 @@ using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
+using Microsoft.Extensions.Logging;
+
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
     [Authorize]
     public class UserEnvironmentsController : BaseController
     {
-        public UserEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public UserEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
         }
 
