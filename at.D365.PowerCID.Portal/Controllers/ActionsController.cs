@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using at.D365.PowerCID.Portal.Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -9,18 +10,23 @@ using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
+using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
     public class ActionsController : BaseController
     {
-        public ActionsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        
+        private readonly ILogger logger;
+        public ActionsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionResultsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
+            this.logger = logger;
         }
 
         [EnableQuery]
         public IQueryable<Action> Get([FromODataUri] int key)
         {
+            logger.LogDebug($"Begin: ActionsController Get(key: {key})");
             return base.dbContext.Actions.Where(e => e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser && e.Id == key);
         }
 
@@ -28,12 +34,28 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<at.D365.PowerCID.Portal.Data.Models.Action> Get()
         {
+            logger.LogDebug($"Begin: ActionsController Get()");
             return base.dbContext.Actions.Where(e => e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Action> action)
         {
+            #region - LogDebug -
+
+            ICollection<string> c = action.GetChangedPropertyNames() as ICollection<string>;
+
+            if (c != null)
+            {
+                logger.LogDebug($"Begin: ActionsController Patch(key: {key}, action changes: {c.Count()})");
+            }
+            else
+            {
+                logger.LogDebug($"Begin: ActionsController Patch(key: {key})");
+            }
+
+            #endregion - LogDebug -
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
