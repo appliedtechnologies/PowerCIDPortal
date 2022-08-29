@@ -21,6 +21,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         public IQueryable<at.D365.PowerCID.Portal.Data.Models.ActionResult> Get()
         {
             logger.LogDebug("Begin: ActionResultsController Get()");
+            
             return base.dbContext.ActionResults;
         }
     }

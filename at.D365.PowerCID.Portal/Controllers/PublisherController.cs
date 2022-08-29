@@ -16,13 +16,17 @@ namespace at.D365.PowerCID.Portal.Controllers
     [Authorize]
     public class PublisherController : BaseController
     {
-        public PublisherController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+        public PublisherController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<PublisherController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
+            this.logger = logger;
         }
         // GET: odata/Publishers
         [EnableQuery]
         public IQueryable<at.D365.PowerCID.Portal.Data.Models.Publisher> Get()
         {
+            logger.LogDebug($"Begin: PublisherController Get()");
+             
             return base.dbContext.Publishers.Where(e => e.EnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
     }

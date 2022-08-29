@@ -16,24 +16,33 @@ using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
 
 
+
 namespace at.D365.PowerCID.Portal.Controllers
 {
     [Authorize]
     public class ConnectionReferenceEnvironmentsController : BaseController
     {
-        public ConnectionReferenceEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+        public ConnectionReferenceEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ConnectionReferenceEnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
+            this.logger = logger;
         } 
 
         [EnableQuery]
         public IQueryable<ConnectionReferenceEnvironment> Get()
         {
+
+            logger.LogDebug($"Begin: ConnectionReferenceEnvironmentsController Get()");
+
             return base.dbContext.ConnectionReferenceEnvironments.Where(e => e.ConnectionReferenceNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] ConnectionReferenceEnvironment connectionReferenceEnvironment)
         {
+
+            logger.LogDebug($"Begin: ConnectionReferenceEnvironmentsController Post(connectionReferenceEnvironment: {connectionReferenceEnvironment.Environment.ToString()})");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -52,6 +61,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPatch]
         public async Task<IActionResult> Patch([FromODataUri] int keyConnectionReference, [FromODataUri] int keyEnvironment, Delta<ConnectionReferenceEnvironment> connectionReferenceEnvironment)
         {
+            logger.LogDebug($"Begin: ConnectionReferenceEnvironmentsController Patch(keyConnectionReference: {keyConnectionReference}, keyEnvironment: {keyEnvironment}, connectionReferenceEnvironment: {connectionReferenceEnvironment.GetChangedPropertyNames().Count()} )");
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -85,6 +95,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private bool ConnectionReferenceEnvironmentExists(int keyConnectionReference, int keyEnvironment)
         {
+             logger.LogDebug($"Begin: ConnectionReferenceEnvironmentsController Get(keyConnectionReference: {keyConnectionReference}, keyEnvironment: {keyEnvironment})");
+            
             return base.dbContext.ConnectionReferenceEnvironments.Any(p => p.ConnectionReference == keyConnectionReference && p.Environment == keyEnvironment);
         }
     }

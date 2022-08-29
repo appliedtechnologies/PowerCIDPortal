@@ -25,21 +25,27 @@ namespace at.D365.PowerCID.Portal.Controllers
     [Authorize]
     public class TenantsController : BaseController
     {
-        public TenantsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+        public TenantsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<TenantsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
+            this.logger = logger;
         }
 
         // GET: odata/Tenants
         [EnableQuery]
         public IQueryable<Tenant> Get()
         {
+            logger.LogDebug($"Begin: TenantsController Get()");
+
             return base.dbContext.Tenants.Where(e => e.MsId == this.msIdTenantCurrentUser);
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Tenant> tenant)
         {
-            if((await this.dbContext.Tenants.FindAsync(key)).MsId != this.msIdTenantCurrentUser)
+            logger.LogDebug($"Begin: TenantsController Get(key: {key}, tenant GetChangedPropertyNames: {tenant.GetChangedPropertyNames().ToString()} )");
+
+            if ((await this.dbContext.Tenants.FindAsync(key)).MsId != this.msIdTenantCurrentUser)
                 return Forbid();
 
             string[] propertyNamesAllowedToChange = { nameof(Tenant.GitHubInstallationId), nameof(Tenant.GitHubRepositoryName) };
@@ -77,26 +83,29 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         [Authorize(Roles = "atPowerCID.Admin")]
         [HttpPost]
-        public async Task<IActionResult> GetGitHubRepositories([FromODataUri] int key, [FromServices] GitHubService gitHubService){
-            if((await this.dbContext.Tenants.FindAsync(key)).MsId != this.msIdTenantCurrentUser)
+        public async Task<IActionResult> GetGitHubRepositories([FromODataUri] int key, [FromServices] GitHubService gitHubService)
+        {
+            logger.LogDebug($"Begin: TenantsController GetGitHubRepositories(key: {key}, gitHubService GetInstallationWithClient exists: {gitHubService.HasMethod("GetInstallationWithClient")})");
+
+            if ((await this.dbContext.Tenants.FindAsync(key)).MsId != this.msIdTenantCurrentUser)
                 return Forbid();
 
             Tenant tenant = this.dbContext.Tenants.First(e => e.Id == key);
-            
-            if(tenant.MsId != this.msIdTenantCurrentUser)
+
+            if (tenant.MsId != this.msIdTenantCurrentUser)
                 return Forbid();
 
-            if(tenant.GitHubInstallationId == 0)
+            if (tenant.GitHubInstallationId == 0)
                 return BadRequest();
-            
-            (var installation, var installationClient)= await gitHubService.GetInstallationWithClient(tenant.GitHubInstallationId);
-            
+
+            (var installation, var installationClient) = await gitHubService.GetInstallationWithClient(tenant.GitHubInstallationId);
+
             var repoNames = new List<string>();
             var repoReponse = await installationClient.Connection.GetResponse<ICollection<Repository>>(new Uri("/installation/repositories", UriKind.Relative));
             dynamic repoResonseDeserialized = JsonConvert.DeserializeObject((string)repoReponse.HttpResponse.Body);
             var repos = repoResonseDeserialized["repositories"];
 
-            foreach (dynamic repo in repos) 
+            foreach (dynamic repo in repos)
             {
                 repoNames.Add((string)repo["full_name"]);
             }
@@ -106,6 +115,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private bool TenantExists(int key)
         {
+            logger.LogDebug($"Begin: TenantsController TenantExists(key: {key})");
+
             return base.dbContext.Tenants.Any(p => p.Id == key);
         }
     }

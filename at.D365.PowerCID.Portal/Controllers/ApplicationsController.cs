@@ -17,19 +17,23 @@ using System.Text.Unicode;
 using Microsoft.AspNetCore.Authorization;
 using System.Collections.Generic;
 using at.D365.PowerCID.Portal.Services;
+using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
     [Authorize]
     public class ApplicationsController : BaseController
     {
-        public ApplicationsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+        public ApplicationsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ApplicationsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
+            this.logger = logger;
         }
 
         [EnableQuery]
         public IQueryable<Application> Get([FromODataUri] int key)
         {
+            logger.LogDebug($"Begin: ApplicationsController Get(key: {key})");
             return base.dbContext.Applications.Where(e => e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser && e.Id == key);
         }
 
@@ -37,6 +41,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<Application> Get()
         {
+            logger.LogDebug($"Begin: ApplicationsController Get()");
             return base.dbContext.Applications.Where(e => e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
@@ -45,6 +50,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
         public async Task<IActionResult> Post([FromBody] Application application, [FromServices] SolutionService solutionService)
         {
+            logger.LogDebug($"Begin: ApplicationsController Post(application: {application.Name})");
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -93,6 +99,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Application> application)
         {
+            logger.LogDebug($"Begin: ApplicationsController Patch(key: {key}, application: {application.GetChangedPropertyNames().Count()})");
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -134,6 +141,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [Authorize(Roles = "atPowerCID.Admin")]
         public async Task<IActionResult> Delete([FromODataUri] int key)
         {
+            logger.LogDebug($"Begin: ApplicationsController Delete(key: {key})");
             var application = await dbContext.Applications.FindAsync(key);
 
             if((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == key && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
@@ -151,6 +159,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public string GetMakerPortalUrl([FromODataUri] int key)
         {
+            logger.LogDebug($"Begin: ApplicationsController GetMakerPortalUrl(key: {key})");
             var lastSolution = this.dbContext.Solutions.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser && e.Application == key).OrderBy(e => e.CreatedOn).Last();
             return lastSolution.UrlMakerportal;
         }
@@ -159,6 +168,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> PullExisting([FromBody] ODataActionParameters parameters)
         {
+            logger.LogDebug($"Begin: ApplicationsController PullExisting(parameters environment: {(string)parameters["environment"]})");
             List<string> applicationUniqueNames = new List<string>();
             User user = base.dbContext.Users.FirstOrDefault(u => u.MsId == dbContext.MsIdCurrentUser);
             at.D365.PowerCID.Portal.Data.Models.Environment environment = (at.D365.PowerCID.Portal.Data.Models.Environment)parameters["environment"];
@@ -199,6 +209,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> SaveApplication([FromBody] ODataActionParameters parameters, [FromServices] SolutionService solutionService)
         {
+            logger.LogDebug($"Begin: ApplicationsController SaveApplication(parameters app name: {(string)parameters["applicationUniqueName"]})");
             Application application;
             string applicationUniqueName = (string)parameters["applicationUniqueName"];
             at.D365.PowerCID.Portal.Data.Models.Environment environment = (at.D365.PowerCID.Portal.Data.Models.Environment)parameters["environment"];
@@ -272,6 +283,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<int> GetDeploymentSettingsStatus([FromODataUri] int key, ODataActionParameters parameters, [FromServices] ConnectionReferenceService connectionReferenceService, [FromServices] EnvironmentVariableService environmentVariableService)
         {
+            logger.LogDebug($"Begin: ApplicationsController GetDeploymentSettingsStatus(key: {key}, parameters id: {(string)parameters["environmentId"]})");
             //status 0=incomplete configuration;1=complete configuration
             int environmentId = (int)parameters["environmentId"];
             var statusConnectionReferences = await connectionReferenceService.GetStatus(key, environmentId);
@@ -285,11 +297,13 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private bool ApplicationExists(int key)
         {
+            logger.LogDebug($"Begin: ApplicationsController ApplicationExists(key: {key}");
             return base.dbContext.Applications.Any(p => p.Id == key);
         }
 
         private async Task CreateSolutionInDataverse(Application application)
         {
+            logger.LogDebug($"Begin: ApplicationsController CreateSolutionInDatavers(application: {application.Name})");
             string environmentUrl = this.dbContext.Environments.First(x => x.Id == application.DevelopmentEnvironment).BasicUrl;
 
             JObject newSolution = new JObject();
@@ -320,6 +334,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private async Task CreateNewUpgrade(Application application, string version, SolutionService solutionService)
         {
+             logger.LogDebug($"Begin: ApplicationsController CreateSolutionInDatavers(application id: {application.Id}, version: {version} )");
 
             Upgrade upgrade = new Upgrade
             {
@@ -335,6 +350,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private async Task<Publisher> CreateNewPublisher(Guid newPublisherGuid, User user, at.D365.PowerCID.Portal.Data.Models.Environment environment)
         {
+             logger.LogDebug($"Begin: ApplicationsController CreateNewPublisher(newPublisherGuid: {newPublisherGuid.ToString()}, user tenant: {user.Tenant}, environment Id: {environment.Id})");
             var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
             {
                 options.Tenant = $"{user.TenantNavigation.MsId}";

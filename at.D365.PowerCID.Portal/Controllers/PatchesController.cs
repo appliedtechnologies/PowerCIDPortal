@@ -21,30 +21,37 @@ namespace at.D365.PowerCID.Portal.Controllers
     [Authorize]
     public class PatchesController : BaseController
     {
-        public PatchesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+        public PatchesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<PatchesController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
+            this.logger = logger;
         }
 
         // GET: odata/Patches
         [EnableQuery]
         public IQueryable<Patch> Get()
         {
+            logger.LogDebug($"Begin: PatchesController Get()");
+
             return base.dbContext.Patches.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
-        public async Task<IActionResult> Post([FromBody] Patch patch){
+        public async Task<IActionResult> Post([FromBody] Patch patch)
+        {
+            logger.LogDebug($"Begin: PatchesController Post(patch version: {patch.Version})");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == patch.Application && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == patch.Application && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             Application application = this.dbContext.Applications.First(e => e.Id == patch.Application);
             string displayNameDataversePatch = $"{application.Name}_{patch.Name}";
             Solution lastSolution = application.Solutions.OrderByDescending(e => e.CreatedOn).FirstOrDefault();
-            if(patch.Version == null)
+            if (patch.Version == null)
                 patch.Version = lastSolution == null ? VersionHelper.GetNextBuildVersion("1.0.0.0") : VersionHelper.GetNextBuildVersion(lastSolution.Version);
 
             await this.CreatePatchInDataverse(application.SolutionUniqueName, displayNameDataversePatch, application.DevelopmentEnvironmentNavigation.BasicUrl, patch);
@@ -56,7 +63,10 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Created(patch);
         }
 
-        private async Task CreatePatchInDataverse(string solutionUniqueName, string displayNameDataversePatch, string basicUrl, Patch patch){
+        private async Task CreatePatchInDataverse(string solutionUniqueName, string displayNameDataversePatch, string basicUrl, Patch patch)
+        {
+            logger.LogDebug($"Begin: PatchesController CreatePatchInDataverse(solutionUniqueName: {solutionUniqueName}, displayNameDataversePatch: {displayNameDataversePatch} ,basicUrl: {basicUrl}, patch version: {patch.Version})");
+
             JObject newSolution = new JObject();
             newSolution.Add("DisplayName", displayNameDataversePatch);
             newSolution.Add("ParentSolutionUniqueName", solutionUniqueName);
@@ -77,13 +87,17 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 throw new Exception("Could not create Patch in Dataverse");
             }
-            else{
+            else
+            {
                 patch.MsId = (Guid)(await response.Content.ReadAsAsync<JObject>())["SolutionId"];
                 patch.UniqueName = await this.GetUniqueSolutioNamePatchFromDataverse(basicUrl, patch.MsId);
             }
         }
 
-        private async Task<string> GetUniqueSolutioNamePatchFromDataverse(string basicUrl, Guid msId){
+        private async Task<string> GetUniqueSolutioNamePatchFromDataverse(string basicUrl, Guid msId)
+        {
+            logger.LogDebug($"Begin: PatchesController GetUniqueSolutioNamePatchFromDataverse(basicUrl: {basicUrl}, msId: {msId.ToString()}");
+
             var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
             {
                 options.Tenant = $"{this.msIdTenantCurrentUser}";
@@ -97,7 +111,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 throw new Exception("Could not get unique solution name of Patch in Dataverse");
             }
-            else{
+            else
+            {
                 return (string)(await response.Content.ReadAsAsync<JObject>())["uniquename"];
             }
         }

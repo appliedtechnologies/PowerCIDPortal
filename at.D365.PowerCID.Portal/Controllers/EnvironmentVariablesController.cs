@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.OData.Query;
 using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
+using at.D365.PowerCID.Portal.Helpers;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -20,19 +21,25 @@ namespace at.D365.PowerCID.Portal.Controllers
     [Authorize]
     public class EnvironmentVariablesController : BaseController
     {
-        public EnvironmentVariablesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+        public EnvironmentVariablesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<EnvironmentVariablesController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
-        } 
+            this.logger = logger;
+        }
 
         [EnableQuery]
         public IQueryable<EnvironmentVariable> Get()
         {
+            logger.LogDebug($"Begin: EnvironmentVariablesController Get()");
+
             return base.dbContext.EnvironmentVariables.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] EnvironmentVariable environmentVariable)
         {
+            logger.LogDebug($"Begin: EnvironmentVariablesController Post(environmentVariable msid: {environmentVariable.MsId} )");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -51,6 +58,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IEnumerable<EnvironmentVariable>> GetEnvironmentVariablesForApplication(ODataActionParameters parameters, [FromServices] EnvironmentVariableService environmentVariableService)
         {
+            logger.LogDebug($"Begin: EnvironmentVariablesController GetEnvironmentVariablesForApplication(parameters: {(int)parameters["applicationId"]}, environmentVariableService GetExistsingEnvironmentVariablesFromDataverse exists: {environmentVariableService.HasMethod("GetExistsingEnvironmentVariablesFromDataverse")})");
+
             int applicationId = (int)parameters["applicationId"];
             var environmentVariables = await environmentVariableService.GetExistsingEnvironmentVariablesFromDataverse(applicationId);
 

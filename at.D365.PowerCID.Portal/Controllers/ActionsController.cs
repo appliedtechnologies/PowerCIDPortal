@@ -18,7 +18,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     {
         
         private readonly ILogger logger;
-        public ActionsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionResultsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public ActionsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }
@@ -41,20 +41,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [Authorize(Roles = "atPowerCID.Admin")]
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Action> action)
         {
-            #region - LogDebug -
-
-            ICollection<string> c = action.GetChangedPropertyNames() as ICollection<string>;
-
-            if (c != null)
-            {
-                logger.LogDebug($"Begin: ActionsController Patch(key: {key}, action changes: {c.Count()})");
-            }
-            else
-            {
-                logger.LogDebug($"Begin: ActionsController Patch(key: {key})");
-            }
-
-            #endregion - LogDebug -
+            logger.LogDebug($"Begin: ActionsController Patch(key: {key}, action changes: {action.GetChangedPropertyNames().Count()})");
 
             if (!ModelState.IsValid)
             {
@@ -80,18 +67,17 @@ namespace at.D365.PowerCID.Portal.Controllers
                 {
                     return NotFound();
                 }
-                else
-                {
+                else                {
                     throw;
                 }
             }
-
             return Updated(entity);
         }
 
         [HttpPost]
         public async Task<IActionResult> CancelImport([FromODataUri] int key)
         {
+            logger.LogDebug($"Begin: ActionsController CancelImport(key: {key})");
             var action = await this.dbContext.Actions.FirstOrDefaultAsync(e => e.Id == key && e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
             if(action == null)
                 return Forbid();
@@ -114,6 +100,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private bool ActionExists(int key)
         {
+            logger.LogDebug($"Begin: ActionsController ActionExists(key: {key})");
             return base.dbContext.Applications.Any(p => p.Id == key);
         }
     }

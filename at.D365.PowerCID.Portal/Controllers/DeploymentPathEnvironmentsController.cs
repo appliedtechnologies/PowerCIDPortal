@@ -5,9 +5,7 @@ using Microsoft.AspNetCore.OData.Query;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-
 using Microsoft.Identity.Web;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,13 +22,18 @@ namespace at.D365.PowerCID.Portal.Controllers
     [Authorize]
     public class DeploymentPathEnvironmentsController : BaseController
     {
-        public DeploymentPathEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+        public DeploymentPathEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<DeploymentPathEnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
+            this.logger = logger;
         }
 
         [EnableQuery]
         public IQueryable<DeploymentPathEnvironment> Get()
         {
+
+            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Get()");
+
             return base.dbContext.DeploymentPathEnvironments.OrderBy(s => s.StepNumber).Where(e => e.EnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
@@ -38,6 +41,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpDelete]
         public async Task<IActionResult> Delete([FromODataUri] int keyDeploymentPath, [FromODataUri] int keyEnvironment)
         {
+            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Delete(keyDeploymentPath: {keyDeploymentPath}, keyEnvironment: {keyEnvironment})");
+
             if((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == keyEnvironment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
@@ -57,6 +62,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] DeploymentPathEnvironment deploymentPathEnvironment)
         {
+              logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Post(deploymentPathEnvironment stepnumber: {deploymentPathEnvironment.StepNumber})");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -83,6 +90,9 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPatch]
         public async Task<IActionResult> Patch([FromODataUri] int keyEnvironment, [FromODataUri] int keyDeploymentPath, [FromBody] Object parameters)
         {
+
+             logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Patch(keyEnvironment: {keyEnvironment}, keyDeploymentPath: {keyDeploymentPath}, parameters: {parameters.ToString()} )");
+            
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);

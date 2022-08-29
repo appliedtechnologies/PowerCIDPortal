@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
+using at.D365.PowerCID.Portal.Helpers;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -21,19 +22,26 @@ namespace at.D365.PowerCID.Portal.Controllers
     [Authorize]
     public class EnvironmentVariableEnvironmentsController : BaseController
     {
-        public EnvironmentVariableEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+
+        public EnvironmentVariableEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<EnvironmentVariableEnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
-        } 
+            this.logger = logger;
+        }
 
         [EnableQuery]
         public IQueryable<EnvironmentVariableEnvironment> Get()
         {
+            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController Get()");
+
             return base.dbContext.EnvironmentVariableEnvironments.Where(e => e.EnvironmentVariableNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] EnvironmentVariableEnvironment environmentVariableEnvironment)
         {
+            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController Post(environmentVariableEnvironment: {environmentVariableEnvironment.Environment.ToString()})");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -52,11 +60,13 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPatch]
         public async Task<IActionResult> Patch([FromODataUri] int keyEnvironmentVariable, [FromODataUri] int keyEnvironment, Delta<EnvironmentVariableEnvironment> environmentVariableEnvironment)
         {
+            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController Patch(keyEnvironmentVariable Patch exists : {environmentVariableEnvironment.HasMethod("Patch")})");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            if((await this.dbContext.EnvironmentVariables.FirstOrDefaultAsync(e => e.Id == keyEnvironmentVariable && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if ((await this.dbContext.EnvironmentVariables.FirstOrDefaultAsync(e => e.Id == keyEnvironmentVariable && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             var entity = await base.dbContext.EnvironmentVariableEnvironments.FirstAsync(e => e.EnvironmentVariable == keyEnvironmentVariable && e.Environment == keyEnvironment);
@@ -85,6 +95,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private bool EnvironmentVariableEnvironmentExists(int keyEnvironmentVariableEnvironment, int keyEnvironment)
         {
+            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController EnvironmentVariableEnvironmentExists(keyEnvironmentVariableEnvironment: {keyEnvironmentVariableEnvironment}, keyEnvironment: {keyEnvironment} )");
+
             return base.dbContext.EnvironmentVariableEnvironments.Any(p => p.EnvironmentVariable == keyEnvironmentVariableEnvironment && p.Environment == keyEnvironment);
         }
     }
