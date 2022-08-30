@@ -123,7 +123,7 @@ namespace at.D365.PowerCID.Portal.Services
                             AsyncJob asyncJob = await this.solutionService.DeleteAndPromoteInDataverse(queuedAction);
 
                             if(asyncJob == null)
-                                this.actionService.UpdateSuccessfulAction(queuedAction);
+                                await this.actionService.FinishSuccessfulApplingUpgradeAction(queuedAction);
                             else
                                 dbContext.Add(asyncJob);
                                 

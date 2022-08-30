@@ -165,7 +165,7 @@ namespace at.D365.PowerCID.Portal.Services
                 OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
                 PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
                 HoldingSolution = !isPatch && existsSolutionInTargetEnvironment == true,
-                ComponentParameters = solutionComponentParameters
+                ComponentParameters = solutionComponentParameters,
             };
 
             using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
@@ -236,6 +236,44 @@ namespace at.D365.PowerCID.Portal.Services
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
 
                 return response.Entities.Count > 0;
+            }
+        }
+
+        public async Task EnableAllCloudFlows(string solutionUniqueName, string basicUrl){
+            var solutionId = await this.GetSolutionIdByUniqueName(solutionUniqueName, basicUrl);
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                var query = new QueryExpression("workflow"){
+                    ColumnSet = new ColumnSet("statuscode", "statecode"),
+                };
+                query.Criteria.AddCondition("solutionid", ConditionOperator.Equal, solutionId);
+
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+                foreach(var workflow in response.Entities){
+                    if(((OptionSetValue)workflow["statuscode"]).Value != 2 || ((OptionSetValue)workflow["statecode"]).Value != 1){
+                        var updatedWorkflow = new Entity(workflow.LogicalName, workflow.Id);
+                        updatedWorkflow["statecode"] = 1;
+                        updatedWorkflow["statuscode"] = 2;
+                        dataverseClient.CallerId = new Guid("a06a16ea-e521-ec11-b6e6-000d3ade6977");
+                        await dataverseClient.UpdateAsync(updatedWorkflow);
+                    }
+                }
+            }
+        }
+
+        private async Task<Guid> GetSolutionIdByUniqueName(string solutionUniqueName, string basicUrl){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                var query = new QueryExpression("solution"){
+                    ColumnSet = new ColumnSet("solutionid"),
+                    PageInfo = new PagingInfo(){
+                        Count = 1,
+                        PageNumber = 1 
+                    }
+                };
+                query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
+
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+                var solutionId = (Guid)response.Entities.First()["solutionid"];
+                return solutionId;
             }
         }
 

@@ -50,5 +50,10 @@ namespace at.D365.PowerCID.Portal.Services
                 action.ErrorMessage = await this.solutionHistoryService.GetExceptionMessage(asyncJobForExeptionMessage);
             }
         }
+
+        public async Task FinishSuccessfulApplingUpgradeAction(Action finishedAction){
+            await this.solutionService.EnableAllCloudFlows(finishedAction.SolutionNavigation.UniqueName, finishedAction.TargetEnvironmentNavigation.BasicUrl);
+            this.UpdateSuccessfulAction(finishedAction);
+        }
     }
 }

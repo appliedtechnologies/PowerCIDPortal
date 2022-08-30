@@ -206,7 +206,7 @@ namespace at.D365.PowerCID.Portal.Services
                                             if ((bool)solutionHistoryEntry["msdyn_result"] == false)
                                                 await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
                                             else
-                                                this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
+                                                await this.actionService.FinishSuccessfulApplingUpgradeAction(asyncJob.ActionNavigation);
 
                                             dbContext.Remove(asyncJob);
                                         }
