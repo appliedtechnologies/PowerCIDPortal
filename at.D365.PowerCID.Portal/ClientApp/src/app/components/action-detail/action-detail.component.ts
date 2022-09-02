@@ -12,7 +12,7 @@ export class ActionDetailComponent implements OnChanges {
   public action: Action;
 
   constructor(
-    private actionService: ActionService
+    public actionService: ActionService
   ) {}
 
   public ngOnChanges(changes: SimpleChanges): void {

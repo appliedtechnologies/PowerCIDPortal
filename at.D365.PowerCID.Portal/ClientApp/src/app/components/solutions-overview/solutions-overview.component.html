@@ -236,7 +236,7 @@
   height="auto"
   [showTitle]="true"
   title="Configure Deployment"
-  [closeOnOutsideClick]="true"
+  [hideOnOutsideClick]="true"
   [(visible)]="isConfigureDeploymentPopupVisible"
   [maxHeight]="'90%'"
 >
@@ -251,7 +251,7 @@
   height="auto"
   [showTitle]="true"
   title="Action Details"
-  [closeOnOutsideClick]="true"
+  [hideOnOutsideClick]="true"
   [(visible)]="isActionDetailPopupVisible"
   [maxHeight]="'90%'"
 >
@@ -266,7 +266,7 @@
   height="auto"
   [showTitle]="true"
   [title]="solutionDetailPopupTitle"
-  [closeOnOutsideClick]="false"
+  [hideOnOutsideClick]="false"
   [(visible)]="isSolutionDetailPopupVisible"
   [dragEnabled]="false"
   (onHiding)="onHiddenSolutionDetailPopup($event)"

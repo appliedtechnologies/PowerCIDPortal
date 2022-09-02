@@ -190,7 +190,7 @@ namespace at.D365.PowerCID.Portal.Services
             bool isPatch = this.dbContext.Solutions.FirstOrDefault(s => s.Id == action.Solution).GetType().Name.Contains("Patch");
             Upgrade upgrade;
             upgrade = isPatch == false ? (Upgrade)action.SolutionNavigation : default;
-            bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, action.TargetEnvironmentNavigation.BasicUrl, action.TargetEnvironmentNavigation.TenantNavigation.MsId.ToString());
+            bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, action.TargetEnvironmentNavigation.BasicUrl);
 
             EntityCollection solutionComponentParameters = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
 
@@ -270,6 +270,23 @@ namespace at.D365.PowerCID.Portal.Services
                 logger.LogDebug($"End: SolutionService DownloadSolutionFileFromDatavers(asyncJob BasicUrl: {asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl})");
 
                 return base64;
+            }
+        }
+
+        public async Task<bool> ExistsSolutionInTargetEnvironment(string solutionUniqueName, string basicUrl, string excludeVersion = "")
+        {
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                var query = new QueryExpression("solution"){
+                    ColumnSet = new ColumnSet("uniquename", "version"),
+                };
+                query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
+
+                if(!String.IsNullOrEmpty(excludeVersion))
+                    query.Criteria.AddCondition("version", ConditionOperator.NotEqual, excludeVersion);
+
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+
+                return response.Entities.Count > 0;
             }
         }
 
@@ -374,26 +391,6 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: SolutionService  GetConnectionReferencesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
             return connectionReferenceEntities;
-        }
-
-        private async Task<bool> ExistsSolutionInTargetEnvironment(string solutionUniqueName, string basicUrl, string tenantMsId)
-        {
-            logger.LogDebug($"Begin: SolutionService ExistsSolutionInTargetEnvironment(solutionUniqueName: {solutionUniqueName}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId}))");
-
-            using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
-            {
-                var query = new QueryExpression("solution")
-                {
-                    ColumnSet = new ColumnSet("uniquename"),
-                };
-                query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, new[] { solutionUniqueName });
-
-                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
-
-                logger.LogDebug($"End: SolutionService ExistsSolutionInTargetEnvironment(solutionUniqueName: {solutionUniqueName}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId}))");
-
-                return response.Entities.Count > 0;
-            }
         }
     }
 }

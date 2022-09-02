@@ -173,9 +173,8 @@ namespace at.D365.PowerCID.Portal.Services
                                                 await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
                                                 dbContext.AsyncJobs.Remove(asyncJob);
                                             }
+                                            logger.LogInformation("Export completed: AsyncJobBackgroundService DoBackgroundWork() ");
                                         }
-                                        logger.LogInformation("Export completed: AsyncJobBackgroundService DoBackgroundWork() ");
-
                                         break;
                                     case 2: //import
                                         {
@@ -192,7 +191,8 @@ namespace at.D365.PowerCID.Portal.Services
                                                 if (!isPatch)
                                                 {
                                                     Upgrade upgrade = (Upgrade)asyncJob.ActionNavigation.SolutionNavigation;
-                                                    if (upgrade.ApplyManually == false && asyncJob.IsManaged == true && asyncJob.ActionNavigation.Status != 4)
+                                                    bool existsSolutionInTargetEnvironment = await this.solutionService.ExistsSolutionInTargetEnvironment(upgrade.UniqueName, asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl, upgrade.Version);
+                                                    if (existsSolutionInTargetEnvironment == true && upgrade.ApplyManually == false && asyncJob.IsManaged == true && asyncJob.ActionNavigation.Status != 4)
                                                     {
                                                         try
                                                         {
@@ -221,9 +221,8 @@ namespace at.D365.PowerCID.Portal.Services
                                                 await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
                                                 dbContext.AsyncJobs.Remove(asyncJob);
                                             }
+                                            logger.LogInformation("Import completed: AsyncJobBackgroundService DoBackgroundWork() ");
                                         }
-                                        logger.LogInformation("Import completed: AsyncJobBackgroundService DoBackgroundWork() ");
-
                                         break;
                                     case 3: //appling upgrade
                                         {
@@ -233,16 +232,15 @@ namespace at.D365.PowerCID.Portal.Services
 
                                             if (solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
                                             {
-                                                if (((OptionSetValue)solutionHistoryEntry["msdyn_result"]).Value == 0)
+                                                if ((bool)solutionHistoryEntry["msdyn_result"] == false)
                                                     await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
                                                 else
                                                     this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
-
+                                                
                                                 dbContext.Remove(asyncJob);
                                             }
+                                          logger.LogInformation("Appling upgrade completed: AsyncJobBackgroundService DoBackgroundWork()");
                                         }
-                                        logger.LogInformation("Appling upgrade completed: AsyncJobBackgroundService DoBackgroundWork()");
-
                                         break;
                                     default:
                                         throw new Exception($"Unknow ActionType for AsyncJob: {asyncJob.ActionNavigation.Type}");

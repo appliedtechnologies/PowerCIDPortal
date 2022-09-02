@@ -81,6 +81,11 @@
     format="dd.MM.yyyy HH:mm:ss"
   ></dxi-column>
   <dxi-column
+    caption="Duration"
+    [allowSorting]="true"
+    [calculateCellValue]="calculateDuration">
+  </dxi-column>
+  <dxi-column
     dataField="CreatedBy"
     caption="Created By"
     [allowEditing]="false">
@@ -114,7 +119,7 @@
   height="auto"
   [showTitle]="true"
   title="Action Details"
-  [closeOnOutsideClick]="true"
+  [hideOnOutsideClick]="true"
   [(visible)]="this.isActionDetailPopupVisible"
 >
   <app-action-detail [actionId]="selectedActionId"></app-action-detail>
@@ -126,7 +131,7 @@
   height="auto"
   [showTitle]="true"
   [title]="'Details: ' + this.selectedSolution?.Name"
-  [closeOnOutsideClick]="true"
+  [hideOnOutsideClick]="true"
   [(visible)]="isSolutionDetailPopupVisible"
   [dragEnabled]="false"
 >
