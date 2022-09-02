@@ -35,7 +35,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<Tenant> Get()
         {
-            logger.LogDebug($"Begin: TenantsController Get()");
+            logger.LogDebug($"Begin & End: TenantsController Get()");
 
             return base.dbContext.Tenants.Where(e => e.MsId == this.msIdTenantCurrentUser);
         }
@@ -43,7 +43,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [Authorize(Roles = "atPowerCID.Admin")]
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Tenant> tenant)
         {
-            logger.LogDebug($"Begin: TenantsController Get(key: {key}, tenant GetChangedPropertyNames: {tenant.GetChangedPropertyNames().ToString()} )");
+            logger.LogDebug($"Begin: TenantsController Patch(key: {key}, tenant GetChangedPropertyNames: {tenant.GetChangedPropertyNames().ToString()} )");
 
             if ((await this.dbContext.Tenants.FindAsync(key)).MsId != this.msIdTenantCurrentUser)
                 return Forbid();
@@ -78,6 +78,8 @@ namespace at.D365.PowerCID.Portal.Controllers
                     throw;
                 }
             }
+            logger.LogDebug($"End: TenantsController Patch(key: {key}, tenant GetChangedPropertyNames: {tenant.GetChangedPropertyNames().ToString()} )");
+
             return Updated(entity);
         }
 
@@ -85,7 +87,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> GetGitHubRepositories([FromODataUri] int key, [FromServices] GitHubService gitHubService)
         {
-            logger.LogDebug($"Begin: TenantsController GetGitHubRepositories(key: {key}, gitHubService GetInstallationWithClient exists: {gitHubService.HasMethod("GetInstallationWithClient")})");
+            logger.LogDebug($"Begin: TenantsController GetGitHubRepositories(key: {key})");
 
             if ((await this.dbContext.Tenants.FindAsync(key)).MsId != this.msIdTenantCurrentUser)
                 return Forbid();
@@ -109,13 +111,14 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 repoNames.Add((string)repo["full_name"]);
             }
+            logger.LogDebug($"End: TenantsController GetGitHubRepositories(key: {key})");
 
             return Ok(repoNames);
         }
 
         private bool TenantExists(int key)
         {
-            logger.LogDebug($"Begin: TenantsController TenantExists(key: {key})");
+            logger.LogDebug($"Begin & End: TenantsController TenantExists(key: {key})");
 
             return base.dbContext.Tenants.Any(p => p.Id == key);
         }

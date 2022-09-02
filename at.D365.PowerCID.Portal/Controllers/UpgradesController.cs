@@ -32,14 +32,14 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<Upgrade> Get()
         {
-            logger.LogDebug($"Begin: UpgradesController Get()");
+            logger.LogDebug($"Begin & End: UpgradesController Get()");
 
             return base.dbContext.Upgrades.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdCurrentUser);
         }
 
         public async Task<IActionResult> Post([FromBody] Upgrade upgrade, [FromServices] SolutionService solutionService)
         {
-            logger.LogDebug($"Begin: UpgradesController Post(upgrade Application id: {upgrade.Application}, solutionService CreateUpgrade exists: {solutionService.HasMethod("CreateUpgrade")})");
+            logger.LogDebug($"Begin: UpgradesController Post(upgrade Application: {upgrade.Application})");
 
             if (!ModelState.IsValid)
             {
@@ -53,6 +53,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             this.dbContext.Upgrades.Add(upgrade);
             await this.dbContext.SaveChangesAsync();
+
+            logger.LogDebug($"Begin: UpgradesController Post(upgrade Application: {upgrade.Application})");
 
             return Created(upgrade);
         }

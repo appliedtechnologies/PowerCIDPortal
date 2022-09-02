@@ -97,9 +97,9 @@ namespace at.D365.PowerCID.Portal.Services
                 }
             };
             timer.Start();
-            await Task.CompletedTask; 
+            await Task.CompletedTask;
 
-             logger.LogDebug("End: ActionBackgroundService ScheduleBackgroundJob()");
+            logger.LogDebug("End: ActionBackgroundService ScheduleBackgroundJob()");
         }
 
         private async Task DoBackgroundWork(CancellationToken cancellationToken)
@@ -109,68 +109,71 @@ namespace at.D365.PowerCID.Portal.Services
 
             foreach (Action queuedAction in this.dbContext.Actions.Where(e => e.Status == 1).ToList())
             {
-                try{
-                    switch(queuedAction.Type){
+                try
+                {
+                    switch (queuedAction.Type)
+                    {
                         case 1: //export
-                        {
-                            logger.LogInformation("Export started: ActionBackgroundService DoBackgroundWork()");
+                            {
+                                logger.LogInformation("Export started: ActionBackgroundService DoBackgroundWork()");
 
-                            var asyncJobManaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
-                            var asyncJobUnmanaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
+                                var asyncJobManaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
+                                var asyncJobUnmanaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
 
-                            dbContext.Add(asyncJobManaged);
-                            dbContext.Add(asyncJobUnmanaged);
+                                dbContext.Add(asyncJobManaged);
+                                dbContext.Add(asyncJobUnmanaged);
 
-                            queuedAction.Status = 2;
-                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);                          
+                                queuedAction.Status = 2;
+                                await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                            logger.LogInformation("Export completed: ActionBackgroundService DoBackgroundWork()");
-                        }
-                        break;
+                                logger.LogInformation("Export completed: ActionBackgroundService DoBackgroundWork()");
+                            }
+                            break;
                         case 2: //import 
-                        {
-                            logger.LogInformation("Import started: ActionBackgroundService DoBackgroundWork()");
+                            {
+                                logger.LogInformation("Import started: ActionBackgroundService DoBackgroundWork()");
 
-                            byte[] exportSolutionFile = await this.gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
-                            AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
+                                byte[] exportSolutionFile = await this.gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
+                                AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
 
-                            dbContext.Add(asyncJobManaged);
+                                dbContext.Add(asyncJobManaged);
 
-                            queuedAction.Status = 2;
-                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+                                queuedAction.Status = 2;
+                                await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                            logger.LogInformation("Imported completed: ActionBackgroundService DoBackgroundWork()");
-                        }
-                        break;
+                                logger.LogInformation("Imported completed: ActionBackgroundService DoBackgroundWork()");
+                            }
+                            break;
                         case 3:  //appling upgrade
-                        {
-                            logger.LogInformation("Appling upgrade started: ActionBackgroundService DoBackgroundWork()");
+                            {
+                                logger.LogInformation("Appling upgrade started: ActionBackgroundService DoBackgroundWork()");
 
-                            queuedAction.Status = 2;
-                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+                                queuedAction.Status = 2;
+                                await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                            AsyncJob asyncJob = await this.solutionService.DeleteAndPromoteInDataverse(queuedAction);
+                                AsyncJob asyncJob = await this.solutionService.DeleteAndPromoteInDataverse(queuedAction);
 
-                            if(asyncJob == null)
-                                this.actionService.UpdateSuccessfulAction(queuedAction);
-                            else
-                                dbContext.Add(asyncJob);
-                                
-                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+                                if (asyncJob == null)
+                                    this.actionService.UpdateSuccessfulAction(queuedAction);
+                                else
+                                    dbContext.Add(asyncJob);
 
-                            logger.LogInformation("Appling upgrade completed: ActionBackgroundService DoBackgroundWork()");
-                        }  
-                        break;
-                        default: 
+                                await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+
+                                logger.LogInformation("Appling upgrade completed: ActionBackgroundService DoBackgroundWork()");
+                            }
+                            break;
+                        default:
                             throw new Exception($"unknow ActionType: {queuedAction.Type}");
-                    }             
+                    }
                 }
-                catch(Exception e){
+                catch (Exception e)
+                {
                     await this.actionService.UpdateFailedAction(queuedAction, e.Message);
                     await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
                     logger.LogError($"Error: ActionBackgroundService DoBackgroundWork() Exception: {e}");
-                    
+
                     continue;
                 }
             }

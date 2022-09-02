@@ -38,7 +38,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<Solution> Get()
         {
-            logger.LogDebug($"Begin: SolutionsController Get()");
+            logger.LogDebug($"Begin & End: SolutionsController Get()");
 
             return base.dbContext.Solutions.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
@@ -46,7 +46,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [Authorize(Roles = "atPowerCID.Admin")]
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Solution> solution)
         {
-            logger.LogDebug($"Begin: SolutionsController Patch(key: {key}, solution Patch exists: {solution.HasMethod("Patch")})");
+            logger.LogDebug($"Begin: SolutionsController Patch(key: {key})");
 
             if (!ModelState.IsValid)
             {
@@ -77,6 +77,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                     throw;
                 }
             }
+            logger.LogDebug($"End: SolutionsController Patch(key: {key})");
 
             return Updated(entity);
         }
@@ -84,7 +85,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> GetSolutionAsBase64String([FromODataUri] int key, [FromServices] GitHubService gitHubService)
         {
-            logger.LogDebug($"Begin: SolutionsController GetSolutionAsBase64String(key; {key}, gitHubService GetSolutionFileAsBase64String exists: {gitHubService.HasMethod("GetSolutionFileAsBase64String")})");
+            logger.LogDebug($"Begin: SolutionsController GetSolutionAsBase64String(key: {key})");
 
             if ((await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
@@ -93,25 +94,31 @@ namespace at.D365.PowerCID.Portal.Controllers
             Tenant tenant = dbContext.Solutions.FirstOrDefault(x => x.Id == key).ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation;
 
             var solutionAsBase64String = await gitHubService.GetSolutionFileAsBase64String(tenant, solution);
+
+            logger.LogDebug($"End: SolutionsController GetSolutionAsBase64String(key: {key})");
+
             return Ok(solutionAsBase64String);
         }
 
         [HttpPost]
         public async Task<IActionResult> Export([FromODataUri] int key, [FromServices] SolutionService solutionService)
         {
-            logger.LogDebug($"Begin: SolutionsController Export(key: {key}, solutionService AddExportAction exists: {solutionService.HasMethod("AddExportAction")})");
+            logger.LogDebug($"Begin: SolutionsController Export(key: {key})");
 
             if ((await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             Data.Models.Action createdAction = await solutionService.AddExportAction(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: true);
+
+            logger.LogDebug($"End: SolutionsController Export(key: {key})");
+
             return Ok(createdAction);
         }
 
         [HttpPost]
         public async Task<IActionResult> Import([FromODataUri] int key, ODataActionParameters parameters, [FromServices] SolutionService solutionService)
         {
-            logger.LogDebug($"Begin: SolutionsController Import(key: {key}, parameters targetEnvironmentId: {(int)parameters["targetEnvironmentId"]}, solutionService AddImportAction exists: {solutionService.HasMethod("AddImportAction")})");
+            logger.LogDebug($"Begin: SolutionsController Import(key: {key}, parameters targetEnvironmentId: {(int)parameters["targetEnvironmentId"]})");
 
             if ((await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
@@ -141,6 +148,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 {
                     return BadRequest(e.Message);
                 }
+                logger.LogDebug($"End: SolutionsController Import(key: {key}, parameters targetEnvironmentId: {(int)parameters["targetEnvironmentId"]})");
 
                 return Ok(createdAction);
             }
@@ -149,7 +157,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> ApplyUpgrade([FromODataUri] int key, ODataActionParameters parameters, [FromServices] SolutionService solutionService)
         {
-            logger.LogDebug($"Begin: SolutionsController ApplyUpgrade(key: {key}, parameters targetEnvironmentId: {(int)parameters["targetEnvironmentId"]}, solutionService AddApplyUpgradeAction exists: {solutionService.HasMethod("AddApplyUpgradeAction")} )");
+            logger.LogDebug($"Begin: SolutionsController ApplyUpgrade(key: {key}, parameters targetEnvironmentId: {(int)parameters["targetEnvironmentId"]})");
 
             var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
             if (solution == null)
@@ -172,6 +180,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(e.Message);
             }
+            logger.LogDebug($"End: SolutionsController ApplyUpgrade(key: {key}, parameters targetEnvironmentId: {(int)parameters["targetEnvironmentId"]})");
 
             return Ok(createdAction);
         }
@@ -188,25 +197,27 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             int deploymentPathEnvironment = dbContext.DeploymentPathEnvironments.FirstOrDefault(x => x.DeploymentPath == deploymentPathId && x.StepNumber == stepNumber - 1).Environment;
 
+            logger.LogDebug($"End: SolutionsController IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId: {deploymentPathId}, targetEnvironmentId: {targetEnvironmentId}, solutionId: {solutionId} )");
+
             return dbContext.Actions.Any(x => x.Solution == solutionId && x.TargetEnvironment == deploymentPathEnvironment && x.Result == 1);
         }
         private bool ExportExists(int solutionId)
         {
-            logger.LogDebug($"Begin: SolutionsController ExportExists(solutionId: {solutionId})");
+            logger.LogDebug($"Begin & End: SolutionsController ExportExists(solutionId: {solutionId})");
 
             return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.Type == 1 && a.Result == 1);
         }
 
         private bool ImportExistsOnEnvironment(int solutionId, int environmentId)
         {
-            logger.LogDebug($"Begin: SolutionsController ImportExistsOnEnvironment(solutionId: {solutionId}; environmentId. {environmentId})");
+            logger.LogDebug($"Begin & End: SolutionsController ImportExistsOnEnvironment(solutionId: {solutionId}; environmentId. {environmentId})");
 
             return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.TargetEnvironment == environmentId && a.Type == 2 && a.Result == 1);
         }
 
         private bool SolutionExists(int key)
         {
-            logger.LogDebug($"Begin: SolutionsController SolutionExists(key: {key})");
+            logger.LogDebug($"Begin & End: SolutionsController SolutionExists(key: {key})");
 
             return base.dbContext.Solutions.Any(p => p.Id == key);
         }

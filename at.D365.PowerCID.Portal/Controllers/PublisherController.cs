@@ -25,7 +25,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<at.D365.PowerCID.Portal.Data.Models.Publisher> Get()
         {
-            logger.LogDebug($"Begin: PublisherController Get()");
+            logger.LogDebug($"Begin & End: PublisherController Get()");
              
             return base.dbContext.Publishers.Where(e => e.EnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }

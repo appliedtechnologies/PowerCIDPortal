@@ -32,7 +32,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<EnvironmentVariableEnvironment> Get()
         {
-            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController Get()");
+            logger.LogDebug($"Begin & End: EnvironmentVariableEnvironmentsController Get()");
 
             return base.dbContext.EnvironmentVariableEnvironments.Where(e => e.EnvironmentVariableNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
@@ -40,7 +40,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] EnvironmentVariableEnvironment environmentVariableEnvironment)
         {
-            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController Post(environmentVariableEnvironment: {environmentVariableEnvironment.Environment.ToString()})");
+            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController Post(environmentVariableEnvironment Environment: {environmentVariableEnvironment.Environment})");
 
             if (!ModelState.IsValid)
             {
@@ -54,13 +54,15 @@ namespace at.D365.PowerCID.Portal.Controllers
             base.dbContext.EnvironmentVariableEnvironments.Add(environmentVariableEnvironment);
             await base.dbContext.SaveChangesAsync();
 
+            logger.LogDebug($"End: EnvironmentVariableEnvironmentsController Post(environmentVariableEnvironment Environment: {environmentVariableEnvironment.Environment})");
+
             return Created(environmentVariableEnvironment);
         }
 
         [HttpPatch]
         public async Task<IActionResult> Patch([FromODataUri] int keyEnvironmentVariable, [FromODataUri] int keyEnvironment, Delta<EnvironmentVariableEnvironment> environmentVariableEnvironment)
         {
-            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController Patch(keyEnvironmentVariable Patch exists : {environmentVariableEnvironment.HasMethod("Patch")})");
+            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController Patch(keyEnvironmentVariable: {keyEnvironmentVariable}, keyEnvironment: {keyEnvironment})");
 
             if (!ModelState.IsValid)
             {
@@ -90,12 +92,14 @@ namespace at.D365.PowerCID.Portal.Controllers
                     throw;
                 }
             }
+            logger.LogDebug($"End: EnvironmentVariableEnvironmentsController Patch(keyEnvironmentVariable: {keyEnvironmentVariable}, keyEnvironment: {keyEnvironment})");
+
             return Updated(entity);
         }
 
         private bool EnvironmentVariableEnvironmentExists(int keyEnvironmentVariableEnvironment, int keyEnvironment)
         {
-            logger.LogDebug($"Begin: EnvironmentVariableEnvironmentsController EnvironmentVariableEnvironmentExists(keyEnvironmentVariableEnvironment: {keyEnvironmentVariableEnvironment}, keyEnvironment: {keyEnvironment} )");
+            logger.LogDebug($"Begin & End: EnvironmentVariableEnvironmentsController EnvironmentVariableEnvironmentExists(keyEnvironmentVariableEnvironment: {keyEnvironmentVariableEnvironment}, keyEnvironment: {keyEnvironment})");
 
             return base.dbContext.EnvironmentVariableEnvironments.Any(p => p.EnvironmentVariable == keyEnvironmentVariableEnvironment && p.Environment == keyEnvironment);
         }

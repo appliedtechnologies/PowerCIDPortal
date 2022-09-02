@@ -30,7 +30,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<at.D365.PowerCID.Portal.Data.Models.Environment> Get()
         {
-            logger.LogDebug("Begin: EnvironmentsController Get()");
+            logger.LogDebug("Begin & End: EnvironmentsController Get()");
 
             return base.dbContext.Environments.Where(e => e.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
@@ -39,8 +39,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Environment> environment)
         {
             logger.LogDebug($"Begin: EnvironmentsController Patch(key: {key}, environment: {environment.GetChangedPropertyNames().ToString()}");
-            
-            if((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+
+            if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             string[] propertyNamesAllowedToChange = { "OrdinalNumber", "IsDevelopmentEnvironment" };
@@ -71,6 +71,8 @@ namespace at.D365.PowerCID.Portal.Controllers
                         throw;
                     }
                 }
+                logger.LogDebug($"End: EnvironmentsController Patch(key: {key}, environment: {environment.GetChangedPropertyNames().ToString()}");
+
                 return Updated(entity);
             }
             else
@@ -97,6 +99,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             await this.dbContext.Environments.AddRangeAsync(pulledNotExisting);
 
             await this.dbContext.SaveChangesAsync();
+
+            logger.LogDebug("End: EnvironmentsController PullExisting()");
+
             return Ok();
         }
 
@@ -104,9 +109,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> GetDataversePublishers([FromODataUri] int key)
         {
-
             logger.LogDebug("Begin: EnvironmentsController GetDataversePublishers(key: {key})");
-          
+
             Environment environment = await this.dbContext.Environments.FindAsync(key);
 
             var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
@@ -127,21 +131,23 @@ namespace at.D365.PowerCID.Portal.Controllers
             var publishersFromApi = reponseData["value"].ToList();
             var publishers = new List<dynamic>();
 
-            foreach(var publisher in publishersFromApi){
-                publishers.Add(new {
+            foreach (var publisher in publishersFromApi)
+            {
+                publishers.Add(new
+                {
                     friendlyname = (string)publisher["friendlyname"],
                     publisherid = (string)publisher["publisherid"],
                     isreadonly = (bool)publisher["isreadonly"]
                 });
             }
+            logger.LogDebug("End: EnvironmentsController GetDataversePublishers(key: {key})");
 
             return Ok(publishers);
         }
 
         private void UpdateEnvironmentIfNeeded(Environment pulledEnvironment)
         {
-
-            logger.LogDebug($"Begin: EnvironmentsController UpdateEnvironmentIfNeeded(pulledEnvironment: {pulledEnvironment.Name})");
+            logger.LogDebug($"Begin: EnvironmentsController UpdateEnvironmentIfNeeded(pulledEnvironment Name: {pulledEnvironment.Name})");
 
             Environment currentDbEnvironment = this.dbContext.Environments.First(e => e.MsId == pulledEnvironment.MsId);
 
@@ -150,6 +156,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             if (currentDbEnvironment.BasicUrl != pulledEnvironment.BasicUrl)
                 currentDbEnvironment.BasicUrl = pulledEnvironment.BasicUrl;
+
+            logger.LogDebug($"End: EnvironmentsController UpdateEnvironmentIfNeeded(pulledEnvironment Name: {pulledEnvironment.Name})");
         }
 
         private async Task<IEnumerable<Environment>> GetExistingEnvironments()
@@ -184,15 +192,16 @@ namespace at.D365.PowerCID.Portal.Controllers
                     };
                     environments.Add(environment);
                 }
-                catch{}
+                catch { }
             }
+            logger.LogDebug("End: EnvironmentsController GetExistingEnvironments()");
 
             return environments;
         }
 
         private bool EnvironmentExists(int key)
         {
-            logger.LogDebug("Begin: EnvironmentsController EnvironmentExists(key: {key})");
+            logger.LogDebug("Begin & End: EnvironmentsController EnvironmentExists(key: {key})");
 
             return base.dbContext.Environments.Any(p => p.Id == key);
         }

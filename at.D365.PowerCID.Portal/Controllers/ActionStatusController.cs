@@ -20,7 +20,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<ActionStatus> Get()
         {
-            logger.LogDebug($"Begin: ActionStatusController ActionExists()");
+            logger.LogDebug($"Begin & End: ActionStatusController Get()");
+            
             return base.dbContext.ActionStatuses;
         }
     }

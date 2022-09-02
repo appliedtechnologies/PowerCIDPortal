@@ -19,7 +19,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<ActionType> Get()
         {
-            logger.LogDebug($"Begin: ActionTypesController Get()");
+            logger.LogDebug($"Begin & End: ActionTypesController Get()");
+            
             return base.dbContext.ActionTypes;
         }
     }

@@ -30,8 +30,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<DeploymentPath> Get()
         {
-
-            logger.LogDebug($"Begin: DeploymentPathsController Get()");
+            logger.LogDebug($"Begin & End: DeploymentPathsController Get()");
 
             return base.dbContext.DeploymentPaths.Where(e => e.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
@@ -40,7 +39,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] DeploymentPath deploymentPath)
         {
-            logger.LogDebug($"Begin: DeploymentPathsController Post(deploymentPath: {deploymentPath.Name})");
+            logger.LogDebug($"Begin: DeploymentPathsController Post(deploymentPath Name: {deploymentPath.Name})");
 
             if (!ModelState.IsValid)
             {
@@ -55,6 +54,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             base.dbContext.DeploymentPaths.Add(deploymentPath);
             await base.dbContext.SaveChangesAsync();
 
+            logger.LogDebug($"End: DeploymentPathsController Post(deploymentPath Name: {deploymentPath.Name})");
+
             return Created(deploymentPath);
 
         }
@@ -62,7 +63,6 @@ namespace at.D365.PowerCID.Portal.Controllers
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
         public async Task<IActionResult> Delete([FromODataUri] int key)
         {
-
             logger.LogDebug($"Begin: DeploymentPathsController Delete(key: {key})");
 
             var deploymentPathToDelete = await this.dbContext.DeploymentPaths.FindAsync(key);
@@ -70,24 +70,29 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (deploymentPathToDelete == null)
                 return NotFound();
 
-            if((await this.dbContext.Tenants.FirstOrDefaultAsync(e => e.Id == deploymentPathToDelete.Tenant && e.MsId == this.msIdTenantCurrentUser)) == null)
+            if ((await this.dbContext.Tenants.FirstOrDefaultAsync(e => e.Id == deploymentPathToDelete.Tenant && e.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             this.dbContext.Remove(deploymentPathToDelete);
             await this.dbContext.SaveChangesAsync();
+
+            logger.LogDebug($"End: DeploymentPathsController Delete(key: {key})");
+
             return Ok();
         }
 
         private bool DeploymentpathExists(int key)
         {
-            logger.LogDebug($"Begin: DeploymentPathsController DeploymentpathExists(key: {key})");
+            logger.LogDebug($"Begin & End: DeploymentPathsController DeploymentpathExists(key: {key})");
 
             return base.dbContext.DeploymentPaths.Any(p => p.Id == key);
         }
 
         private bool EnvironmentExists(int key)
         {
+            logger.LogDebug($"Begin & End: DeploymentPathsController EnvironmentExists(key: {key})");
+
             return base.dbContext.Environments.Any(p => p.Id == key);
-        }        
+        }
     }
 }

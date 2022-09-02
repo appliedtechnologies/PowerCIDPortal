@@ -24,13 +24,12 @@ namespace at.D365.PowerCID.Portal.Controllers
         public ConnectionReferencesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ConnectionReferencesController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
-        } 
+        }
 
         [EnableQuery]
         public IQueryable<ConnectionReference> Get()
         {
-
-            logger.LogDebug($"Begin: ConnectionReferencesController Get()");
+            logger.LogDebug($"Begin & End: ConnectionReferencesController Get()");
 
             return base.dbContext.ConnectionReferences.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
@@ -52,17 +51,20 @@ namespace at.D365.PowerCID.Portal.Controllers
             base.dbContext.ConnectionReferences.Add(connectionReference);
             await base.dbContext.SaveChangesAsync();
 
+            logger.LogDebug($"End: ConnectionReferencesController Post(connectionReference msid: {connectionReference.MsId})");
+
             return Created(connectionReference);
         }
 
         [HttpPost]
         public async Task<IEnumerable<ConnectionReference>> GetConnectionReferencesForApplication(ODataActionParameters parameters, [FromServices] ConnectionReferenceService connectionReferenceService)
         {
-
-            logger.LogDebug($"Begin: ConnectionReferencesController GetConnectionReferencesForApplication(parameters: {(string)parameters["applicationId"]})");
+            logger.LogDebug($"Begin: ConnectionReferencesController GetConnectionReferencesForApplication(parameters applicationId: {(int)parameters["applicationId"]})");
 
             int applicationId = (int)parameters["applicationId"];
             var connectionReferences = await connectionReferenceService.GetExistsingConnectionReferencesFromDataverse(applicationId);
+
+            logger.LogDebug($"End: ConnectionReferencesController GetConnectionReferencesForApplication(parameters applicationId: {(int)parameters["applicationId"]})");
 
             return connectionReferences;
         }

@@ -31,14 +31,14 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<Patch> Get()
         {
-            logger.LogDebug($"Begin: PatchesController Get()");
+            logger.LogDebug($"Begin & End: PatchesController Get()");
 
             return base.dbContext.Patches.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         public async Task<IActionResult> Post([FromBody] Patch patch)
         {
-            logger.LogDebug($"Begin: PatchesController Post(patch version: {patch.Version})");
+            logger.LogDebug($"Begin: PatchesController Post(patch Version: {patch.Version})");
 
             if (!ModelState.IsValid)
             {
@@ -60,12 +60,14 @@ namespace at.D365.PowerCID.Portal.Controllers
             this.dbContext.Patches.Add(patch);
             await this.dbContext.SaveChangesAsync();
 
+            logger.LogDebug($"End: PatchesController Post(patch Version: {patch.Version})");
+
             return Created(patch);
         }
 
         private async Task CreatePatchInDataverse(string solutionUniqueName, string displayNameDataversePatch, string basicUrl, Patch patch)
         {
-            logger.LogDebug($"Begin: PatchesController CreatePatchInDataverse(solutionUniqueName: {solutionUniqueName}, displayNameDataversePatch: {displayNameDataversePatch} ,basicUrl: {basicUrl}, patch version: {patch.Version})");
+            logger.LogDebug($"Begin: PatchesController CreatePatchInDataverse(solutionUniqueName: {solutionUniqueName}, displayNameDataversePatch: {displayNameDataversePatch} ,basicUrl: {basicUrl}, patch Version: {patch.Version})");
 
             JObject newSolution = new JObject();
             newSolution.Add("DisplayName", displayNameDataversePatch);
@@ -92,6 +94,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 patch.MsId = (Guid)(await response.Content.ReadAsAsync<JObject>())["SolutionId"];
                 patch.UniqueName = await this.GetUniqueSolutioNamePatchFromDataverse(basicUrl, patch.MsId);
             }
+            logger.LogDebug($"End: PatchesController CreatePatchInDataverse(solutionUniqueName: {solutionUniqueName}, displayNameDataversePatch: {displayNameDataversePatch} ,basicUrl: {basicUrl}, patch Version: {patch.Version})");
         }
 
         private async Task<string> GetUniqueSolutioNamePatchFromDataverse(string basicUrl, Guid msId)
@@ -113,6 +116,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
             else
             {
+                logger.LogDebug($"End: PatchesController GetUniqueSolutioNamePatchFromDataverse(basicUrl: {basicUrl}, msId: {msId.ToString()}");
+
                 return (string)(await response.Content.ReadAsAsync<JObject>())["uniquename"];
             }
         }

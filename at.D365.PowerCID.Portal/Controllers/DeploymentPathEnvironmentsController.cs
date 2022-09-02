@@ -31,8 +31,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<DeploymentPathEnvironment> Get()
         {
-
-            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Get()");
+            logger.LogDebug($"Begin & End: DeploymentPathEnvironmentsController Get()");
 
             return base.dbContext.DeploymentPathEnvironments.OrderBy(s => s.StepNumber).Where(e => e.EnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
@@ -43,7 +42,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Delete(keyDeploymentPath: {keyDeploymentPath}, keyEnvironment: {keyEnvironment})");
 
-            if((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == keyEnvironment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == keyEnvironment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             var deploymentPathEnvironmentToDelete = await this.dbContext.DeploymentPathEnvironments.FindAsync(keyDeploymentPath, keyEnvironment);
@@ -55,6 +54,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             sortWhenDeleted(keyDeploymentPath, keyEnvironment, stepnumber);
             this.dbContext.Remove(deploymentPathEnvironmentToDelete);
             await this.dbContext.SaveChangesAsync();
+
+            logger.LogDebug($"End: DeploymentPathEnvironmentsController Delete(keyDeploymentPath: {keyDeploymentPath}, keyEnvironment: {keyEnvironment})");
+
             return Ok();
         }
 
@@ -62,14 +64,14 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] DeploymentPathEnvironment deploymentPathEnvironment)
         {
-              logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Post(deploymentPathEnvironment stepnumber: {deploymentPathEnvironment.StepNumber})");
+            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Post(deploymentPathEnvironment stepnumber: {deploymentPathEnvironment.StepNumber})");
 
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == deploymentPathEnvironment.Environment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == deploymentPathEnvironment.Environment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             var stepnumber = deploymentPathEnvironment.StepNumber;
@@ -83,6 +85,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             base.dbContext.DeploymentPathEnvironments.OrderBy(s => s.StepNumber);
             await base.dbContext.SaveChangesAsync();
 
+            logger.LogDebug($"End: DeploymentPathEnvironmentsController Post(deploymentPathEnvironment stepnumber: {deploymentPathEnvironment.StepNumber})");
+
             return Created(deploymentPathEnvironment);
         }
 
@@ -90,14 +94,13 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPatch]
         public async Task<IActionResult> Patch([FromODataUri] int keyEnvironment, [FromODataUri] int keyDeploymentPath, [FromBody] Object parameters)
         {
+            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Patch(keyEnvironment: {keyEnvironment}, keyDeploymentPath: {keyDeploymentPath})");
 
-             logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Patch(keyEnvironment: {keyEnvironment}, keyDeploymentPath: {keyDeploymentPath}, parameters: {parameters.ToString()} )");
-            
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            if((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == keyEnvironment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == keyEnvironment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             var parametersAsJObject = JsonConvert.DeserializeObject<JObject>(parameters.ToString());
@@ -114,11 +117,15 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             await base.dbContext.SaveChangesAsync();
 
+            logger.LogDebug($"End: DeploymentPathEnvironmentsController Patch(keyEnvironment: {keyEnvironment}, keyDeploymentPath: {keyDeploymentPath})");
+
             return Updated(deploymentPathEnvironmenToUpdate);
         }
 
         private void sortWhenUpdated(int deploymentPathId, int fromIndex, int toIndex)
         {
+            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, fromIndex: {fromIndex}, toIndex:{toIndex})");
+
             if (fromIndex < toIndex)
             {
                 var DeploymentPathEnvironmentsInBetween = dbContext.DeploymentPathEnvironments.Where(x => x.DeploymentPath == deploymentPathId && x.StepNumber > fromIndex && x.StepNumber <= toIndex);
@@ -127,6 +134,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 {
                     depolymentPathEnvironment.StepNumber = depolymentPathEnvironment.StepNumber - 1;
                 }
+                logger.LogDebug($"End: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, fromIndex: {fromIndex}, toIndex:{toIndex})");
             }
             else
             {
@@ -136,12 +144,14 @@ namespace at.D365.PowerCID.Portal.Controllers
                 {
                     depolymentPathEnvironment.StepNumber = depolymentPathEnvironment.StepNumber + 1;
                 }
+                logger.LogDebug($"End: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, fromIndex: {fromIndex}, toIndex:{toIndex})");
             }
         }
 
 
         private void sortWhenAdded(int deploymentPathId, int enviromentId, int Stepnumber)
         {
+            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, enviromentId: {enviromentId}, Stepnumber:{Stepnumber})");
 
             var deploymentPathEnvironmentsWithHigherNumber = dbContext.DeploymentPathEnvironments.Where(e => e.StepNumber >= Stepnumber && e.DeploymentPath == deploymentPathId);
             foreach (var deploymentPathEnvironment in deploymentPathEnvironmentsWithHigherNumber)
@@ -149,6 +159,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 deploymentPathEnvironment.StepNumber = deploymentPathEnvironment.StepNumber + 1;
 
             }
+            logger.LogDebug($"End: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, enviromentId: {enviromentId}, Stepnumber:{Stepnumber})");
         }
 
         /* private async Task<IActionResult> SortAfterAdded(int deploymentPathId)
@@ -170,6 +181,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private void sortWhenDeleted(int deploymentPathId, int enviromentId, int Stepnumber)
         {
+            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, enviromentId: {enviromentId}, Stepnumber:{Stepnumber})");
 
             var deploymentPathEnvironmentsWithHigherNumber = dbContext.DeploymentPathEnvironments.Where(e => e.StepNumber >= Stepnumber && e.DeploymentPath == deploymentPathId);
             foreach (var deploymentPathEnvironment in deploymentPathEnvironmentsWithHigherNumber)
@@ -177,9 +189,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 deploymentPathEnvironment.StepNumber = deploymentPathEnvironment.StepNumber - 1;
 
             }
+            logger.LogDebug($"End: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, enviromentId: {enviromentId}, Stepnumber:{Stepnumber})");
         }
-
-
-
     }
 }

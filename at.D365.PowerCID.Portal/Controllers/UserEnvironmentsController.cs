@@ -26,7 +26,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<UserEnvironment> Get()
         {
-            logger.LogDebug($"Begin: UserEnvironmentsController Get()");
+            logger.LogDebug($"Begin & End: UserEnvironmentsController Get()");
 
             return base.dbContext.UserEnvironments.Where(e => e.EnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
@@ -34,7 +34,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [Authorize(Roles = "atPowerCID.Admin")]
         public async Task<IActionResult> Post([FromBody] UserEnvironment userEnvironment)
         {
-            logger.LogDebug($"Begin: UserEnvironmentsController Post(userEnvironment Environment id: {userEnvironment.Environment})");
+            logger.LogDebug($"Begin: UserEnvironmentsController Post(userEnvironment Environment: {userEnvironment.Environment})");
 
             if (!ModelState.IsValid)
             {
@@ -46,6 +46,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             base.dbContext.UserEnvironments.Add(userEnvironment);
             await base.dbContext.SaveChangesAsync();
+
+            logger.LogDebug($"End: UserEnvironmentsController Post(userEnvironment Environment: {userEnvironment.Environment})");
 
             return Created(userEnvironment);
         }
@@ -66,6 +68,9 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             this.dbContext.Remove(userEnvironmentToDelete);
             await this.dbContext.SaveChangesAsync();
+
+            logger.LogDebug($"End: UserEnvironmentsController Delete(keyUser: {keyUser}, keyEnvironment: {keyEnvironment})");
+
             return Ok();
         }
     }
