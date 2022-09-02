@@ -13,25 +13,34 @@ using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.Logging;
+
+
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
     [Authorize]
     public class ConnectionReferenceEnvironmentsController : BaseController
     {
-        public ConnectionReferenceEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+        public ConnectionReferenceEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ConnectionReferenceEnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
-        } 
+            this.logger = logger;
+        }
 
         [EnableQuery]
         public IQueryable<ConnectionReferenceEnvironment> Get()
         {
+            logger.LogDebug($"Begin & End: ConnectionReferenceEnvironmentsController Get()");
+
             return base.dbContext.ConnectionReferenceEnvironments.Where(e => e.ConnectionReferenceNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] ConnectionReferenceEnvironment connectionReferenceEnvironment)
         {
+            logger.LogDebug($"Begin: ConnectionReferenceEnvironmentsController Post(connectionReferenceEnvironment Environment: {connectionReferenceEnvironment.Environment})");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -44,17 +53,21 @@ namespace at.D365.PowerCID.Portal.Controllers
             base.dbContext.ConnectionReferenceEnvironments.Add(connectionReferenceEnvironment);
             await base.dbContext.SaveChangesAsync();
 
+            logger.LogDebug($"End: ConnectionReferenceEnvironmentsController Post(connectionReferenceEnvironment Environment: {connectionReferenceEnvironment.Environment})");
+
             return Created(connectionReferenceEnvironment);
         }
 
         [HttpPatch]
         public async Task<IActionResult> Patch([FromODataUri] int keyConnectionReference, [FromODataUri] int keyEnvironment, Delta<ConnectionReferenceEnvironment> connectionReferenceEnvironment)
         {
+            logger.LogDebug($"Begin: ConnectionReferenceEnvironmentsController Patch(keyConnectionReference: {keyConnectionReference}, keyEnvironment: {keyEnvironment})");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            if((await this.dbContext.ConnectionReferences.FirstOrDefaultAsync(e => e.Id == keyConnectionReference && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if ((await this.dbContext.ConnectionReferences.FirstOrDefaultAsync(e => e.Id == keyConnectionReference && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             var entity = await base.dbContext.ConnectionReferenceEnvironments.FirstAsync(e => e.ConnectionReference == keyConnectionReference && e.Environment == keyEnvironment);
@@ -78,11 +91,15 @@ namespace at.D365.PowerCID.Portal.Controllers
                     throw;
                 }
             }
+            logger.LogDebug($"End: ConnectionReferenceEnvironmentsController Patch(keyConnectionReference: {keyConnectionReference}, keyEnvironment: {keyEnvironment})");
+
             return Updated(entity);
         }
 
         private bool ConnectionReferenceEnvironmentExists(int keyConnectionReference, int keyEnvironment)
         {
+            logger.LogDebug($"Begin & End: ConnectionReferenceEnvironmentsController Get(keyConnectionReference: {keyConnectionReference}, keyEnvironment: {keyEnvironment})");
+
             return base.dbContext.ConnectionReferenceEnvironments.Any(p => p.ConnectionReference == keyConnectionReference && p.Environment == keyEnvironment);
         }
     }

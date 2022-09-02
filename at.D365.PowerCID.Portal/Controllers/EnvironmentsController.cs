@@ -19,8 +19,9 @@ namespace at.D365.PowerCID.Portal.Controllers
     [Authorize]
     public class EnvironmentsController : BaseController
     {
-        private readonly ILogger<EnvironmentsController> logger;
-        public EnvironmentsController(ILogger<EnvironmentsController> logger, atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+
+        public EnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<EnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }
@@ -29,14 +30,17 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<at.D365.PowerCID.Portal.Data.Models.Environment> Get()
         {
-            logger.LogTrace("Begin: Get Environments");
+            logger.LogDebug("Begin & End: EnvironmentsController Get()");
+
             return base.dbContext.Environments.Where(e => e.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Environment> environment)
         {
-            if((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            logger.LogDebug($"Begin: EnvironmentsController Patch(key: {key}, environment: {environment.GetChangedPropertyNames().ToString()}");
+
+            if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
             string[] propertyNamesAllowedToChange = { "OrdinalNumber", "IsDevelopmentEnvironment" };
@@ -67,6 +71,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                         throw;
                     }
                 }
+                logger.LogDebug($"End: EnvironmentsController Patch(key: {key}, environment: {environment.GetChangedPropertyNames().ToString()}");
 
                 return Updated(entity);
             }
@@ -80,6 +85,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> PullExisting()
         {
+            logger.LogDebug("Begin: EnvironmentsController PullExisting()");
+
             IEnumerable<Environment> pulledEnvironments = await this.GetExistingEnvironments();
 
             //update existing environments
@@ -92,12 +99,18 @@ namespace at.D365.PowerCID.Portal.Controllers
             await this.dbContext.Environments.AddRangeAsync(pulledNotExisting);
 
             await this.dbContext.SaveChangesAsync();
+
+            logger.LogDebug("End: EnvironmentsController PullExisting()");
+
             return Ok();
         }
 
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
         [HttpPost]
-        public async Task<IActionResult> GetDataversePublishers([FromODataUri] int key){
+        public async Task<IActionResult> GetDataversePublishers([FromODataUri] int key)
+        {
+            logger.LogDebug("Begin: EnvironmentsController GetDataversePublishers(key: {key})");
+
             Environment environment = await this.dbContext.Environments.FindAsync(key);
 
             var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
@@ -118,21 +131,23 @@ namespace at.D365.PowerCID.Portal.Controllers
             var publishersFromApi = reponseData["value"].ToList();
             var publishers = new List<dynamic>();
 
-            foreach(var publisher in publishersFromApi){
-                publishers.Add(new {
+            foreach (var publisher in publishersFromApi)
+            {
+                publishers.Add(new
+                {
                     friendlyname = (string)publisher["friendlyname"],
                     publisherid = (string)publisher["publisherid"],
                     isreadonly = (bool)publisher["isreadonly"]
                 });
             }
+            logger.LogDebug("End: EnvironmentsController GetDataversePublishers(key: {key})");
 
             return Ok(publishers);
         }
 
         private void UpdateEnvironmentIfNeeded(Environment pulledEnvironment)
         {
-
-            logger.LogTrace("Begin: UpdateEnvironmentIfNeeded(Environment pulledEnvironment)");
+            logger.LogDebug($"Begin: EnvironmentsController UpdateEnvironmentIfNeeded(pulledEnvironment Name: {pulledEnvironment.Name})");
 
             Environment currentDbEnvironment = this.dbContext.Environments.First(e => e.MsId == pulledEnvironment.MsId);
 
@@ -141,11 +156,13 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             if (currentDbEnvironment.BasicUrl != pulledEnvironment.BasicUrl)
                 currentDbEnvironment.BasicUrl = pulledEnvironment.BasicUrl;
+
+            logger.LogDebug($"End: EnvironmentsController UpdateEnvironmentIfNeeded(pulledEnvironment Name: {pulledEnvironment.Name})");
         }
 
         private async Task<IEnumerable<Environment>> GetExistingEnvironments()
         {
-            logger.LogTrace("Begin: Task<IEnumerable<Environment>> GetExistingEnvironments()");
+            logger.LogDebug("Begin: EnvironmentsController GetExistingEnvironments()");
 
             var environmentsRepsonse = await this.downstreamWebApi.CallWebApiForUserAsync(
                 "AzureManagementApi",
@@ -175,14 +192,17 @@ namespace at.D365.PowerCID.Portal.Controllers
                     };
                     environments.Add(environment);
                 }
-                catch{}
+                catch { }
             }
+            logger.LogDebug("End: EnvironmentsController GetExistingEnvironments()");
 
             return environments;
         }
 
         private bool EnvironmentExists(int key)
         {
+            logger.LogDebug("Begin & End: EnvironmentsController EnvironmentExists(key: {key})");
+
             return base.dbContext.Environments.Any(p => p.Id == key);
         }
     }

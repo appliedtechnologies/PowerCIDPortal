@@ -19,6 +19,8 @@ using System.Text;
 using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
@@ -26,9 +28,13 @@ namespace at.D365.PowerCID.Portal.Controllers
     {
 
         private readonly IConfiguration configuration;
-        public UsersController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, IConfiguration configuration) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        private readonly ILogger logger;
+
+        public UsersController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, ILogger<UsersController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.configuration = configuration;
+            this.logger = logger;
+
         }
 
         // GET: odata/Users
@@ -36,6 +42,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [EnableQuery]
         public IQueryable<User> Get()
         {
+            logger.LogDebug($"Begin & End: UsersController Get()");
+
             return base.dbContext.Users.Where(e => e.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
@@ -43,6 +51,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> Login([FromServices] IConfiguration configuration)
         {
+            logger.LogDebug($"Begin: UsersController Login()");
+
             if (!ModelState.IsValid)
                 return BadRequest();
 
@@ -81,7 +91,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             await this.dbContext.SaveChangesAsync();
 
-            if (newTenantCreated || currentUser.MakeAdmin) 
+            if (newTenantCreated || currentUser.MakeAdmin)
             {
                 try
                 {
@@ -90,11 +100,13 @@ namespace at.D365.PowerCID.Portal.Controllers
                     await this.AssignInitAdmin(appId, appRoleIdInitAdmin);
                     currentUser.MakeAdmin = false;
                 }
-                catch(Exception e){
+                catch (Exception e)
+                {
                     currentUser.MakeAdmin = true;
                 }
                 await this.dbContext.SaveChangesAsync();
             }
+            logger.LogDebug($"End: UsersController Login()");
 
             return Ok();
         }
@@ -102,6 +114,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private User UpdateUserIfNeeded(User currentUser)
         {
+            logger.LogDebug($"Begin: UsersController UpdateUserIfNeeded(currentUser MsId: {currentUser.MsId})");
+
             User currentDbUser = this.dbContext.Users.First(e => e.MsId == currentUser.MsId);
 
             if (currentDbUser.Firstname != currentUser.Firstname)
@@ -113,11 +127,15 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (currentDbUser.Email != currentUser.Email)
                 currentDbUser.Email = currentUser.Email;
 
+            logger.LogDebug($"End: UsersController UpdateUserIfNeeded(currentUser MsId: {currentUser.MsId})");
+
             return currentDbUser;
         }
 
         private async Task<Tenant> AddTenant(Guid msId)
         {
+            logger.LogDebug($"Begin: UsersController AddTenant(msId: {msId.ToString()})");
+
             string tenantName = await this.GetTenantName(msId);
 
             Tenant newTenant = new Tenant
@@ -127,13 +145,21 @@ namespace at.D365.PowerCID.Portal.Controllers
             };
 
             this.dbContext.Tenants.Add(newTenant);
+
+            logger.LogDebug($"End: UsersController AddTenant(msId: {msId.ToString()})");
+
             return newTenant;
         }
 
         private async Task<HttpResponseMessage> CallWebApiForUserAsyncWithDataVerseApi(Data.Models.Environment environment, User user, HttpMethod httpMethod, string relativePath, StringContent content = null)
         {
+            logger.LogDebug($"Begin: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
+
             if (content == null)
             {
+                logger.LogInformation("content null");
+                logger.LogDebug($"End: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
+
                 return await this.downstreamWebApi.CallWebApiForUserAsync(
                                "DataverseApi",
                                options =>
@@ -147,6 +173,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
             else
             {
+                logger.LogInformation("content not null");
+                logger.LogDebug($"End: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
+
                 return await this.downstreamWebApi.CallWebApiForUserAsync(
                                "DataverseApi",
                                options =>
@@ -164,6 +193,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> SetupApplicationUsers()
         {
+            logger.LogDebug($"Begin: UsersController SetupApplicationUsers()");
+
             Guid applicationId = configuration.GetValue<Guid>("AzureAd:ClientId");
             User currentUser = dbContext.Users.Include(x => x.TenantNavigation).FirstOrDefault(x => x.MsId == this.msIdCurrentUser);
             var environments = dbContext.Environments.Where(x => x.Tenant == currentUser.Tenant);
@@ -241,11 +272,12 @@ namespace at.D365.PowerCID.Portal.Controllers
                     }
                 }
 
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     environmentMessage.Add($"{environment.Name}: an error occurred ({ex.Message})");
                 }
             }
+            logger.LogDebug($"End: UsersController SetupApplicationUsers()");
 
             return Ok(environmentMessage);
         }
@@ -255,7 +287,12 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IEnumerable<UserRole>> GetUserRoles([FromODataUri] int key)
         {
+            logger.LogDebug($"Begin: UsersController GetUserRoles(key: {key})");
+
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
+
+            logger.LogDebug($"End: UsersController GetUserRoles(key: {key})");
+
             return await this.GetUserRolesInAzure(user.MsId);
         }
 
@@ -263,6 +300,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IEnumerable<AppRole>> GetAppRoles([FromODataUri] int key, [FromServices] IConfiguration configuration)
         {
+            logger.LogDebug($"Begin: UsersController GetUserRoles(key: {key})");
+
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
             Guid appId = Guid.Parse(configuration["AzureAd:ClientId"]);
             Guid enterpriseAppId = await this.GetEnterpriseAppId(appId);
@@ -298,14 +337,17 @@ namespace at.D365.PowerCID.Portal.Controllers
                 }
                 catch { }
             }
-            return appRoles;
+            logger.LogDebug($"End: UsersController GetUserRoles(key: {key})");
 
+            return appRoles;
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
         [HttpPost]
         public async Task<IActionResult> AssignRole([FromODataUri] int key, ODataActionParameters parameters, [FromServices] IConfiguration configuration)
         {
+            logger.LogDebug($"Begin: UsersController AssignRole(key: {key})");
+
             Guid principalId = Guid.Parse(parameters["principalId"].ToString());
             Guid appId = Guid.Parse(configuration["AzureAd:ClientId"]);
             Guid enterpriseAppId = await this.GetEnterpriseAppId(appId);
@@ -315,6 +357,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             await this.AssignRoleInAzure(user.MsId, principalId, enterpriseAppId, appRoleId);
 
+            logger.LogDebug($"End: UsersController AssignRole(key: {key})");
+
             return Ok();
         }
 
@@ -322,6 +366,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> RemoveAssignedRole([FromODataUri] int key, ODataActionParameters parameters)
         {
+            logger.LogDebug($"Begin: UsersController RemoveAssignedRole(key: {key}, parameters roleAssignmentId: {parameters["roleAssignmentId"].ToString()} )");
 
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
 
@@ -339,11 +384,15 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 throw new Exception("Could not remove role");
             }
+            logger.LogDebug($"End: UsersController RemoveAssignedRole(key: {key}, parameters roleAssignmentId: {parameters["roleAssignmentId"].ToString()})");
+
             return Ok();
         }
 
         private async Task<string> GetTenantName(Guid msId)
         {
+            logger.LogDebug($"Begin: UsersController GetTenantName(msId: {msId.ToString()})");
+
             var tenantResponse = await this.downstreamWebApi.CallWebApiForUserAsync(
                 "AzureManagementApi",
                 options =>
@@ -359,12 +408,16 @@ namespace at.D365.PowerCID.Portal.Controllers
                     return (string)tenants[i]["displayName"];
             }
 
+            logger.LogDebug($"End: UsersController GetTenantName(msId: {msId.ToString()})");
+
             //no tenant with msId was found
             throw new System.Exception($"can not find display name of tenant with id '{msId}'");
         }
 
         private async Task<Guid> GetEnterpriseAppId(Guid appId)
         {
+            logger.LogDebug($"Begin: UsersController GetEnterpriseAppId(appId: {appId.ToString()})");
+
             var user = base.dbContext.Users.FirstOrDefault(u => u.MsId == this.msIdCurrentUser);
 
             var response = await this.downstreamWebApi.CallWebApiForAppAsync(
@@ -380,6 +433,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 JToken enterpriseApp = (await response.Content.ReadAsAsync<JObject>())["value"][0];
                 Guid enterpriseAppId = Guid.Parse((string)enterpriseApp["id"]);
+
+                logger.LogDebug($"End: UsersController GetEnterpriseAppId(appId: {appId.ToString()})");
+
                 return enterpriseAppId;
             }
             catch
@@ -390,6 +446,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private async Task AssignInitAdmin(Guid appId, Guid appRoleId)
         {
+            logger.LogDebug($"Begin: UsersController AssignInitAdmin(appId: {appId.ToString()}, appRoleId: {appRoleId.ToString()})");
+
             List<UserRole> existingRoles = await this.GetUserRolesInAzure(this.msIdCurrentUser);
 
             if (!existingRoles.Any(e => e.AppRoleId == appRoleId.ToString()))
@@ -397,10 +455,14 @@ namespace at.D365.PowerCID.Portal.Controllers
                 Guid enterpriseAppId = await this.GetEnterpriseAppId(appId);
                 await this.AssignRoleInAzure(this.msIdCurrentUser, this.msIdCurrentUser, enterpriseAppId, appRoleId);
             }
+            logger.LogDebug($"End: UsersController AssignInitAdmin(appId: {appId.ToString()}, appRoleId: {appRoleId.ToString()})");
+
         }
 
         private async Task<List<UserRole>> GetUserRolesInAzure(Guid msIdUser)
         {
+            logger.LogDebug($"Begin: UsersController GetUserRolesInAzure(msIdUser: {msIdUser.ToString()})");
+
             var response = await this.downstreamWebApi.CallWebApiForAppAsync(
                 "GraphApi",
                 options =>
@@ -432,11 +494,15 @@ namespace at.D365.PowerCID.Portal.Controllers
                 }
                 catch { }
             }
+            logger.LogDebug($"End: UsersController GetUserRolesInAzure(msIdUser: {msIdUser.ToString()})");
+
             return userRoles;
         }
 
         private async Task AssignRoleInAzure(Guid msIdUser, Guid principalId, Guid resourceId, Guid appRoleId)
         {
+            logger.LogDebug($"Begin: UsersController GetUserRolesInAzure(msIdUser: {msIdUser.ToString()}, principalId: {principalId.ToString()}, appRoleId: {appRoleId.ToString()})");
+
             JObject newRoleAssignment = new JObject();
             newRoleAssignment.Add("principalId", principalId);
             newRoleAssignment.Add("resourceId", resourceId);
@@ -452,6 +518,8 @@ namespace at.D365.PowerCID.Portal.Controllers
                     options.RelativePath = $"/users/{msIdUser}/appRoleAssignments";
                     options.HttpMethod = HttpMethod.Post;
                 }, content: roleContent);
+
+            logger.LogDebug($"End: UsersController GetUserRolesInAzure(msIdUser: {msIdUser.ToString()}, principalId: {principalId.ToString()}, appRoleId: {appRoleId.ToString()})");
 
             if (!response.IsSuccessStatusCode)
             {

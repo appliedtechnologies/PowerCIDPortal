@@ -33,13 +33,19 @@ namespace at.D365.PowerCID.Portal.Services
 
         public void UpdateSuccessfulAction(Action action)
         {
+            logger.LogDebug($"Begin: ActionService UpdateSuccessfulAction()");
+
             action.Status = 3;
             action.Result = 1;
             action.FinishTime = DateTime.Now;
+
+            logger.LogDebug($"End: ActionService UpdateSuccessfulAction()");
         }
 
         public async Task UpdateFailedAction(Action action, string friendlyErrormessage, AsyncJob asyncJobForExeptionMessage = null)
         {
+            logger.LogDebug($"Begin: ActionService UpdateFailedAction(friendlyErrormessage: {friendlyErrormessage})");
+
             action.Status = 3;
             action.Result = 2;
             action.FinishTime = DateTime.Now;
@@ -49,6 +55,7 @@ namespace at.D365.PowerCID.Portal.Services
             {
                 action.ErrorMessage = await this.solutionHistoryService.GetExceptionMessage(asyncJobForExeptionMessage);
             }
+            logger.LogDebug($"End: ActionService UpdateSuccessfulAction(friendlyErrormessage: {friendlyErrormessage})");
         }
     }
 }
