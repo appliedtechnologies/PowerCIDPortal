@@ -92,9 +92,9 @@ namespace at.D365.PowerCID.Portal.Services
             return newAction;
         }
 
-        public async Task<Data.Models.Action> AddApplyUpgradeAction(int key, int targetEnvironmentId, Guid msIdCurrentUser)
+        public async Task<Data.Models.Action> AddApplyUpgradeAction(int solutionId, int targetEnvironmentId, Guid msIdCurrentUser)
         {
-            Solution solution = dbContext.Solutions.First(e => e.Id == key);
+            Solution solution = dbContext.Solutions.First(e => e.Id == solutionId);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
             await this.CheckImportPermission(user.Id, targetEnvironmentId);
@@ -104,6 +104,29 @@ namespace at.D365.PowerCID.Portal.Services
                 Name = $"{solution.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
                 TargetEnvironment = targetEnvironmentId,
                 Type = 3,
+                Status = 1,
+                StartTime = DateTime.Now,
+                Solution = solution.Id
+            };
+
+            dbContext.Add(newAction);
+            await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
+            return newAction;
+        }
+
+        public async Task<Data.Models.Action> AddEnableFlowsAction(int solutionId, int targetEnvironmentId, Guid msIdCurrentUser)
+        {
+            Solution solution = dbContext.Solutions.First(e => e.Id == solutionId);
+            User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
+
+            await this.CheckImportPermission(user.Id, targetEnvironmentId);
+            await this.CheckIsConnectionOwerSet(targetEnvironmentId);
+
+            Data.Models.Action newAction = new Data.Models.Action
+            {
+                Name = $"{solution.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
+                TargetEnvironment = targetEnvironmentId,
+                Type = 4,
                 Status = 1,
                 StartTime = DateTime.Now,
                 Solution = solution.Id
@@ -239,28 +262,7 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public async Task EnableAllCloudFlows(string solutionUniqueName, string basicUrl){
-            var solutionId = await this.GetSolutionIdByUniqueName(solutionUniqueName, basicUrl);
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                var query = new QueryExpression("workflow"){
-                    ColumnSet = new ColumnSet("statuscode", "statecode"),
-                };
-                query.Criteria.AddCondition("solutionid", ConditionOperator.Equal, solutionId);
-
-                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
-                foreach(var workflow in response.Entities){
-                    if(((OptionSetValue)workflow["statuscode"]).Value != 2 || ((OptionSetValue)workflow["statecode"]).Value != 1){
-                        var updatedWorkflow = new Entity(workflow.LogicalName, workflow.Id);
-                        updatedWorkflow["statecode"] = 1;
-                        updatedWorkflow["statuscode"] = 2;
-                        dataverseClient.CallerId = new Guid("a06a16ea-e521-ec11-b6e6-000d3ade6977");
-                        await dataverseClient.UpdateAsync(updatedWorkflow);
-                    }
-                }
-            }
-        }
-
-        private async Task<Guid> GetSolutionIdByUniqueName(string solutionUniqueName, string basicUrl){
+        public  async Task<Guid> GetSolutionIdByUniqueName(string solutionUniqueName, string basicUrl){
             using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 var query = new QueryExpression("solution"){
                     ColumnSet = new ColumnSet("solutionid"),
@@ -282,6 +284,13 @@ namespace at.D365.PowerCID.Portal.Services
             UserEnvironment userEnvironment = await this.dbContext.UserEnvironments.FindAsync(userId, environmentId);
             if (userEnvironment == null)
                 throw new Exception("User does not have permission within PowerCID Portal to import/apply upgrade on target environment. Your administrator can assign the permission via Power CID Portal user management.");
+        }
+
+        private async Task CheckIsConnectionOwerSet(int environmentId)
+        {
+            Data.Models.Environment environment = await this.dbContext.Environments.FindAsync(environmentId);
+            if (String.IsNullOrEmpty(environment.ConnectionsOwner))
+                throw new Exception("Connection Owner is not set for target environment.");
         }
 
         private async Task CreateUpgradeInDataverse(string solutionUniqueName, string solutionDisplayName, string basicUrl, Guid tenantMsId, Upgrade upgrade)

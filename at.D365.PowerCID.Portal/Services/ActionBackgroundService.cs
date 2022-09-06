@@ -20,6 +20,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly GitHubService gitHubService;
         private readonly SolutionHistoryService solutionHistoryService;
         private readonly ActionService actionService;
+        private readonly FlowService flowService;
         private System.Timers.Timer timer;
 
         public ActionBackgroundService(IServiceProvider serviceProvider, ILogger<ActionBackgroundService> logger)
@@ -32,6 +33,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
             this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
             this.actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
+            this.flowService = scope.ServiceProvider.GetRequiredService<FlowService>();
             this.logger = logger;
         }
 
@@ -115,7 +117,7 @@ namespace at.D365.PowerCID.Portal.Services
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                         }
                         break;
-                        case 3:
+                        case 3: //apply upgrade
                         {
                             queuedAction.Status = 2;
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
@@ -123,9 +125,24 @@ namespace at.D365.PowerCID.Portal.Services
                             AsyncJob asyncJob = await this.solutionService.DeleteAndPromoteInDataverse(queuedAction);
 
                             if(asyncJob == null)
-                                await this.actionService.FinishSuccessfulApplingUpgradeAction(queuedAction);
+                                await this.actionService.FinishSuccessfulApplyUpgradeAction(queuedAction);
                             else
                                 dbContext.Add(asyncJob);
+                                
+                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+                        }  
+                        break;
+                        case 4: //enable flows
+                        {
+                            queuedAction.Status = 2;
+                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+
+                            string errorLog = await this.flowService.EnableAllCloudFlows(queuedAction.SolutionNavigation.UniqueName, queuedAction.TargetEnvironmentNavigation.ConnectionsOwner, queuedAction.TargetEnvironmentNavigation.BasicUrl, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl);
+
+                            if(String.IsNullOrEmpty(errorLog))
+                                this.actionService.UpdateSuccessfulAction(queuedAction);
+                            else
+                                await this.actionService.UpdateFailedAction(queuedAction, errorLog);
                                 
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                         }  
