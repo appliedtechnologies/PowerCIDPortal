@@ -57,10 +57,14 @@ namespace at.D365.PowerCID.Portal.Services
         }
 
         public async Task FinishSuccessfulApplyUpgradeAction(Action finishedAction){
+            logger.LogDebug($"Begin: ActionService FinishSuccessfulApplyUpgradeAction(finishedAction Id: {finishedAction.Id})");
+
             if(!String.IsNullOrEmpty(finishedAction.TargetEnvironmentNavigation.ConnectionsOwner) && finishedAction.SolutionNavigation.EnableWorkflows == true)
                 await this.solutionService.AddEnableFlowsAction((int)finishedAction.Solution, finishedAction.TargetEnvironment, finishedAction.CreatedByNavigation.MsId);
 
             this.UpdateSuccessfulAction(finishedAction);
+
+            logger.LogDebug($"End: ActionService FinishSuccessfulApplyUpgradeAction");
         }
     }
 }

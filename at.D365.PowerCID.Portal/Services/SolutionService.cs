@@ -134,6 +134,8 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<Data.Models.Action> AddEnableFlowsAction(int solutionId, int targetEnvironmentId, Guid msIdCurrentUser)
         {
+            logger.LogDebug($"Begin: SolutionService AddEnableFlowsAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
+
             Solution solution = dbContext.Solutions.First(e => e.Id == solutionId);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
@@ -152,6 +154,9 @@ namespace at.D365.PowerCID.Portal.Services
 
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
+
+            logger.LogDebug($"End: SolutionService AddEnableFlowsAction(return Action Id: {newAction.Id})");
+
             return newAction;
         }
 

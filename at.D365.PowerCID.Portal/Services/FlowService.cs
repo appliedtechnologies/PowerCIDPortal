@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using at.D365.PowerCID.Portal.Data.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
@@ -12,12 +13,13 @@ namespace at.D365.PowerCID.Portal.Services
 {
     public class FlowService
     {
+        private readonly ILogger logger;
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
         private readonly SolutionService solutionService;
         private readonly UserService userService;
 
-        public FlowService(IServiceProvider serviceProvider)
+        public FlowService(IServiceProvider serviceProvider, ILogger<FlowService> logger)
         {
             this.serviceProvider = serviceProvider;
 
@@ -26,9 +28,12 @@ namespace at.D365.PowerCID.Portal.Services
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.userService = scope.ServiceProvider.GetRequiredService<UserService>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
+            this.logger = logger;
         }
 
         public async Task<string> EnableAllCloudFlows(string solutionUniqueName, string connectionsOwnerDomainName, string basicUrlTargetSystem, string basicUrlDevelopmentSystem){
+            logger.LogDebug($"Begin: FlowService EnableAllCloudFlows(solutionUniqueName: {solutionUniqueName}, connectionsOwnerDomainName: {connectionsOwnerDomainName}, basicUrlTargetSystem: {basicUrlTargetSystem}, basicUrlDevelopmentSystem: {basicUrlDevelopmentSystem})");
+
             string errorLog = "";
 
             var solutionMsIdTargetSystem = await this.solutionService.GetSolutionIdByUniqueName(solutionUniqueName, basicUrlTargetSystem);
@@ -59,10 +64,14 @@ namespace at.D365.PowerCID.Portal.Services
                 }
             }
 
+            logger.LogDebug($"End: FlowService EnableAllCloudFlows(return {errorLog})");
+
             return errorLog;
         }
 
         private async Task<EntityCollection> GetCloudFlows(Guid solutionMsId, string basicUrl){
+            logger.LogDebug($"Begin: FlowService GetCloudFlows(solutionMsId: {solutionMsId}, basicUrl: {basicUrl})");
+
             using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 var query = new QueryExpression("workflow"){
                     ColumnSet = new ColumnSet("statuscode", "statecode"),
@@ -73,13 +82,19 @@ namespace at.D365.PowerCID.Portal.Services
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
 
+                logger.LogDebug($"End: FlowService GetCloudFlows(return EntityColletion Entity Count {response.Entities.Count})");
+
                 return response;
             }
         }
 
         private async Task<Entity> GetCloudFlow(Guid flowMsId, string basicUrl){
+            logger.LogDebug($"Begin: FlowService GetCloudFlow(flowMsId: {flowMsId}, basicUrl: {basicUrl})");
+
             using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
                 Entity response = await dataverseClient.RetrieveAsync("workflow", flowMsId, new ColumnSet("statuscode", "statecode"));
+
+                logger.LogDebug($"End: FlowService GetCloudFlow()");
 
                 return response;
             }

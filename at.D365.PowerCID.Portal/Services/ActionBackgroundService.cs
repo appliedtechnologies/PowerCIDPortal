@@ -118,8 +118,6 @@ namespace at.D365.PowerCID.Portal.Services
                     {
                         case 1: //export
                         {
-                            logger.LogInformation("Export started: ActionBackgroundService DoBackgroundWork()");
-
                             var asyncJobManaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
                             var asyncJobUnmanaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
 
@@ -128,29 +126,21 @@ namespace at.D365.PowerCID.Portal.Services
 
                             queuedAction.Status = 2;
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
-
-                            logger.LogInformation("Export completed: ActionBackgroundService DoBackgroundWork()");
                         }
                         break;
                         case 2: //import 
-                        {
-                            logger.LogInformation("Import started: ActionBackgroundService DoBackgroundWork()");
-                            
+                        {                          
                             byte[] exportSolutionFile = await this.gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation);
                             AsyncJob asyncJobManaged = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
 
                             dbContext.Add(asyncJobManaged);
 
                             queuedAction.Status = 2;
-                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
-                            
-                            logger.LogInformation("Imported completed: ActionBackgroundService DoBackgroundWork()");
+                            await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId); 
                         }
                         break;
                         case 3: //apply upgrade
-                        {
-                            logger.LogInformation("Applying upgrade: ActionBackgroundService DoBackgroundWork()");
-                        
+                        {                        
                             queuedAction.Status = 2;
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
@@ -162,8 +152,6 @@ namespace at.D365.PowerCID.Portal.Services
                                 dbContext.Add(asyncJob);
                                 
                             await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
-                            
-                            logger.LogInformation("Applying upgrade completed: ActionBackgroundService DoBackgroundWork()");
                         }  
                         break;
                         case 4: //enable flows
