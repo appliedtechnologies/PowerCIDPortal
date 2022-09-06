@@ -48,7 +48,8 @@ namespace at.D365.PowerCID.Portal.Services
         {
             logger.LogDebug("Begin: ActionBackgroundService StartAsync()");
 
-            await ScheduleBackgroundJob(cancellationToken);
+            if(!bool.Parse(configuration["BackgroundServices:DisableBackgroundServices"]))
+                await ScheduleBackgroundJob(cancellationToken);
 
             logger.LogDebug("End: ActionBackgroundService StartAsync()");
         }
@@ -67,7 +68,7 @@ namespace at.D365.PowerCID.Portal.Services
         {
             logger.LogDebug("Begin: ActionBackgroundService ScheduleBackgroundJob()");
 
-            var next = DateTimeOffset.Now.AddSeconds(int.Parse(configuration["ActionBackgroundJobIntervalSeconds"]));
+            var next = DateTimeOffset.Now.AddSeconds(int.Parse(configuration["BackgroundServices:ActionBackgroundJobIntervalSeconds"]));
             var delay = next - DateTimeOffset.Now;
             if (delay.TotalMilliseconds <= 0) // prevent non-positive values from being passed into Timer
             {
