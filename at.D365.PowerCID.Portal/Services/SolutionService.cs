@@ -105,12 +105,11 @@ namespace at.D365.PowerCID.Portal.Services
             return newAction;
         }
 
-        public async Task<Data.Models.Action> AddApplyUpgradeAction(int key, int targetEnvironmentId, Guid msIdCurrentUser)
+        public async Task<Data.Models.Action> AddApplyUpgradeAction(int solutionId, int targetEnvironmentId, Guid msIdCurrentUser)
         {
+            logger.LogDebug($"Begin: SolutionService  AddApplyUpgradeAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
 
-            logger.LogDebug($"Begin: SolutionService  AddApplyUpgradeAction(key: {key}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
-
-            Solution solution = dbContext.Solutions.First(e => e.Id == key);
+            Solution solution = dbContext.Solutions.First(e => e.Id == solutionId);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
             await this.CheckImportPermission(user.Id, targetEnvironmentId);
@@ -128,8 +127,31 @@ namespace at.D365.PowerCID.Portal.Services
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
 
-            logger.LogDebug($"End: SolutionService  AddApplyUpgradeAction(key: {key}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
+            logger.LogDebug($"End: SolutionService  AddApplyUpgradeAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
 
+            return newAction;
+        }
+
+        public async Task<Data.Models.Action> AddEnableFlowsAction(int solutionId, int targetEnvironmentId, Guid msIdCurrentUser)
+        {
+            Solution solution = dbContext.Solutions.First(e => e.Id == solutionId);
+            User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
+
+            await this.CheckImportPermission(user.Id, targetEnvironmentId);
+            await this.CheckIsConnectionOwerSet(targetEnvironmentId);
+
+            Data.Models.Action newAction = new Data.Models.Action
+            {
+                Name = $"{solution.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
+                TargetEnvironment = targetEnvironmentId,
+                Type = 4,
+                Status = 1,
+                StartTime = DateTime.Now,
+                Solution = solution.Id
+            };
+
+            dbContext.Add(newAction);
+            await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
             return newAction;
         }
 
@@ -200,7 +222,7 @@ namespace at.D365.PowerCID.Portal.Services
                 OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
                 PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
                 HoldingSolution = !isPatch && existsSolutionInTargetEnvironment == true,
-                ComponentParameters = solutionComponentParameters
+                ComponentParameters = solutionComponentParameters,
             };
 
             using (var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
@@ -290,6 +312,23 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
+        public  async Task<Guid> GetSolutionIdByUniqueName(string solutionUniqueName, string basicUrl){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                var query = new QueryExpression("solution"){
+                    ColumnSet = new ColumnSet("solutionid"),
+                    PageInfo = new PagingInfo(){
+                        Count = 1,
+                        PageNumber = 1 
+                    }
+                };
+                query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
+
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+                var solutionId = (Guid)response.Entities.First()["solutionid"];
+                return solutionId;
+            }
+        }
+
         private async Task CheckImportPermission(int userId, int environmentId)
         {
             logger.LogDebug($"Begin: SolutionService CheckImportPermission(userId: {userId}, environmentId: {environmentId})");
@@ -299,6 +338,13 @@ namespace at.D365.PowerCID.Portal.Services
                 throw new Exception("User does not have permission within PowerCID Portal to import/apply upgrade on target environment. Your administrator can assign the permission via Power CID Portal user management.");
 
             logger.LogDebug($"End: SolutionService CheckImportPermission(userId: {userId}, environmentId: {environmentId})");
+        }
+
+        private async Task CheckIsConnectionOwerSet(int environmentId)
+        {
+            Data.Models.Environment environment = await this.dbContext.Environments.FindAsync(environmentId);
+            if (String.IsNullOrEmpty(environment.ConnectionsOwner))
+                throw new Exception("Connection Owner is not set for target environment.");
         }
 
         private async Task CreateUpgradeInDataverse(string solutionUniqueName, string solutionDisplayName, string basicUrl, Guid tenantMsId, Upgrade upgrade)

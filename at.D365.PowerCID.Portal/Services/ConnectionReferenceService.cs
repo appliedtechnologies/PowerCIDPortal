@@ -2,11 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.ServiceModel;
 using System.Threading.Tasks;
 using at.D365.PowerCID.Portal.Data.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Identity.Web;
+using Microsoft.PowerPlatform.Dataverse.Client;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
 
@@ -42,8 +46,8 @@ namespace at.D365.PowerCID.Portal.Services
 
             foreach (Solution solution in application.Solutions.Reverse())
             {
-                var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl, tenantMsId);
-                var connectionReferencesOfSolution = await this.GetConnectionReferencesBySolutionComponents(solutionComponents, applicationId, basicUrl, tenantMsId);
+                var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl);
+                var connectionReferencesOfSolution = await this.GetConnectionReferencesBySolutionComponents(solutionComponents, applicationId, basicUrl);
                 connectionReferences.AddRange(connectionReferencesOfSolution.Where(e => connectionReferences.All(x => e.MsId != x.MsId)));
 
                 if (!solution.IsPatch())
@@ -102,68 +106,65 @@ namespace at.D365.PowerCID.Portal.Services
             return 0;
         }
 
-        private async Task<IEnumerable<ConnectionReference>> GetConnectionReferencesBySolutionComponents(JToken solutionComponents, int applicationId, string basicUrl, Guid tenantMsId)
-        {
-            logger.LogDebug($"Begin: ConnectionReferenceService GetConnectionReferencesBySolutionComponents(applicationId: {applicationId}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()})");
-
+        private async Task<IEnumerable<ConnectionReference>> GetConnectionReferencesBySolutionComponents(EntityCollection solutionComponents, int applicationId, string basicUrl){
+            logger.LogDebug($"Begin: ConnectionReferenceService GetConnectionReferencesBySolutionComponents(applicationId: {applicationId}, basicUrl: {basicUrl})");
+        
             List<ConnectionReference> connectionReferences = new List<ConnectionReference>();
-            foreach (var solutionComponent in solutionComponents)
+            foreach (var solutionComponent in solutionComponents.Entities)   
             {
-                if ((int)solutionComponent["componenttype"] == 10029) //10029 is type of a connection reference´
+                if(solutionComponent.FormattedValues["componenttype"] == null)
                 {
-                    var connectionReferenceMsId = new Guid((string)solutionComponent["objectid"]);
-
-                    var connectionReference = await this.GetConnectionReferenceFromDataverse(connectionReferenceMsId, basicUrl, tenantMsId);
-                    connectionReference.Application = applicationId;
-                    connectionReferences.Add(connectionReference);
+                    try{
+                        var connectionReferenceMsId = (Guid)solutionComponent["objectid"];
+                    
+                        var connectionReference = await this.GetConnectionReferenceFromDataverse(connectionReferenceMsId, basicUrl);
+                        connectionReference.Application = applicationId;
+                        connectionReferences.Add(connectionReference);
+                    }
+                    catch(FaultException e){
+                        //TODO log not a connection reference, but this can be normal
+                        continue;
+                    }
                 }
             }
-            logger.LogDebug($"End: ConnectionReferenceService GetConnectionReferencesBySolutionComponents(applicationId: {applicationId}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()})");
+            logger.LogDebug($"End: ConnectionReferenceService GetConnectionReferencesBySolutionComponents(applicationId: {applicationId}, basicUrl: {basicUrl})");
 
             return connectionReferences;
         }
+        
+        private async Task<ConnectionReference> GetConnectionReferenceFromDataverse(Guid connectionReferenceMsId, string basicUrl){
+            logger.LogDebug($"Begin: ConnectionReferenceService GetConnectionReferenceFromDataverse(connectionReferenceMsId: {connectionReferenceMsId.ToString()}, basicUrl: {basicUrl})");
+        
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                Entity response = await dataverseClient.RetrieveAsync("connectionreference", connectionReferenceMsId, new ColumnSet("connectionreferencedisplayname", "connectionreferencelogicalname", "connectorid"));
+                var connectionReference = new ConnectionReference
+                {
+                    DisplayName = (string)response["connectionreferencedisplayname"],
+                    LogicalName = (string)response["connectionreferencelogicalname"],
+                    ConnectorId = (string)response["connectorid"],
+                    MsId = connectionReferenceMsId
+                };
 
-        private async Task<ConnectionReference> GetConnectionReferenceFromDataverse(Guid connectionReferenceMsId, string basicUrl, Guid tenandMsId)
-        {
-            logger.LogDebug($"Begin: ConnectionReferenceService GetConnectionReferenceFromDataverse(connectionReferenceMsId: {connectionReferenceMsId.ToString()}, basicUrl: {basicUrl}, tenandMsId: {tenandMsId.ToString()})");
-
-            var responseConnectionReference = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
-            {
-                options.Tenant = $"{tenandMsId}";
-                options.BaseUrl = basicUrl + options.BaseUrl;
-                options.RelativePath = $"/connectionreferences?$filter=connectionreferenceid eq '{connectionReferenceMsId}'";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{basicUrl}/.default";
-            });
-
-            var connectionReferenceJToken = (await responseConnectionReference.Content.ReadAsAsync<JObject>())["value"][0];
-            var connectionReference = new ConnectionReference
-            {
-                DisplayName = (string)connectionReferenceJToken["connectionreferencedisplayname"],
-                LogicalName = (string)connectionReferenceJToken["connectionreferencelogicalname"],
-                ConnectorId = (string)connectionReferenceJToken["connectorid"],
-                MsId = connectionReferenceMsId
-            };
-            logger.LogDebug($"End: ConnectionReferenceService GetConnectionReferenceFromDataverse(connectionReferenceMsId: {connectionReferenceMsId.ToString()}, basicUrl: {basicUrl}, tenandMsId: {tenandMsId.ToString()})");
-
-            return connectionReference;
+                logger.LogDebug($"End: ConnectionReferenceService GetConnectionReferenceFromDataverse(connectionReferenceMsId: {connectionReferenceMsId.ToString()}, basicUrl: {basicUrl})");
+            
+                return connectionReference;
+            }
         }
 
-        private async Task<JToken> GetSolutionComponentsFromDataverse(Guid solutionMsId, string basicUrl, Guid tenantMsId)
-        {
-            logger.LogDebug($"Begin: ConnectionReferenceService GetSolutionComponentsFromDataverse(solutionMsId: {solutionMsId.ToString()}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()})");
+        private async Task<EntityCollection> GetSolutionComponentsFromDataverse(Guid solutionMsId, string basicUrl){
+            logger.LogDebug($"Begin: ConnectionReferenceService GetSolutionComponentsFromDataverse(solutionMsId: {solutionMsId.ToString()}, basicUrl: {basicUrl})");
+        
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                var query = new QueryExpression("solutioncomponent"){
+                    ColumnSet = new ColumnSet("solutionid", "componenttype", "objectid"),
+                };
+                query.Criteria.AddCondition("solutionid", ConditionOperator.Equal, solutionMsId);
 
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
-            {
-                options.Tenant = $"{tenantMsId}";
-                options.BaseUrl = basicUrl + options.BaseUrl;
-                options.RelativePath = $"/solutioncomponents?$filter=_solutionid_value eq '{solutionMsId}'";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{basicUrl}/.default";
-            });
-            logger.LogDebug($"End: ConnectionReferenceService GetSolutionComponentsFromDataverse(solutionMsId: {solutionMsId.ToString()}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()})");
-
-            return (await response.Content.ReadAsAsync<JObject>())["value"];
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+                logger.LogDebug($"End: ConnectionReferenceService GetSolutionComponentsFromDataverse(solutionMsId: {solutionMsId.ToString()}, basicUrl: {basicUrl})");
+                
+                return response; 
+            }
         }
     }
 }

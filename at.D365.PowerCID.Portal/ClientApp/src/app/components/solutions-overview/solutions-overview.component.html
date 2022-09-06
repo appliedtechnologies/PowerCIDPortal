@@ -167,6 +167,12 @@
             (click)="onClickDeploySolution(cellInfo, false, true)"
             title="apply upgrade"
           ></i>
+          <i
+            *ngIf="lastAction.Type == 3"
+            class="at-icon powercid-icon-handcart clickable-icon"
+            (click)="onClickDeploySolution(cellInfo, false, false, true)"
+            title="enable flows"
+          ></i>
           {{ lastAction.TypeNavigation.Type }}
           {{ lastAction.StatusNavigation.Status }}
           {{ lastAction.ResultNavigation?.Result }}
@@ -181,6 +187,7 @@
             (click)="onClickActionInfo(lastAction)"
           ></i>
           <i
+            *ngIf="lastAction.Type == 2"
             class="dx-icon-clear clickable-icon"
             title="cancel import"
             (click)="onClickCancelImport(lastAction)"
@@ -206,7 +213,7 @@
           ></i>
           <i
             class="at-icon powercid-icon-handcart clickable-icon"
-            (click)="onClickDeploySolution(cellInfo, false, lastAction.Type == 3)"
+            (click)="onClickDeploySolution(cellInfo, false, lastAction.Type == 3, lastAction.Type == 4)"
             title="try deployment again"
           ></i>
           {{ lastAction.TypeNavigation.Type }}

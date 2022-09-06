@@ -185,6 +185,34 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Ok(createdAction);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> EnableFlows([FromODataUri] int key, ODataActionParameters parameters, [FromServices] SolutionService solutionService)
+        {
+            var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if(solution == null)
+                return Forbid();
+
+            if(solution.IsPatch())
+                return BadRequest("Can't enable flows for patch solution");
+
+            int targetEnvironmentId = (int)parameters["targetEnvironmentId"];
+            if (ApplyUpgradeExistsOnEnvironment(key, targetEnvironmentId) == false)
+                return BadRequest("Can't skip apply upgrade before enabling flows");
+
+            Data.Models.Action createdAction;
+
+            try
+            {
+                createdAction = await solutionService.AddEnableFlowsAction(key, targetEnvironmentId, this.msIdCurrentUser);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
+            return Ok(createdAction);
+        }
+
         private bool IsPreviousDeploymentEnvironmentResultSuccessful(int deploymentPathId, int targetEnvironmentId, int solutionId)
         {
             logger.LogDebug($"Begin: SolutionsController IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId: {deploymentPathId}, targetEnvironmentId: {targetEnvironmentId}, solutionId: {solutionId} )");
@@ -213,6 +241,11 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"Begin & End: SolutionsController ImportExistsOnEnvironment(solutionId: {solutionId}; environmentId. {environmentId})");
 
             return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.TargetEnvironment == environmentId && a.Type == 2 && a.Result == 1);
+        }
+
+        private bool ApplyUpgradeExistsOnEnvironment(int solutionId, int environmentId)
+        {
+            return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.TargetEnvironment == environmentId && a.Type == 3 && a.Result == 1);
         }
 
         private bool SolutionExists(int key)
