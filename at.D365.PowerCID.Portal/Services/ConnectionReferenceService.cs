@@ -75,8 +75,7 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: ConnectionReferenceService CleanConnectionReferences(applicationId: {applicationId})");
         }
 
-        public async Task<int> GetStatus(int applicationId, int environmentId)
-        {
+        public async Task<int> GetStatus(int applicationId, int environmentId){
             logger.LogDebug($"Begin: ConnectionReferenceService GetStatus(applicationId: {applicationId}, environmentId: {environmentId})");
 
             //status 0=incomplete configuration;1=complete configuration 

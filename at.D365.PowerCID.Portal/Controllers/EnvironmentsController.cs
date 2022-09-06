@@ -109,7 +109,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> GetDataversePublishers([FromODataUri] int key)
         {
-            logger.LogDebug("Begin: EnvironmentsController GetDataversePublishers(key: {key})");
+            logger.LogDebug($"Begin: EnvironmentsController GetDataversePublishers(key: {key})");
 
             Environment environment = await this.dbContext.Environments.FindAsync(key);
 
@@ -140,7 +140,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                     isreadonly = (bool)publisher["isreadonly"]
                 });
             }
-            logger.LogDebug("End: EnvironmentsController GetDataversePublishers(key: {key})");
+            logger.LogDebug($"End: EnvironmentsController GetDataversePublishers(key: {key})");
 
             return Ok(publishers);
         }
@@ -201,7 +201,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private bool EnvironmentExists(int key)
         {
-            logger.LogDebug("Begin & End: EnvironmentsController EnvironmentExists(key: {key})");
+            logger.LogDebug($"Begin & End: EnvironmentsController EnvironmentExists(key: {key})");
 
             return base.dbContext.Environments.Any(p => p.Id == key);
         }

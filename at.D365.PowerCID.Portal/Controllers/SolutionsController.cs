@@ -20,7 +20,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using at.D365.PowerCID.Portal.Helpers;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -157,7 +156,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> ApplyUpgrade([FromODataUri] int key, ODataActionParameters parameters, [FromServices] SolutionService solutionService)
         {
-            logger.LogDebug($"Begin: SolutionsController ApplyUpgrade(key: {key}, parameters targetEnvironmentId: {(int)parameters["targetEnvironmentId"]})");
+            logger.LogDebug($"Begin: SolutionsController ApplyUpgrade(key: {key})");
 
             var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
             if (solution == null)
@@ -180,7 +179,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(e.Message);
             }
-            logger.LogDebug($"End: SolutionsController ApplyUpgrade(key: {key}, parameters targetEnvironmentId: {(int)parameters["targetEnvironmentId"]})");
+            logger.LogDebug($"End: SolutionsController ApplyUpgrade()");
 
             return Ok(createdAction);
         }
@@ -188,6 +187,8 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> EnableFlows([FromODataUri] int key, ODataActionParameters parameters, [FromServices] SolutionService solutionService)
         {
+            logger.LogDebug($"Begin: SolutionsController EnableFlows(key: {key})");
+
             var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
             if(solution == null)
                 return Forbid();
@@ -209,6 +210,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(e.Message);
             }
+            logger.LogDebug($"End: SolutionsController EnableFlows()");
 
             return Ok(createdAction);
         }
@@ -238,13 +240,15 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private bool ImportExistsOnEnvironment(int solutionId, int environmentId)
         {
-            logger.LogDebug($"Begin & End: SolutionsController ImportExistsOnEnvironment(solutionId: {solutionId}; environmentId. {environmentId})");
+            logger.LogDebug($"Begin & End: SolutionsController ImportExistsOnEnvironment(solutionId: {solutionId}; environmentId: {environmentId})");
 
             return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.TargetEnvironment == environmentId && a.Type == 2 && a.Result == 1);
         }
 
         private bool ApplyUpgradeExistsOnEnvironment(int solutionId, int environmentId)
         {
+            logger.LogDebug($"Begin & End: SolutionsController ApplyUpgradeExistsOnEnvironment(solutionId: {solutionId}; environmentId: {environmentId})");
+
             return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.TargetEnvironment == environmentId && a.Type == 3 && a.Result == 1);
         }
 

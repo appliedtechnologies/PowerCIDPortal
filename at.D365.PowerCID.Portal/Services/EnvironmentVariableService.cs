@@ -23,8 +23,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly IConfiguration configuration;
         private readonly ILogger logger;
 
-        public EnvironmentVariableService(IServiceProvider serviceProvider, ILogger<EnvironmentVariableService> logger)
-        {
+        public EnvironmentVariableService(IServiceProvider serviceProvider, ILogger<EnvironmentVariableService> logger){
             this.serviceProvider = serviceProvider;
             var scope = serviceProvider.CreateScope();
             this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
@@ -33,8 +32,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.logger = logger;
         }
 
-        public async Task CleanEnvironmentVariables(int applicationId)
-        {
+        public async Task CleanEnvironmentVariables(int applicationId){
             logger.LogDebug($"Begin: EnvironmentVariableService CleanEnvironmentVariables(applicationId: {applicationId})");
 
             var existsingEnvironmentVariablesInDataverse = await this.GetExistsingEnvironmentVariablesFromDataverse(applicationId);
@@ -50,8 +48,7 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: EnvironmentVariableService CleanEnvironmentVariables(applicationId: {applicationId})");
         }
 
-        public async Task<IEnumerable<EnvironmentVariable>> GetExistsingEnvironmentVariablesFromDataverse(int applicationId)
-        {
+        public async Task<IEnumerable<EnvironmentVariable>> GetExistsingEnvironmentVariablesFromDataverse(int applicationId){
             logger.LogDebug($"Begin: EnvironmentVariableService GetExistsingEnvironmentVariablesFromDataverse(applicationId: {applicationId})");
 
             Application application = await this.dbContext.Applications.FindAsync(applicationId);
@@ -74,8 +71,7 @@ namespace at.D365.PowerCID.Portal.Services
             return environmentVariables;
         }
 
-        public async Task<int> GetStatus(int applicationId, int environmentId)
-        {
+        public async Task<int> GetStatus(int applicationId, int environmentId){
             logger.LogDebug($"Begin: EnvironmentVariableService GetStatus(applicationId: {applicationId}, environmentId: {environmentId})");
             //status 0=incomplete configuration;1=complete configuration 
             var existingEnvironmentVariables = await this.GetExistsingEnvironmentVariablesFromDataverse(applicationId);
@@ -104,7 +100,6 @@ namespace at.D365.PowerCID.Portal.Services
         }
 
         private async Task<IEnumerable<EnvironmentVariable>> GetEnvironemntVariablesBySolutionComponents(EntityCollection solutionComponents, int applicationId, string basicUrl, Guid tenantMsId){
-        {
             logger.LogDebug($"Begin: EnvironmentVariableService  GetEnvironemntVariablesBySolutionComponents(applicationId: {applicationId}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()})");
 
             List<EnvironmentVariable> environmentVariables = new List<EnvironmentVariable>();
