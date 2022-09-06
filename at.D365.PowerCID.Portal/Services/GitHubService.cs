@@ -154,13 +154,13 @@ namespace at.D365.PowerCID.Portal.Services
 
         private Tuple<string, string> SplitOwnerAndRepositoryName(string ownerAndRepositoryName)
         {
-            logger.LogDebug("Begin: GitHubService SplitOwnerAndRepositoryName(ownerAndRepositoryName: {ownerAndRepositoryName})");
+            logger.LogDebug($"Begin: GitHubService SplitOwnerAndRepositoryName(ownerAndRepositoryName: {ownerAndRepositoryName})");
 
             string[] gitHubRepositoryName = ownerAndRepositoryName.Split('/');
             string owner = gitHubRepositoryName[0];
             string repositoryName = gitHubRepositoryName[1];
 
-            logger.LogDebug("End: GitHubService SplitOwnerAndRepositoryName(ownerAndRepositoryName: {ownerAndRepositoryName})");
+            logger.LogDebug($"End: GitHubService SplitOwnerAndRepositoryName(ownerAndRepositoryName: {ownerAndRepositoryName})");
 
             return new Tuple<string, string>(owner, repositoryName);
         }

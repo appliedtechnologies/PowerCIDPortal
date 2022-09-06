@@ -92,7 +92,6 @@ namespace at.D365.PowerCID.Portal.Services
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
 
-                return Guid.Parse((string)response.Entities.FirstOrDefault()?["msdyn_solutionhistoryid"]);
                 var solutionHistoryEntry = response.Entities.FirstOrDefault();
 
                 if(solutionHistoryEntry == null)

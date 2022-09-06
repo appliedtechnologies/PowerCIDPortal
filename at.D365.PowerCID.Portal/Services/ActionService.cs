@@ -16,8 +16,6 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly IConfiguration configuration;
         private readonly SolutionService solutionService;
         private readonly atPowerCIDContext dbContext;
-        private System.Timers.Timer timer;
-        private readonly IServiceProvider serviceProvider;
         private readonly SolutionHistoryService solutionHistoryService;
 
         public ActionService(IServiceProvider serviceProvider, ILogger<ActionService> logger)
