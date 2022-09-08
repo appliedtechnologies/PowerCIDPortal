@@ -43,7 +43,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { "OrdinalNumber", "IsDevelopmentEnvironment", "ConnectionsOwner" };
+            string[] propertyNamesAllowedToChange = { "OrdinalNumber", "IsDevelopmentEnvironment", "ConnectionsOwner", "DeployUnmanaged" };
             if (environment.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() == 0)
             {
                 if (!ModelState.IsValid)
