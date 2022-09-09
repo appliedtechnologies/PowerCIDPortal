@@ -238,7 +238,7 @@ namespace at.D365.PowerCID.Portal.Services
                 {
                     AsyncOperationId = response.AsyncOperationId,
                     JobId = Guid.Parse(response.ImportJobKey),
-                    IsManaged = true,
+                    IsManaged = !action.TargetEnvironmentNavigation.DeployUnmanaged,
                     Action = action.Id
                 };
                 logger.LogDebug($"End: SolutionService StartImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");

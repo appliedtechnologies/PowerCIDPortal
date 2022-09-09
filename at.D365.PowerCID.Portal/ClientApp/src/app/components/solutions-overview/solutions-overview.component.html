@@ -10,7 +10,7 @@
   [headerFilter]="{ visible: true }"
   class="solutions-grid"
   [loadPanel]="{ enabled: true }"
-  [allowColumnReordering]="true"
+  [allowColumnReordering]="false"
   [remoteOperations]="{
     sorting: false,
     filtering: true,
@@ -35,11 +35,11 @@
   <div *dxTemplate="let cellInfo of 'nameCellTemplate'">
     <div class="card dx-card dx-theme-text-color">
       <i
-        class="dx-icon-info clickable-icon"
+        class="dx-icon-info clickable-icon at-icon"
         (click)="onClickSolutionInfo(cellInfo)"
       ></i>
       <i
-        class="dx-icon-folder clickable-icon"
+        class="dx-icon-folder clickable-icon at-icon"
         (click)="onClickOpenMakerPortal(cellInfo)"
       ></i>
       {{ cellInfo.value }}
@@ -47,10 +47,15 @@
   </div>
 
   <div *dxTemplate="let cellInfo of 'environmentHeaderCellTemplate'">
-    <i
+        <i
       class="at-icon powercid-icon-einstellungen clickable-icon"
       title="configure deployment"
       (click)="onClickConfigureDeployment(cellInfo.column.environmentData)"
+    ></i>
+    <i
+      *ngIf="cellInfo.column.environmentData.DeployUnmanaged == true"
+      class="at-icon dx-icon-warning red-icon"
+      title="WARNING: deployments to this environment are unmanged"
     ></i>
     {{ cellInfo.column.caption }}
   </div>
@@ -68,17 +73,17 @@
         class="card dx-card dx-theme-text-color card-success"
       >
         <i
-          class="dx-icon-info clickable-icon"
+          class="dx-icon-info clickable-icon at-icon"
           title="show details"
           (click)="onClickActionInfo(lastAction)"
         ></i>
         <i
-          class="dx-icon-download clickable-icon"
+          class="dx-icon-download clickable-icon at-icon"
           title="download managed solution"
           (click)="onClickDownloadSolution(cellInfo, lastAction)"
         ></i>
         <i
-          class="dx-icon-newfolder clickable-icon"
+          class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
           title="renew export"
         ></i>
@@ -91,13 +96,13 @@
         class="card dx-card dx-theme-text-color card-in-progress"
       >
         <i
-          class="dx-icon-info clickable-icon"
+          class="dx-icon-info clickable-icon at-icon"
           title="show details"
           (click)="onClickActionInfo(lastAction)"
         ></i>
         <i
           *ngIf="autoRefreshInterval == null"
-          class="dx-icon-refresh clickable-icon"
+          class="dx-icon-refresh clickable-icon at-icon"
           title="start auto-refresh"
           (click)="onClickStartAutoRefresh(lastAction)"
         ></i>
@@ -110,12 +115,12 @@
         class="card dx-card dx-theme-text-color card-error"
       >
         <i
-          class="dx-icon-info clickable-icon"
+          class="dx-icon-info clickable-icon at-icon"
           title="show details"
           (click)="onClickActionInfo(lastAction)"
         ></i>
         <i
-          class="dx-icon-newfolder clickable-icon"
+          class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
           title="renew export"
         ></i>
@@ -128,7 +133,7 @@
       <div class="card dx-card dx-theme-text-color card-ready">
         <span>
           <i
-            class="dx-icon-newfolder clickable-icon"
+            class="dx-icon-newfolder clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, true)"
             title="export only"
           ></i>
@@ -157,19 +162,19 @@
           class="card dx-card dx-theme-text-color card-success"
         >
           <i
-            class="dx-icon-info clickable-icon"
+            class="dx-icon-info clickable-icon at-icon"
             title="show details"
             (click)="onClickActionInfo(lastAction)"
           ></i>
           <i
             *ngIf="lastAction.Type == 2 && (lastAction.SolutionNavigation | isPatch) == false"
-            class="at-icon powercid-icon-handcart clickable-icon"
+            class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, false, true)"
             title="apply upgrade"
           ></i>
           <i
             *ngIf="lastAction.Type == 3"
-            class="at-icon powercid-icon-handcart clickable-icon"
+            class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, false, false, true)"
             title="enable flows"
           ></i>
@@ -182,19 +187,19 @@
           class="card dx-card dx-theme-text-color card-in-progress"
         >
           <i
-            class="dx-icon-info clickable-icon"
+            class="dx-icon-info clickable-icon at-icon"
             title="show details"
             (click)="onClickActionInfo(lastAction)"
           ></i>
           <i
             *ngIf="lastAction.Type == 2"
-            class="dx-icon-clear clickable-icon"
+            class="dx-icon-clear clickable-icon at-icon"
             title="cancel import"
             (click)="onClickCancelImport(lastAction)"
           ></i>
           <i
             *ngIf="autoRefreshInterval == null"
-            class="dx-icon-refresh clickable-icon"
+            class="dx-icon-refresh clickable-icon at-icon"
             title="start auto-refresh"
             (click)="onClickStartAutoRefresh(lastAction)"
           ></i>
@@ -207,12 +212,12 @@
           class="card dx-card dx-theme-text-color card-error"
         >
           <i
-            class="dx-icon-info clickable-icon"
+            class="dx-icon-info clickable-icon at-icon"
             title="show details"
             (click)="onClickActionInfo(lastAction)"
           ></i>
           <i
-            class="at-icon powercid-icon-handcart clickable-icon"
+            class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, false, lastAction.Type == 3, lastAction.Type == 4)"
             title="try deployment again"
           ></i>
@@ -226,7 +231,7 @@
       <div class="card dx-card dx-theme-text-color card-ready">
         <span>
           <i
-            class="at-icon powercid-icon-handcart clickable-icon"
+            class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo)"
             title="deploy here"
           ></i>
