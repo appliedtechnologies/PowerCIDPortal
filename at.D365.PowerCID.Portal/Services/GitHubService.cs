@@ -75,13 +75,18 @@ namespace at.D365.PowerCID.Portal.Services
             return connection;
         }
 
-        public async Task<byte[]> GetSolutionFileAsByteArray(Tenant tenant, Solution solution)
+        public async Task<byte[]> GetSolutionFileAsByteArray(Tenant tenant, Solution solution, bool unmanaged= false)
         {
             logger.LogDebug($"Begin: GitHubService GetSolutionFileAsByteArray(tenant GitHubInstallationId: {tenant.GitHubInstallationId}, solution Name: {solution.Name})");
 
             (var installation, var installationClient) = await this.GetInstallationWithClient(tenant.GitHubInstallationId);
+            string path;
+            
+            if(unmanaged)
+                path = $"applications/{solution.ApplicationNavigation.Id}_{solution.ApplicationNavigation.SolutionUniqueName}/{solution.Version}/{solution.Name}_unmanaged.zip";
+            else
+                path = $"applications/{solution.ApplicationNavigation.Id}_{solution.ApplicationNavigation.SolutionUniqueName}/{solution.Version}/{solution.Name}_managed.zip";
 
-            string path = $"applications/{solution.ApplicationNavigation.Id}_{solution.ApplicationNavigation.SolutionUniqueName}/{solution.Version}/{solution.Name}_managed.zip";
             string[] gitHubRepositoryName = tenant.GitHubRepositoryName.Split('/');
             string repositoryName = gitHubRepositoryName[1];
             string owner = gitHubRepositoryName[0];

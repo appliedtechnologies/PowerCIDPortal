@@ -19,7 +19,6 @@ namespace at.D365.PowerCID.Portal.Services
     {
         private readonly ILogger logger;
         private readonly IServiceProvider serviceProvider;
-        private readonly atPowerCIDContext dbContext;
         private readonly IConfiguration configuration;
         private readonly GitHubService gitHubService;
         private readonly SolutionService solutionService;
@@ -34,7 +33,6 @@ namespace at.D365.PowerCID.Portal.Services
 
             var scope = serviceProvider.CreateScope();
 
-            this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
@@ -115,152 +113,156 @@ namespace at.D365.PowerCID.Portal.Services
         private async Task DoBackgroundWork(CancellationToken cancellationToken)
         {
             logger.LogDebug("Begin: AsyncJobBackgroundService DoBackgroundWork()");
+            using(var dbContext = this.serviceProvider.CreateScope().ServiceProvider.GetRequiredService<atPowerCIDContext>()){
+                var asyncJobsByEnvironment = dbContext.AsyncJobs.ToList().GroupBy(e => e.ActionNavigation.TargetEnvironment);
 
-            var asyncJobsByEnvironment = dbContext.AsyncJobs.ToList().GroupBy(e => e.ActionNavigation.TargetEnvironment);
-
-            if (asyncJobsByEnvironment.Count() > 0)
-            {
-                foreach (var environmentGroup in asyncJobsByEnvironment)
+                if (asyncJobsByEnvironment.Count() > 0)
                 {
-                    try
+                    foreach (var environmentGroup in asyncJobsByEnvironment)
                     {
-                        var environmentId = environmentGroup.Key;
-                        Environment environment = dbContext.Environments.Find(environmentId);
-
-                        foreach (AsyncJob asyncJob in environmentGroup)
+                        try
                         {
-                            try
+                            var environmentId = environmentGroup.Key;
+                            Environment environment = dbContext.Environments.Find(environmentId);
+
+                            foreach (AsyncJob asyncJob in environmentGroup)
                             {
-                                switch (asyncJob.ActionNavigation.Type)
+                                try
                                 {
-                                    case 1: //export
-                                        {
-                                            logger.LogInformation("Export started: AsyncJobBackgroundService DoBackgroundWork() ");
-
-                                            Entity asyncOperationInDataverse = await this.GetCurrentAsyncOperationFromDataverse((Guid)asyncJob.AsyncOperationId, environment.BasicUrl);
-
-                                            if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30)
-                                            { // Completed Success
-                                                string exportSolutionFile = await this.solutionService.DownloadSolutionFileFromDataverse(asyncJob);
-                                                await this.gitHubService.SaveSolutionFile(asyncJob, exportSolutionFile, environment.TenantNavigation);
-                                                this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
-
-                                                // Export with Import --> Start Import
-                                                if (asyncJob.ActionNavigation.ExportOnly == false && asyncJob.IsManaged == true)
-                                                {
-                                                    try
-                                                    {
-                                                        await this.solutionService.AddImportAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.ImportTargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
-                                                    }
-                                                    catch (Exception e)
-                                                    {
-                                                        dbContext.Actions.Add(new Data.Models.Action
-                                                        {
-                                                            Name = $"{asyncJob.ActionNavigation.SolutionNavigation.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
-                                                            TargetEnvironment = (int)asyncJob.ActionNavigation.ImportTargetEnvironment,
-                                                            Type = 2,
-                                                            Status = 3,
-                                                            Result = 2,
-                                                            ErrorMessage = e.Message,
-                                                            StartTime = DateTime.Now,
-                                                            Solution = asyncJob.ActionNavigation.Solution,
-                                                        });
-                                                    }
-                                                }
-                                                dbContext.AsyncJobs.Remove(asyncJob);
-                                            }
-                                            else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
+                                    switch (asyncJob.ActionNavigation.Type)
+                                    {
+                                        case 1: //export
                                             {
-                                                await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
-                                                dbContext.AsyncJobs.Remove(asyncJob);
-                                            }
-                                            logger.LogInformation("Export completed: AsyncJobBackgroundService DoBackgroundWork() ");
-                                        }
-                                        break;
-                                    case 2: //import
-                                        {
-                                            logger.LogInformation("Import started: AsyncJobBackgroundService DoBackgroundWork() ");
+                                                logger.LogInformation("Export started: AsyncJobBackgroundService DoBackgroundWork() ");
 
-                                            Entity asyncOperationInDataverse = await this.GetCurrentAsyncOperationFromDataverse((Guid)asyncJob.AsyncOperationId, environment.BasicUrl);
+                                                Entity asyncOperationInDataverse = await this.GetCurrentAsyncOperationFromDataverse((Guid)asyncJob.AsyncOperationId, environment.BasicUrl);
 
-                                            if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30)
-                                            { // Completed Success
-                                                this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
+                                                if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30)
+                                                { // Completed Success
+                                                    string exportSolutionFile = await this.solutionService.DownloadSolutionFileFromDataverse(asyncJob);
+                                                    await this.gitHubService.SaveSolutionFile(asyncJob, exportSolutionFile, environment.TenantNavigation);
 
-                                                // Upgrade Solution without manuelly upgrade apply --> Start Apply Upgrade
-                                                bool isPatch = asyncJob.ActionNavigation.SolutionNavigation.GetType().Name.Contains("Patch");
-                                                if (!isPatch)
-                                                {
-                                                    Upgrade upgrade = (Upgrade)asyncJob.ActionNavigation.SolutionNavigation;
-                                                    bool existsSolutionInTargetEnvironment = await this.solutionService.ExistsSolutionInTargetEnvironment(upgrade.UniqueName, asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl, upgrade.Version);
-                                                    if (existsSolutionInTargetEnvironment == true && upgrade.ApplyManually == false && asyncJob.IsManaged == true && asyncJob.ActionNavigation.Status != 4)
-                                                    {
-                                                        try
+                                                    if(!dbContext.AsyncJobs.Any(e => e.Action == asyncJob.Action && e.Id != asyncJob.Id)){
+                                                        this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
+
+                                                        // Export with Import --> Start Import
+                                                        if (asyncJob.ActionNavigation.ExportOnly == false)
                                                         {
-                                                            await this.solutionService.AddApplyUpgradeAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.TargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
-                                                        }
-                                                        catch (Exception e)
-                                                        {
-                                                            dbContext.Actions.Add(new Data.Models.Action
+                                                            try
                                                             {
-                                                                Name = $"{asyncJob.ActionNavigation.SolutionNavigation.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
-                                                                TargetEnvironment = (int)asyncJob.ActionNavigation.ImportTargetEnvironment,
-                                                                Type = 3,
-                                                                Status = 3,
-                                                                Result = 2,
-                                                                ErrorMessage = e.Message,
-                                                                StartTime = DateTime.Now,
-                                                                Solution = asyncJob.ActionNavigation.Solution,
-                                                            });
+                                                                await this.solutionService.AddImportAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.ImportTargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
+                                                            }
+                                                            catch (Exception e)
+                                                            {
+                                                                dbContext.Actions.Add(new Data.Models.Action
+                                                                {
+                                                                    Name = $"{asyncJob.ActionNavigation.SolutionNavigation.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
+                                                                    TargetEnvironment = (int)asyncJob.ActionNavigation.ImportTargetEnvironment,
+                                                                    Type = 2,
+                                                                    Status = 3,
+                                                                    Result = 2,
+                                                                    ErrorMessage = e.Message,
+                                                                    StartTime = DateTime.Now,
+                                                                    Solution = asyncJob.ActionNavigation.Solution,
+                                                                });
+                                                            }
                                                         }
                                                     }
+                                                    dbContext.AsyncJobs.Remove(asyncJob);
                                                 }
-                                                dbContext.AsyncJobs.Remove(asyncJob);
+                                                else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
+                                                {
+                                                    await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
+                                                    dbContext.AsyncJobs.Remove(asyncJob);
+                                                }
+                                                logger.LogInformation("Export completed: AsyncJobBackgroundService DoBackgroundWork() ");
                                             }
-                                            else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
+                                            break;
+                                        case 2: //import
                                             {
-                                                await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
-                                                dbContext.AsyncJobs.Remove(asyncJob);
+                                                logger.LogInformation("Import started: AsyncJobBackgroundService DoBackgroundWork() ");
+
+                                                Entity asyncOperationInDataverse = await this.GetCurrentAsyncOperationFromDataverse((Guid)asyncJob.AsyncOperationId, environment.BasicUrl);
+
+                                                if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30)
+                                                { // Completed Success
+                                                    this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
+
+                                                    // Upgrade Solution without manuelly upgrade apply --> Start Apply Upgrade
+                                                    bool isPatch = asyncJob.ActionNavigation.SolutionNavigation.GetType().Name.Contains("Patch");
+                                                    if (!isPatch)
+                                                    {
+                                                        Upgrade upgrade = (Upgrade)asyncJob.ActionNavigation.SolutionNavigation;
+                                                        bool existsSolutionInTargetEnvironment = await this.solutionService.ExistsSolutionInTargetEnvironment(upgrade.UniqueName, asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl, upgrade.Version);
+                                                        if (existsSolutionInTargetEnvironment == true && upgrade.ApplyManually == false)
+                                                        {
+                                                            try
+                                                            {
+                                                                await this.solutionService.AddApplyUpgradeAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.TargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
+                                                            }
+                                                            catch (Exception e)
+                                                            {
+                                                                dbContext.Actions.Add(new Data.Models.Action
+                                                                {
+                                                                    Name = $"{asyncJob.ActionNavigation.SolutionNavigation.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
+                                                                    TargetEnvironment = (int)asyncJob.ActionNavigation.ImportTargetEnvironment,
+                                                                    Type = 3,
+                                                                    Status = 3,
+                                                                    Result = 2,
+                                                                    ErrorMessage = e.Message,
+                                                                    StartTime = DateTime.Now,
+                                                                    Solution = asyncJob.ActionNavigation.Solution,
+                                                                });
+                                                            }
+                                                        }
+                                                    }
+                                                    dbContext.AsyncJobs.Remove(asyncJob);
+                                                }
+                                                else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
+                                                {
+                                                    await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
+                                                    dbContext.AsyncJobs.Remove(asyncJob);
+                                                }
+                                                logger.LogInformation("Import completed: AsyncJobBackgroundService DoBackgroundWork() ");
                                             }
-                                            logger.LogInformation("Import completed: AsyncJobBackgroundService DoBackgroundWork() ");
-                                        }
-                                        break;
-                                    case 3: //appling upgrade
-                                        {
-                                            logger.LogInformation("Appling upgrade started: AsyncJobBackgroundService DoBackgroundWork() ");
-
-                                            Entity solutionHistoryEntry = await this.solutionHistoryService.GetEntryById((Guid)asyncJob.JobId, environment.BasicUrl);
-
-                                            if (solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
+                                            break;
+                                        case 3: //appling upgrade
                                             {
-                                                if ((bool)solutionHistoryEntry["msdyn_result"] == false)
-                                                    await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
-                                                else
-                                                    await this.actionService.FinishSuccessfulApplyUpgradeAction(asyncJob.ActionNavigation);
-                                                
-                                                dbContext.Remove(asyncJob);
+                                                logger.LogInformation("Appling upgrade started: AsyncJobBackgroundService DoBackgroundWork() ");
+
+                                                Entity solutionHistoryEntry = await this.solutionHistoryService.GetEntryById((Guid)asyncJob.JobId, environment.BasicUrl);
+
+                                                if (solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
+                                                {
+                                                    if ((bool)solutionHistoryEntry["msdyn_result"] == false)
+                                                        await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
+                                                    else
+                                                        await this.actionService.FinishSuccessfulApplyUpgradeAction(asyncJob.ActionNavigation);
+                                                    
+                                                    dbContext.Remove(asyncJob);
+                                                }
+                                            logger.LogInformation("Appling upgrade completed: AsyncJobBackgroundService DoBackgroundWork()");
                                             }
-                                          logger.LogInformation("Appling upgrade completed: AsyncJobBackgroundService DoBackgroundWork()");
-                                        }
-                                        break;
-                                    default:
-                                        throw new Exception($"Unknow ActionType for AsyncJob: {asyncJob.ActionNavigation.Type}");
+                                            break;
+                                        default:
+                                            throw new Exception($"Unknow ActionType for AsyncJob: {asyncJob.ActionNavigation.Type}");
+                                    }
+                                    await dbContext.SaveChangesAsync(asyncJob.ActionNavigation.CreatedByNavigation.MsId);
                                 }
-                                await dbContext.SaveChangesAsync(asyncJob.ActionNavigation.CreatedByNavigation.MsId);
-                            }
-                            catch (Exception e)
-                            {
-                                logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() Exception: {e}");
+                                catch (Exception e)
+                                {
+                                    logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() Exception: {e}");
 
-                                continue;
+                                    continue;
+                                }
                             }
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() Exception: {e}");
+                        catch (Exception e)
+                        {
+                            logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() Exception: {e}");
 
-                        continue;
+                            continue;
+                        }
                     }
                 }
             }

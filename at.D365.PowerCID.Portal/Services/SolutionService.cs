@@ -218,6 +218,7 @@ namespace at.D365.PowerCID.Portal.Services
             Upgrade upgrade;
             upgrade = isPatch == false ? (Upgrade)action.SolutionNavigation : default;
             bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, action.TargetEnvironmentNavigation.BasicUrl);
+            var holdingSolution = action.TargetEnvironmentNavigation.DeployUnmanaged ? false : !isPatch && existsSolutionInTargetEnvironment == true;
 
             EntityCollection solutionComponentParameters = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
 
@@ -226,7 +227,7 @@ namespace at.D365.PowerCID.Portal.Services
                 CustomizationFile = solutionFileData,
                 OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
                 PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
-                HoldingSolution = !isPatch && existsSolutionInTargetEnvironment == true,
+                HoldingSolution = holdingSolution,
                 ComponentParameters = solutionComponentParameters,
             };
 
@@ -238,7 +239,7 @@ namespace at.D365.PowerCID.Portal.Services
                 {
                     AsyncOperationId = response.AsyncOperationId,
                     JobId = Guid.Parse(response.ImportJobKey),
-                    IsManaged = true,
+                    IsManaged = !action.TargetEnvironmentNavigation.DeployUnmanaged,
                     Action = action.Id
                 };
                 logger.LogDebug($"End: SolutionService StartImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
