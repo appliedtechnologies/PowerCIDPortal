@@ -28,7 +28,11 @@ export class ActionService {
   }
 
   public getDurationString(action: Action): string{
-    let duration = action?.FinishTime.valueOf() - action?.StartTime.valueOf();
-    return TimeHelper.millisecondsToString(duration);
+    if(action?.FinishTime != null && action?.StartTime != null){
+      let duration = action?.FinishTime.valueOf() - action?.StartTime.valueOf();
+      return TimeHelper.millisecondsToString(duration);
+    }
+    else
+      return null;
   }
 }
