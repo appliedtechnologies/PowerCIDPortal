@@ -21,7 +21,7 @@ export class ConnectionReferenceService {
   public getExistingForApplication(applicationId: number): Promise<ConnectionReference[]>{
     return this.getStore().load({
       filter: ["Application", "=", applicationId],
-      expand: "ConnectionReferenceEnvironments"
+      expand: ["ConnectionReferenceEnvironments"]
     });
   }
 

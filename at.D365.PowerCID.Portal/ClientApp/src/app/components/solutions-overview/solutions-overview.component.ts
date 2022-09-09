@@ -244,7 +244,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     downloadLink.click();
   }
 
-  public onClickDeploySolution(cellInfo, exportOnly: boolean = false, applyUpgradeOnly: boolean = false): void {
+  public onClickDeploySolution(cellInfo, exportOnly: boolean = false, applyUpgradeOnly: boolean = false, enableFlowsOnly: boolean = false): void {
     let targetEnvironmentId = cellInfo.column.name.split(",")[1];
 
     if (exportOnly) {
@@ -252,6 +252,12 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     } else if(applyUpgradeOnly) {
       this.layoutService.change(LayoutParameter.ShowLoading, true);
       this.startApplyUpgrade(cellInfo.data.Id, targetEnvironmentId)
+        .then(() => {
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+        });
+    } else if(enableFlowsOnly){
+      this.layoutService.change(LayoutParameter.ShowLoading, true);
+      this.startEnableFlows(cellInfo.data.Id, targetEnvironmentId)
         .then(() => {
           this.layoutService.change(LayoutParameter.ShowLoading, false);
         });
@@ -440,6 +446,26 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           message: error.error.value
             ? `An error occurred while starting an apply upgrade: ${error.error.value}`
             : "An error occurred while starting an apply upgrade.",
+        });
+      });
+  }
+
+  private startEnableFlows(solutionId: number, targetEnvironmentId): Promise<void> {
+    return this.solutionService
+      .enableFlows(solutionId, targetEnvironmentId)
+      .then((action) => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Enable flows started...",
+        });
+        this.startAutoRefresh(action);
+      })
+      .catch((error) => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: error.error.value
+            ? `An error occurred while starting enable flows: ${error.error.value}`
+            : "An error occurred while starting enable flows.",
         });
       });
   }

@@ -52,7 +52,7 @@
     currentSelectedUser.Lastname +
     ')'
   "
-  [closeOnOutsideClick]="false"
+  [hideOnOutsideClick]="false"
   [(visible)]="isEditPermissionsPopupVisible"
   [maxHeight]="'90%'"
 >
@@ -89,7 +89,7 @@
     currentSelectedUser.Lastname +
     ')'
   "
-  [closeOnOutsideClick]="false"
+  [hideOnOutsideClick]="false"
   [(visible)]="isEditRoles"
 >
   <div *ngFor="let role of userAssignedAppRoles; index as i; last as isLast">

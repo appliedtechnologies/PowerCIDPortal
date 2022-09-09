@@ -18,6 +18,8 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public string Name { get; set; }
         public string BasicUrl { get; set; }
         public bool IsDevelopmentEnvironment { get; set; }
+        public string ConnectionsOwner { get; set; }
+        public bool DeployUnmanaged { get; set; }
         public Guid MsId { get; set; }
         public int Tenant { get; set; }
         public int CreatedBy { get; set; }

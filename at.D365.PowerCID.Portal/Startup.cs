@@ -99,6 +99,9 @@ namespace at.D365.PowerCID.Portal
             var applyUpgrade = builder.EntityType<Solution>().Action("ApplyUpgrade").ReturnsFromEntitySet<Action>("Actions");
             applyUpgrade.Parameter<int>("targetEnvironmentId");
 
+            var enableFlows = builder.EntityType<Solution>().Action("EnableFlows").ReturnsFromEntitySet<Action>("Actions");
+            enableFlows.Parameter<int>("targetEnvironmentId");
+
             builder.EntityType<Solution>().Action("GetSolutionAsBase64String");
             builder.EntityType<Action>().Action("CancelImport");
 
@@ -137,6 +140,8 @@ namespace at.D365.PowerCID.Portal
             services.AddScoped<ConnectionReferenceService>();
             services.AddScoped<EnvironmentVariableService>();
             services.AddScoped<ActionService>();
+            services.AddScoped<FlowService>();
+            services.AddScoped<UserService>();
 
             services.AddHostedService<AsyncJobBackgroundService>();
             services.AddHostedService<ActionBackgroundService>();

@@ -6,6 +6,8 @@ export interface Environment {
   OrdinalNumber?: number | null;
   Name?: string;
   BasicUrl?: string;
+  ConnectionsOwner?: string;
+  DeployUnmanged?: boolean;
   IsDevelopmentEnvironment?: boolean;
   MsId?: string;
   Tenant?: number;

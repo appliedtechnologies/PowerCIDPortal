@@ -331,7 +331,10 @@ namespace at.D365.PowerCID.Portal.Data.Models
                     Type = "import" 
                 }, new ActionType {
                     Id = 3,
-                    Type = "applying upgrade" 
+                    Type = "apply upgrade" 
+                }, new ActionType {
+                    Id = 4,
+                    Type = "enable flows" 
                 }
                 );
             });

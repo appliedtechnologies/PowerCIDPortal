@@ -51,10 +51,17 @@
   background-color: #edc578;
 }
 
-.clickable-icon {
+.at-icon {
   padding-right: 5px;
   vertical-align: bottom;
-  cursor: pointer;
   width: 20px;
   margin-right: 5px;
+}
+
+.clickable-icon{
+  cursor: pointer;
+}
+
+.red-icon{
+  color: #ef7d59;
 }

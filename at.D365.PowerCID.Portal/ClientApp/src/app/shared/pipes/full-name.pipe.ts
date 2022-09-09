@@ -8,6 +8,6 @@ export class FullNamePipe implements PipeTransform {
     constructor(private logService: LogService) {}
 
     transform(value: any, args?: any): any {
-        return `${value.Firstname} ${value.Lastname}`;
+        return `${value?.Firstname} ${value?.Lastname}`;
     }
 }

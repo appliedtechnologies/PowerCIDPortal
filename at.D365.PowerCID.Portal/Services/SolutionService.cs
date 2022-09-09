@@ -20,11 +20,13 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Octokit.GraphQL;
 using Action = at.D365.PowerCID.Portal.Data.Models.Action;
+using Microsoft.Extensions.Logging;
 
 namespace at.D365.PowerCID.Portal.Services
 {
     public class SolutionService
     {
+        private readonly ILogger logger;
         private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
         private readonly ConnectionReferenceService connectionReferenceService;
@@ -32,7 +34,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly SolutionHistoryService solutionHistoryService;
         private readonly IConfiguration configuration;
 
-        public SolutionService(IServiceProvider serviceProvider)
+        public SolutionService(IServiceProvider serviceProvider, ILogger<SolutionService> logger)
         {
             this.serviceProvider = serviceProvider;
             var scope = serviceProvider.CreateScope();
@@ -41,10 +43,13 @@ namespace at.D365.PowerCID.Portal.Services
             this.connectionReferenceService = scope.ServiceProvider.GetRequiredService<ConnectionReferenceService>();
             this.environmentVariableService = scope.ServiceProvider.GetRequiredService<EnvironmentVariableService>();
             this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
+            this.logger = logger;
         }
 
         public async Task<Data.Models.Action> AddExportAction(int key, Guid tenantMsIdCurrentUser, Guid msIdCurrentUser, bool exportOnly, int targetEnvironmentForImport = 0)
         {
+            logger.LogDebug($"Begin: SolutionService AddExportAction(key: {key}, tenantMsIdCurrentUser: {tenantMsIdCurrentUser.ToString()}, msIdCurrentUser: {msIdCurrentUser.ToString()} exportOnly: {exportOnly})");
+
             if (!exportOnly && targetEnvironmentForImport != 0)
             {
                 User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
@@ -67,11 +72,16 @@ namespace at.D365.PowerCID.Portal.Services
 
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
+
+            logger.LogDebug($"End: SolutionService AddExportAction(key: {key}, tenantMsIdCurrentUser: {tenantMsIdCurrentUser.ToString()}, msIdCurrentUser: {msIdCurrentUser.ToString()} exportOnly: {exportOnly})");
+
             return newAction;
         }
 
         public async Task<Data.Models.Action> AddImportAction(int key, int targetEnvironmentId, Guid msIdCurrentUser)
         {
+            logger.LogDebug($"Begin: SolutionService AddImportAction(key: {key}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
+
             Solution solution = dbContext.Solutions.First(e => e.Id == key);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
@@ -89,12 +99,17 @@ namespace at.D365.PowerCID.Portal.Services
 
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
+
+            logger.LogDebug($"End: SolutionService AddImportAction(key: {key}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
+
             return newAction;
         }
 
-        public async Task<Data.Models.Action> AddApplyUpgradeAction(int key, int targetEnvironmentId, Guid msIdCurrentUser)
+        public async Task<Data.Models.Action> AddApplyUpgradeAction(int solutionId, int targetEnvironmentId, Guid msIdCurrentUser)
         {
-            Solution solution = dbContext.Solutions.First(e => e.Id == key);
+            logger.LogDebug($"Begin: SolutionService  AddApplyUpgradeAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
+
+            Solution solution = dbContext.Solutions.First(e => e.Id == solutionId);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
             await this.CheckImportPermission(user.Id, targetEnvironmentId);
@@ -111,29 +126,69 @@ namespace at.D365.PowerCID.Portal.Services
 
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
+
+            logger.LogDebug($"End: SolutionService  AddApplyUpgradeAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
+
+            return newAction;
+        }
+
+        public async Task<Data.Models.Action> AddEnableFlowsAction(int solutionId, int targetEnvironmentId, Guid msIdCurrentUser)
+        {
+            logger.LogDebug($"Begin: SolutionService AddEnableFlowsAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
+
+            Solution solution = dbContext.Solutions.First(e => e.Id == solutionId);
+            User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
+
+            await this.CheckImportPermission(user.Id, targetEnvironmentId);
+            await this.CheckIsConnectionOwerSet(targetEnvironmentId);
+
+            Data.Models.Action newAction = new Data.Models.Action
+            {
+                Name = $"{solution.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
+                TargetEnvironment = targetEnvironmentId,
+                Type = 4,
+                Status = 1,
+                StartTime = DateTime.Now,
+                Solution = solution.Id
+            };
+
+            dbContext.Add(newAction);
+            await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
+
+            logger.LogDebug($"End: SolutionService AddEnableFlowsAction(return Action Id: {newAction.Id})");
+
             return newAction;
         }
 
         public async Task CreateUpgrade(Upgrade upgrade, string version)
         {
+            logger.LogDebug($"Begin: SolutionService CreateUpgrade(upgrade Version: {upgrade.Version}, version: {version})");
+
             Application application = this.dbContext.Applications.FirstOrDefault(e => e.Id == upgrade.Application);
             string lastSolution = version == null ? application.Solutions.OrderByDescending(e => e.CreatedOn).FirstOrDefault()?.Version : version;
-            if(upgrade.Version == null)
+            if (upgrade.Version == null)
                 upgrade.Version = lastSolution == null ? VersionHelper.GetNextMinorVersion("1.0.0.0") : VersionHelper.GetNextMinorVersion(lastSolution);
 
             await this.CreateUpgradeInDataverse(application.SolutionUniqueName, application.Name, application.DevelopmentEnvironmentNavigation.BasicUrl, application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId, upgrade);
             upgrade.UrlMakerportal = $"https://make.powerapps.com/environments/{application.DevelopmentEnvironmentNavigation.MsId}/solutions/{upgrade.MsId}";
+
+            logger.LogDebug($"End: SolutionService CreateUpgrade(upgrade Version: {upgrade.Version}, version: {version})");
         }
 
         public async Task<AsyncJob> StartExportInDataverse(string solutionUniqueName, bool isManaged, string basicUrl, Data.Models.Action action, Guid tenantMsIdCurrentUser, int environmentId, int targetEnvironment)
         {
-            ExportSolutionAsyncRequest exportSolutionRequest = new ExportSolutionAsyncRequest{
+            logger.LogDebug($"Begin: SolutionService StartExportInDataverse(solutionUniqueName: {solutionUniqueName}, isManaged: {isManaged}, basicUrl: {basicUrl}, action Id: {action.Id}, tenantMsIdCurrentUser: {tenantMsIdCurrentUser.ToString()}, environmentId: {environmentId}, targetEnvironment: {targetEnvironment})");
+
+            ExportSolutionAsyncRequest exportSolutionRequest = new ExportSolutionAsyncRequest
+            {
                 Managed = isManaged,
                 SolutionName = solutionUniqueName
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                try {
+            using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
+            {
+                try
+                {
                     ExportSolutionAsyncResponse response = (ExportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(exportSolutionRequest);
                     AsyncJob asyncJob = new AsyncJob
                     {
@@ -142,10 +197,14 @@ namespace at.D365.PowerCID.Portal.Services
                         IsManaged = isManaged,
                         Action = action.Id
                     };
+                    logger.LogDebug($"End: SolutionService StartExportInDataverse(solutionUniqueName: {solutionUniqueName}, isManaged: {isManaged}, basicUrl: {basicUrl}, action Id: {action.Id}, tenantMsIdCurrentUser: {tenantMsIdCurrentUser.ToString()}, environmentId: {environmentId}, targetEnvironment: {targetEnvironment})");
 
                     return asyncJob;
                 }
-                catch(Exception e){
+                catch (Exception e)
+                {
+                    logger.LogError($"Error: SolutionService StartExportInDataverse() Exception: {e}");
+
                     throw new Exception("Could not start Export in Dataverse");
                 }
             }
@@ -153,31 +212,37 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Action action)
         {
+            logger.LogDebug($"Begin: SolutionService StartImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
+
             bool isPatch = this.dbContext.Solutions.FirstOrDefault(s => s.Id == action.Solution).GetType().Name.Contains("Patch");
             Upgrade upgrade;
             upgrade = isPatch == false ? (Upgrade)action.SolutionNavigation : default;
-            bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, action.TargetEnvironmentNavigation.BasicUrl, action.TargetEnvironmentNavigation.TenantNavigation.MsId.ToString());
+            bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, action.TargetEnvironmentNavigation.BasicUrl);
+            var holdingSolution = action.TargetEnvironmentNavigation.DeployUnmanaged ? false : !isPatch && existsSolutionInTargetEnvironment == true;
 
             EntityCollection solutionComponentParameters = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
 
-            ImportSolutionAsyncRequest importSolutionAsyncRequest = new ImportSolutionAsyncRequest{
+            ImportSolutionAsyncRequest importSolutionAsyncRequest = new ImportSolutionAsyncRequest
+            {
                 CustomizationFile = solutionFileData,
                 OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
                 PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
-                HoldingSolution = !isPatch && existsSolutionInTargetEnvironment == true,
-                ComponentParameters = solutionComponentParameters
+                HoldingSolution = holdingSolution,
+                ComponentParameters = solutionComponentParameters,
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+            using (var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
+            {
                 ImportSolutionAsyncResponse response = (ImportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(importSolutionAsyncRequest);
 
                 AsyncJob asyncJob = new AsyncJob
                 {
                     AsyncOperationId = response.AsyncOperationId,
                     JobId = Guid.Parse(response.ImportJobKey),
-                    IsManaged = true,
+                    IsManaged = !action.TargetEnvironmentNavigation.DeployUnmanaged,
                     Action = action.Id
                 };
+                logger.LogDebug($"End: SolutionService StartImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
 
                 return asyncJob;
             }
@@ -185,16 +250,22 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<AsyncJob> DeleteAndPromoteInDataverse(Action action)
         {
-            DeleteAndPromoteRequest deleteAndPromoteRequest = new DeleteAndPromoteRequest{
+            logger.LogDebug($"Begin: SolutionService DeleteAndPromoteInDataverse(action TargetEnvironmentNavigation BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
+
+            DeleteAndPromoteRequest deleteAndPromoteRequest = new DeleteAndPromoteRequest
+            {
                 UniqueName = action.SolutionNavigation.UniqueName
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                try{
+            using (var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
+            {
+                try
+                {
                     DeleteAndPromoteResponse response = (DeleteAndPromoteResponse)await dataverseClient.ExecuteAsync(deleteAndPromoteRequest);
                     return null;
                 }
-                catch(TimeoutException){
+                catch (TimeoutException)
+                {
                     Guid solutionHistoryId = await this.solutionHistoryService.GetIdForDeleteAndPromote(action.SolutionNavigation, action.TargetEnvironmentNavigation.BasicUrl);
 
                     AsyncJob asyncJob = new AsyncJob
@@ -203,6 +274,7 @@ namespace at.D365.PowerCID.Portal.Services
                         IsManaged = true,
                         Action = action.Id
                     };
+                    logger.LogDebug($"Begin: SolutionService DeleteAndPromoteInDataverse(action TargetEnvironmentNavigation BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
 
                     return asyncJob;
                 }
@@ -211,45 +283,108 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<string> DownloadSolutionFileFromDataverse(AsyncJob asyncJob)
         {
-            DownloadSolutionExportDataRequest downloadSolutionExportDataRequest = new DownloadSolutionExportDataRequest{
+            logger.LogDebug($"Begin: SolutionService DownloadSolutionFileFromDatavers(asyncJob BasicUrl: {asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl})");
+
+            DownloadSolutionExportDataRequest downloadSolutionExportDataRequest = new DownloadSolutionExportDataRequest
+            {
                 ExportJobId = (Guid)asyncJob.JobId
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+            using (var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
+            {
                 DownloadSolutionExportDataResponse response = (DownloadSolutionExportDataResponse)await dataverseClient.ExecuteAsync(downloadSolutionExportDataRequest);
                 string base64 = Convert.ToBase64String(response.ExportSolutionFile);
+
+                logger.LogDebug($"End: SolutionService DownloadSolutionFileFromDatavers(asyncJob BasicUrl: {asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl})");
+
                 return base64;
+            }
+        }
+
+        public async Task<bool> ExistsSolutionInTargetEnvironment(string solutionUniqueName, string basicUrl, string excludeVersion = "")
+        {
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                var query = new QueryExpression("solution"){
+                    ColumnSet = new ColumnSet("uniquename", "version"),
+                };
+                query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
+
+                if(!String.IsNullOrEmpty(excludeVersion))
+                    query.Criteria.AddCondition("version", ConditionOperator.NotEqual, excludeVersion);
+
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+
+                return response.Entities.Count > 0;
+            }
+        }
+
+        public  async Task<Guid> GetSolutionIdByUniqueName(string solutionUniqueName, string basicUrl){
+            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
+                var query = new QueryExpression("solution"){
+                    ColumnSet = new ColumnSet("solutionid"),
+                    PageInfo = new PagingInfo(){
+                        Count = 1,
+                        PageNumber = 1 
+                    }
+                };
+                query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
+
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+                var solutionId = (Guid)response.Entities.First()["solutionid"];
+                return solutionId;
             }
         }
 
         private async Task CheckImportPermission(int userId, int environmentId)
         {
+            logger.LogDebug($"Begin: SolutionService CheckImportPermission(userId: {userId}, environmentId: {environmentId})");
+
             UserEnvironment userEnvironment = await this.dbContext.UserEnvironments.FindAsync(userId, environmentId);
             if (userEnvironment == null)
                 throw new Exception("User does not have permission within PowerCID Portal to import/apply upgrade on target environment. Your administrator can assign the permission via Power CID Portal user management.");
+
+            logger.LogDebug($"End: SolutionService CheckImportPermission(userId: {userId}, environmentId: {environmentId})");
+        }
+
+        private async Task CheckIsConnectionOwerSet(int environmentId)
+        {
+            Data.Models.Environment environment = await this.dbContext.Environments.FindAsync(environmentId);
+            if (String.IsNullOrEmpty(environment.ConnectionsOwner))
+                throw new Exception("Connection Owner is not set for target environment.");
         }
 
         private async Task CreateUpgradeInDataverse(string solutionUniqueName, string solutionDisplayName, string basicUrl, Guid tenantMsId, Upgrade upgrade)
         {
-            CloneAsSolutionRequest cloneAsSolutionRequest = new CloneAsSolutionRequest{
+            logger.LogDebug($"Begin: SolutionService CreateUpgradeInDataverse(solutionUniqueName: {solutionUniqueName}, solutionDisplayName: {solutionDisplayName}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()}, upgrade Version: {upgrade.Version})");
+
+            CloneAsSolutionRequest cloneAsSolutionRequest = new CloneAsSolutionRequest
+            {
+
                 DisplayName = solutionDisplayName,
                 ParentSolutionUniqueName = solutionUniqueName,
                 VersionNumber = upgrade.Version
             };
 
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                try {
+            using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
+            {
+                try
+                {
                     CloneAsSolutionResponse response = (CloneAsSolutionResponse)await dataverseClient.ExecuteAsync(cloneAsSolutionRequest);
                     upgrade.MsId = response.SolutionId;
                     upgrade.UniqueName = solutionUniqueName;
                 }
-                catch(Exception e){
+                catch (Exception e)
+                {
                     throw new Exception($"Could not create Upgrade in Dataverse: {e.Message}");
                 }
             }
+            logger.LogDebug($"End: SolutionService CreateUpgradeInDataverse(solutionUniqueName: {solutionUniqueName}, solutionDisplayName: {solutionDisplayName}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()}, upgrade Version: {upgrade.Version})");
         }
 
-        private async Task<EntityCollection> GetSolutionComponentsForImport(int environmentId, int applicationId){
+        private async Task<EntityCollection> GetSolutionComponentsForImport(int environmentId, int applicationId)
+        {
+            logger.LogDebug($"Begin: SolutionService GetSolutionComponentsForImport(environmentId: {environmentId}, applicationId: {applicationId})");
+
             EntityCollection solutionComponentParameters = new EntityCollection();
 
             var connectionReferenceEntities = await this.GetConnectionReferencesForImport(environmentId, applicationId);
@@ -257,13 +392,19 @@ namespace at.D365.PowerCID.Portal.Services
             solutionComponentParameters.Entities.AddRange(connectionReferenceEntities.Entities);
             solutionComponentParameters.Entities.AddRange(environmentVariableEntities.Entities);
 
-            if(solutionComponentParameters.Entities.Count == 0)
+            if (solutionComponentParameters.Entities.Count == 0)
                 return null;
+
+            logger.LogDebug($"End: SolutionService GetSolutionComponentsForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
             return solutionComponentParameters;
         }
 
-        private async Task<EntityCollection> GetEnvironmentVariablesForImport(int environmentId, int applicationId){
+        private async Task<EntityCollection> GetEnvironmentVariablesForImport(int environmentId, int applicationId)
+        {
+
+            logger.LogDebug($"Begin: SolutionService  GetEnvironmentVariablesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
+
             await this.environmentVariableService.CleanEnvironmentVariables(applicationId);
 
             EntityCollection environmentVariableEntities = new EntityCollection();
@@ -276,11 +417,15 @@ namespace at.D365.PowerCID.Portal.Services
                 connRecord.Attributes.Add("value", environmentVariableEnvironment.Value);
                 environmentVariableEntities.Entities.Add(connRecord);
             }
+            logger.LogDebug($"End: SolutionService  GetEnvironmentVariablesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
             return environmentVariableEntities;
         }
 
-        private async Task<EntityCollection> GetConnectionReferencesForImport(int environmentId, int applicationId){
+        private async Task<EntityCollection> GetConnectionReferencesForImport(int environmentId, int applicationId)
+        {
+            logger.LogDebug($"Begin: SolutionService  GetConnectionReferencesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
+
             await this.connectionReferenceService.CleanConnectionReferences(applicationId);
 
             EntityCollection connectionReferenceEntities = new EntityCollection();
@@ -295,22 +440,9 @@ namespace at.D365.PowerCID.Portal.Services
                 connRecord.Attributes.Add("connectionid", connectionReferenceEnvironment.ConnectionId);
                 connectionReferenceEntities.Entities.Add(connRecord);
             }
+            logger.LogDebug($"End: SolutionService  GetConnectionReferencesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
             return connectionReferenceEntities;
-        }
-
-        private async Task<bool> ExistsSolutionInTargetEnvironment(string solutionUniqueName, string basicUrl, string tenantMsId)
-        {
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                var query = new QueryExpression("solution"){
-                    ColumnSet = new ColumnSet("uniquename"),
-                };
-                query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, new [] {solutionUniqueName});
-
-                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
-
-                return response.Entities.Count > 0;
-            }
         }
     }
 }

@@ -60,6 +60,19 @@ export class SolutionService {
     });
   }
 
+  public enableFlows(solutionId: number, targetEnvironmentId: any): Promise<Action> {
+    return new Promise<Action>((resolve, reject) => {
+      this.http
+        .post(`${AppConfig.settings.api.url}/Solutions(${solutionId})/EnableFlows`, {
+          targetEnvironmentId: targetEnvironmentId,
+        })
+        .subscribe({
+          next: (data) => resolve(data as Action),
+          error: (error) => reject(error),
+        });
+    });
+  }
+
   public getSolutionAsBase64String(solutionId: number): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       this.http
