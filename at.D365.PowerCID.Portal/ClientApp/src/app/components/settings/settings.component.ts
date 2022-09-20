@@ -44,7 +44,7 @@ export class SettingsComponent implements OnInit {
         if (
           !this.isGitHubConnected &&
           params["installation_id"] != undefined &&
-          params["setup_action"] == "install"
+          (params["setup_action"] == "install" || params["setup_action"] == "update")
         ) {
           this.layoutService.change(LayoutParameter.ShowLoading, true);
           this.tenatService
