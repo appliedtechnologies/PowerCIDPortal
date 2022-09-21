@@ -185,7 +185,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> PullExisting([FromBody] ODataActionParameters parameters)
         {
-            logger.LogDebug($"Begin: ApplicationsController PullExisting(parameters environment: {(string)parameters["environment"]})");
+            logger.LogDebug($"Begin: ApplicationsController PullExisting(parameters environment: {((at.D365.PowerCID.Portal.Data.Models.Environment)parameters["environment"]).Id}");
 
             List<string> applicationUniqueNames = new List<string>();
             User user = base.dbContext.Users.FirstOrDefault(u => u.MsId == dbContext.MsIdCurrentUser);
@@ -220,7 +220,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 applicationUniqueNames.Add((string)solutions[i]["uniquename"]);
             }
 
-            logger.LogDebug($"End: ApplicationsController PullExisting(parameters environment: {(string)parameters["environment"]})");
+            logger.LogDebug($"End: ApplicationsController PullExisting(return applicationUniqueNames count {applicationUniqueNames.Count})");
 
             return Ok(applicationUniqueNames);
         }
@@ -297,7 +297,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             string version = (string)solution[0]["version"];
             await CreateNewUpgrade(application, version, solutionService);
 
-            logger.LogDebug($"End: ApplicationsController SaveApplication(parameters applicationUniqueName: {(string)parameters["applicationUniqueName"]})");
+            logger.LogDebug($"End: ApplicationsController SaveApplication()");
 
             return Ok();
         }
