@@ -73,10 +73,21 @@
     color: white;
 }
 
-
-::ng-deep #router-outlet-wrapper{
+#router-outlet-wrapper{
     padding: 10px 20px;
+    flex-grow: 1;
+    height: calc(100vh - 46px);
+    display: flex;
 }
+
+:host ::ng-deep router-outlet + * {
+    display: flex;
+    flex-direction: column;
+}  
+
+:host ::ng-deep router-outlet + * *:not(h1) {
+   min-height: 0;
+}  
 
 ::ng-deep .dx-toolbar-menu-container .dx-dropdownmenu-button .dx-button-content .dx-icon{
     float: right;  
@@ -89,17 +100,4 @@
   display: flex;
   height: 100%;
   width: 100%;
-}
-
-.layout-header {
-  z-index: 1501;
-}
-
-.layout-body {
-  flex: 1;
-  min-height: 0;
-}
-
-.content {
-  flex-grow: 1;
 }
