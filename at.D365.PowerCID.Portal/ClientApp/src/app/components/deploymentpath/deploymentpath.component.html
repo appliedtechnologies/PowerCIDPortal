@@ -6,6 +6,7 @@
   text="Add Deployment Path"
   type="success"
   (onClick)="this.onClickAddDeploymentPath()"
+  width="250"
 >
 </dx-button>
 
@@ -62,35 +63,33 @@
       </dx-tree-view>
     </dx-sortable>
   </div>
-  <div class="form">
-    <div class="drive-panel">
-      <div class="drive-header dx-treeview-item">
-        <div class="dx-treeview-item-content">
-          <i class="dx-icon at-icon powercid-icon-unit"></i>
-          <span>Environments:</span>
-        </div>
+  <div class="drive-panel">
+    <div class="drive-header dx-treeview-item">
+      <div class="dx-treeview-item-content">
+        <i class="dx-icon at-icon powercid-icon-unit"></i>
+        <span>Environments:</span>
       </div>
-
-      <dx-sortable
-        filter=".dx-treeview-item"
-        group="shared"
-        data="environment"
-        [allowDropInsideItem]="true"
-        [allowReordering]="true"
-        (onDragChange)="onDragChange($event)"
-        (onDragEnd)="onDragEnd($event)"
-      >
-        <dx-tree-view
-          #treeViewEnvironment
-          id="treeViewEnvironment"
-          dataStructure="tree"
-          displayExpr="Name"
-          [dataSource]="dataSourceEnvironments"
-          keyExpr="Id"
-        >
-        </dx-tree-view>
-      </dx-sortable>
     </div>
+
+    <dx-sortable
+      filter=".dx-treeview-item"
+      group="shared"
+      data="environment"
+      [allowDropInsideItem]="true"
+      [allowReordering]="true"
+      (onDragChange)="onDragChange($event)"
+      (onDragEnd)="onDragEnd($event)"
+    >
+      <dx-tree-view
+        #treeViewEnvironment
+        id="treeViewEnvironment"
+        dataStructure="tree"
+        displayExpr="Name"
+        [dataSource]="dataSourceEnvironments"
+        keyExpr="Id"
+      >
+      </dx-tree-view>
+    </dx-sortable>
   </div>
 </div>
 
