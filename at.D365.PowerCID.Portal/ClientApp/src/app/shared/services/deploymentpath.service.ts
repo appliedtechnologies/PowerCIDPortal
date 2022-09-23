@@ -11,25 +11,36 @@ import { ODataService } from "./odata.service";
   providedIn: "root",
 })
 export class DeploymentpathService {
-  //public DeploymentPath: DeploymentPath;
-  private manualUpdate = new Subject<void>();
   constructor(private odataService: ODataService, private http: HttpClient) {}
 
   public getStore(): ODataStore {
     return this.odataService.context["DeploymentPaths"];
   }
 
-  updateDeploymentPathEnvironments(id: number, deploymentpath: DeploymentPath) {
+  public update(id: number, deploymentPath: DeploymentPath){
     return new Promise<void>((resolve, reject) => {
-      this.http
-        .patch(
-          `${AppConfig.settings.api.url}/DeploymentPaths(${id})`,
-          deploymentpath
-        )
-        .subscribe({
-          next: () => resolve(),
-          error: () => reject(),
-        });
+      this.getStore()
+        .update(id, deploymentPath)
+        .then(() => resolve())
+        .catch(() => reject());
+    });
+  }
+
+  public add(deploymentPath: DeploymentPath){
+    return new Promise<void>((resolve, reject) => {
+      this.getStore()
+        .insert(deploymentPath)
+        .then(() => resolve())
+        .catch(() => reject());
+    });
+  }
+
+  public remove(id: number){
+    return new Promise<void>((resolve, reject) => {
+      this.getStore()
+        .remove(id)
+        .then(() => resolve())
+        .catch(() => reject());
     });
   }
 }
