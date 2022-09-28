@@ -66,6 +66,8 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   public isConfigureDeploymentPopupVisible: boolean;
   public configureDeploymentEnvironment: Environment;
 
+  private refreshAfterPopupClose: boolean = false;
+
   constructor(
     private userService: UserService,
     private applicationService: ApplicationService,
@@ -328,6 +330,9 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public onHiddenSolutionDetailPopup(e): void {
+    if(this.refreshAfterPopupClose)
+      this.dataGrid.instance.refresh();
+
     this.resetSolutionDetailPopup();
   }
 
@@ -408,6 +413,10 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
 
   public onClickOpenMakerPortal(cellInfo: any): void {
     window.open(cellInfo.data.UrlMakerportal, "_blank")
+  }
+
+  public onRenamedSolutionDetail(e: any): void{
+    this.refreshAfterPopupClose = true;
   }
 
   private startImport(solutionId: number, targetEnvironmentId, deploymentPathId): Promise<void> {
@@ -491,6 +500,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   private resetSolutionDetailPopup(): void {
     this.detailSolution = undefined;
     this.isAddUpgrade = false;
+    this.refreshAfterPopupClose = false;
   }
 
   private cancelAutoRefresh(): void {

@@ -1,4 +1,5 @@
 import { Injectable } from "@angular/core";
+import { DxExtendedPromise } from "devextreme/core/utils/deferred";
 import ODataStore from "devextreme/data/odata/store";
 import { Patch } from "../models/patch.model";
 import { ODataService } from "./odata.service";
@@ -9,11 +10,11 @@ import { ODataService } from "./odata.service";
 export class PatchService {
   constructor(private odataService: ODataService) {}
 
-  getStore(): ODataStore {
+  public getStore(): ODataStore {
     return this.odataService.context["Patches"];
   }
 
-  getStoreById(Id: number): Patch {
+  public getStoreById(id: number): Patch {
     let patch: Patch;
     this.odataService.context["Patches"]
       .load({
@@ -22,9 +23,17 @@ export class PatchService {
           "ModifiedByNavigation",
           "ApplicationNavigation",
         ],
-        filter: "Id eq " + Id,
+        filter: "Id eq " + id,
       })
       .then((p) => (patch = p));
     return patch;
+  }
+
+  public add(patch: Patch): Promise<void>{
+    return this.getStore().insert(patch);
+  }
+
+  public update(id: number, patch: Patch): Promise<void>{
+    return this.getStore().update(id, patch);
   }
 }

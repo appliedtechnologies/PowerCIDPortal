@@ -18,6 +18,7 @@
     groupPaging: true,
     grouping: true
   }"
+  height="100%"
   (onToolbarPreparing)="onToolbarPreparingSolutionsGrid($event)"
 >
   <div *dxTemplate="let cellInfo of 'typeCellTemplate'">
@@ -290,6 +291,7 @@
       [solution]="detailSolution"
       [application]="this.selectedApplication"
       (onSaveCompleted)="onSaveCompletedSolutionDetail($event)"
+      (onRenamed)="onRenamedSolutionDetail($event)"
     ></app-solution-detail>
   </dx-scroll-view>
 </dx-popup>

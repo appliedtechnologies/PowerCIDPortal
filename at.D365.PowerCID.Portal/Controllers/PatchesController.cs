@@ -14,7 +14,10 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-
+using Microsoft.AspNetCore.OData.Formatter;
+using Microsoft.AspNetCore.OData.Deltas;
+using Microsoft.OData;
+using System.Net;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
@@ -63,6 +66,62 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"End: PatchesController Post(patch Version: {patch.Version})");
 
             return Created(patch);
+        }
+
+        public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Patch> patch)
+        {
+            logger.LogDebug($"Begin: PatchesController Patch(key: {key}, patch: {patch.GetChangedPropertyNames().ToString()}");
+
+            if ((await this.dbContext.Patches.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+                return Forbid();
+
+            string[] propertyNamesAllowedToChange = { "Name" };
+            if (patch.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() == 0)
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+                var entity = await base.dbContext.Patches.FindAsync(key);
+                if (entity == null)
+                {
+                    return NotFound();
+                }
+
+                if(entity.Actions.Any(e => e.Result == 1 || e.Status == 2 || e.Status == 1))
+                    return BadRequest(new ODataError { ErrorCode =  "400", Message = "Can not rename Patch with existing Actions in progress or successfully completed." });
+
+                patch.Patch(entity);
+                try
+                {
+                    await base.dbContext.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!PatchExists(key))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                logger.LogDebug($"End: PatchesController Patch(key: {key}, patch: {patch.GetChangedPropertyNames().ToString()}");
+
+                return Updated(entity);
+            }
+            else
+            {
+                return BadRequest();
+            }
+        }
+
+        private bool PatchExists(int key)
+        {
+            logger.LogDebug($"Begin & End: PatchesController UpgradeExists(key: {key})");
+
+            return base.dbContext.Patches.Any(p => p.Id == key);
         }
 
         private async Task CreatePatchInDataverse(string solutionUniqueName, string displayNameDataversePatch, string basicUrl, Patch patch)

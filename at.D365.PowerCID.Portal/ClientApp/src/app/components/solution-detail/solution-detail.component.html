@@ -1,6 +1,15 @@
 <dx-form id="form" [(formData)]="solution" [readOnly]="!this.isAdd">
   <dxi-item itemType="group" cssClass="first-group" [colCount]="1">
-    <dxi-item dataField="Name" [isRequired]="this.isAdd"></dxi-item>
+    <dxi-item dataField="Name" [isRequired]="this.isAdd">
+      <div *dxTemplate>
+        <dx-text-box 
+          #textBoxName
+          [value]="this.solution.Name"
+          [readOnly]="false"
+          (onFocusOut)="onFocusOutSolutionName($event)">
+        </dx-text-box>
+      </div>
+    </dxi-item>
     <dxi-item [isRequired]="this.isAdd" [label]="{ text: 'Application' }">
       <div *dxTemplate>
         <dx-text-box [value]="this.application?.Name" [readOnly]="true">

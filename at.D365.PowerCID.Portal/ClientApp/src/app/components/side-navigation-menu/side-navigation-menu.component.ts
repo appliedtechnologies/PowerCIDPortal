@@ -35,17 +35,23 @@ export class SideNavigationMenuComponent {
 
     if(e.itemData.routerLink)
       this.router.navigate([e.itemData.routerLink]);   
+    else  
+      this.setNavigationEntries(!e.itemData.expanded);
   }
 
   onItemExpanded(e): void{
     this.setNavigationEntries();
   }
 
-  onContentReady(e): void {
-    
-  }
+  setNavigationEntries(expanded: boolean = undefined): void{
+    if(expanded === undefined)
+      expanded = (localStorage.getItem("atPowerCIDPortal_ExpandedSideNavigation") == "true");
+    else
+      localStorage.setItem(
+        "atPowerCIDPortal_ExpandedSideNavigation",
+        String(expanded)
+      );
 
-  setNavigationEntries(): void{
     this.navigationEntries = [
       {
         text: "Home",
@@ -74,7 +80,7 @@ export class SideNavigationMenuComponent {
       {
         text: "App Settings",
         icon: "at-icon powercid-icon-einstellungen",
-        expanded: true,
+        expanded: expanded,
         visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e)),
         items: [
         {
@@ -113,6 +119,13 @@ export class SideNavigationMenuComponent {
       this.checkNavigationEntry(e);
       e.items?.forEach(ee => {
         this.checkNavigationEntry(ee);
+        if(ee.selected){
+          localStorage.setItem(
+            "atPowerCIDPortal_ExpandedSideNavigation",
+            String(true)
+          );
+          e.expanded = true;
+        }
       })
     });
   }
