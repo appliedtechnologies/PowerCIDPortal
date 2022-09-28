@@ -5,7 +5,7 @@
   icon="add"
   text="Add Deployment Path"
   type="success"
-  (onClick)="this.onClickAddDeploymentPath()"
+  (onClick)="this.onClickOpenAddDeploymentPath()"
   width="250"
 >
 </dx-button>
@@ -53,12 +53,17 @@
           <div *ngIf="!entry.EnvironmentNavigation">
             {{ entry.Name }}
           </div>
-          <dx-button
-            class="deleteDeploymentPath"
-            text="x"
-            (onClick)="onClickDeleteDeploymentPathOrStep($event, entry)"
-          >
-          </dx-button>
+          <div class="button-wrapper">
+            <dx-button 
+              *ngIf="!entry.EnvironmentNavigation"
+              icon="rename"
+              (onClick)="onClickOpenRenameDeploymentPath($event, entry)">
+            </dx-button>
+            <dx-button
+              icon="trash"
+              (onClick)="onClickDeleteDeploymentPathOrStep($event, entry)">
+            </dx-button>
+          </div>
         </div>
       </dx-tree-view>
     </dx-sortable>
@@ -94,12 +99,12 @@
 </div>
 
 <dx-popup
-  *ngIf="isAddDeploymentPath"
+  *ngIf="isAddDeploymentPathVisible"
   title="Add Deployment Path"
   [showTitle]="true"
   [width]="500"
   height="auto"
-  [(visible)]="isAddDeploymentPath"
+  [(visible)]="isAddDeploymentPathVisible"
 >
   <dx-form [(formData)]="newDeploymentPath">
     <dxi-item dataField="Name" [label]="{ text: 'Name' }"></dxi-item>
@@ -112,6 +117,32 @@
         text: 'Save',
         type: 'success',
         onClick: this.onClickSaveDeploymentPath.bind(this),
+
+        width: '100%'
+      }"
+    ></dxi-item>
+  </dx-form>
+</dx-popup>
+
+<dx-popup
+  *ngIf="isRenameDeploymentPathVisible"
+  title="Rename Deployment Path"
+  [showTitle]="true"
+  [width]="500"
+  height="auto"
+  [(visible)]="isRenameDeploymentPathVisible"
+>
+  <dx-form [(formData)]="deploymentPathToEdit">
+    <dxi-item dataField="Name" [label]="{ text: 'Name' }"></dxi-item>
+
+    <dxi-item
+      itemType="button"
+      horizontalAlignment="left"
+      [buttonOptions]="{
+        icon: 'save',
+        text: 'Save',
+        type: 'success',
+        onClick: this.onClickSaveRenameDeploymentPath.bind(this),
 
         width: '100%'
       }"

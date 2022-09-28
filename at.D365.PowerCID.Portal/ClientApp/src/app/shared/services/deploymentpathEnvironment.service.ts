@@ -15,7 +15,14 @@ export class DeploymentPathEnvironmentService {
 
   public getStore(): ODataStore {
     return this.odataService.context["DeploymentPathEnvironments"];
-}
+  }
 
-
+  public remove(deploymentPathId: number, environmentId: number){
+    return new Promise<void>((resolve, reject) => {
+      this.getStore()
+        .remove({DeploymentPath: deploymentPathId, Environment: environmentId})
+        .then(() => resolve())
+        .catch(() => reject());
+    });
+  }
 }

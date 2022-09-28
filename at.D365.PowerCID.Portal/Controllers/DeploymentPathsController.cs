@@ -61,6 +61,52 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
+        public async Task<IActionResult> Patch([FromODataUri] int key, Delta<DeploymentPath> deploymentPath)
+        {
+            logger.LogDebug($"Begin: DeploymentPathsController Patch(key: {key}, environment: {deploymentPath.GetChangedPropertyNames().ToString()}");
+
+            if ((await this.dbContext.DeploymentPaths.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+                return Forbid();
+
+            string[] propertyNamesAllowedToChange = { "Name" };
+            if (deploymentPath.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() == 0)
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+                var entity = await base.dbContext.DeploymentPaths.FindAsync(key);
+                if (entity == null)
+                {
+                    return NotFound();
+                }
+                deploymentPath.Patch(entity);
+                try
+                {
+                    await base.dbContext.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!DeploymentpathExists(key))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                logger.LogDebug($"End: DeploymentPathsController Patch(key: {key}, environment: {deploymentPath.GetChangedPropertyNames().ToString()}");
+
+                return Updated(entity);
+            }
+            else
+            {
+                return BadRequest();
+            }
+        }
+
+        [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
         public async Task<IActionResult> Delete([FromODataUri] int key)
         {
             logger.LogDebug($"Begin: DeploymentPathsController Delete(key: {key})");

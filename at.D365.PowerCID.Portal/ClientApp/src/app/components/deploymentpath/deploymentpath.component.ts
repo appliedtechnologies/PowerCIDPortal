@@ -6,12 +6,14 @@ import { DeploymentPathEnvironment } from "src/app/shared/models/deploymentpathe
 import { Environment } from "src/app/shared/models/environment.model";
 import { DeploymentpathService } from "src/app/shared/services/deploymentpath.service";
 import { EnvironmentService } from "src/app/shared/services/environment.service";
-import { DeploymentPathEnvironmentService } from "src/app/shared/services/deploymentpathEnvironment.service";
+import { DeploymentPathEnvironmentService } from "src/app/shared/services/deploymentpathenvironment.service";
 import { confirm } from "devextreme/ui/dialog";
 import {
+  LayoutParameter,
   LayoutService,
   NotificationType,
 } from "src/app/shared/services/layout.service";
+import dxTreeView from "devextreme/ui/tree_view";
 
 @Component({
   selector: "app-deploymentpath",
@@ -20,60 +22,74 @@ import {
   providers: [DeploymentpathService, EnvironmentService],
 })
 export class DeploymentpathComponent {
-  dataSourceDeploymentPaths: DataSource;
-  dataSourceEnvironments: DataSource;
-  deploymentPaths: DeploymentPath[];
-  environments: Environment[];
+  @ViewChild("treeViewDeploymentpath") public treeViewDeploymentpath: DxTreeViewComponent;
+  @ViewChild("treeViewEnvironment") public treeViewEnvironment: DxTreeViewComponent;
 
-  deploymentPathIdToExpand: number;
-  deploymentPathEnvironments: DeploymentPathEnvironment;
-  isAddDeploymentPath: boolean;
-  newDeploymentPath: DeploymentPath = {};
+  public dataSourceEnvironments: DataSource;
+  public deploymentPaths: DeploymentPath[];
+  public isAddDeploymentPathVisible: boolean;
+  public isRenameDeploymentPathVisible: boolean;
+  public deploymentPathToEdit: DeploymentPath;
+  public newDeploymentPath: DeploymentPath = {};
 
-  @ViewChild("treeViewDeploymentpath")
-  treeViewDeploymentpath: DxTreeViewComponent;
-  @ViewChild("treeViewEnvironment") treeViewEnvironment: DxTreeViewComponent;
+  private deploymentPathIdToExpand: number;
 
   constructor(
-    private deploymentpathService: DeploymentpathService,
+    private deploymentPathService: DeploymentpathService,
     private environmentService: EnvironmentService,
     private deploymentPathEnvironmentService: DeploymentPathEnvironmentService,
     private layoutService: LayoutService
   ) {
     this.onClickSaveDeploymentPath = this.onClickSaveDeploymentPath.bind(this);
     this.loadDeploymentPaths();
-    this.dataSourceDeploymentPaths = new DataSource({
-      store: this.deploymentpathService.getStore(),
-
-      expand: [
-        "CreatedByNavigation",
-        "Environments",
-        "DeploymentPathEnvironments",
-        "DeploymentPathEnvironments.EnvironmentNavigation",
-      ],
-    });
-
     this.dataSourceEnvironments = new DataSource({
       store: this.environmentService.getStore(),
     });
   }
 
-  onClickSaveDeploymentPath(e) {
-    this.deploymentpathService
-      .getStore()
-      .insert(this.newDeploymentPath)
-      .then(() => {
-        this.isAddDeploymentPath = false;
+  public onClickSaveDeploymentPath(e: any): void{
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.deploymentPathService.add(this.newDeploymentPath)
+      .then(() => this.layoutService.notify({
+        type: NotificationType.Success,
+        message: "The new deployment path has been created successfully."
+      }))
+      .catch(() => this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The new deployment path could not be created."
+      }))
+      .finally(() => {
+        this.isAddDeploymentPathVisible = false;
         this.newDeploymentPath = {};
         this.loadDeploymentPaths();
+        this.layoutService.change(LayoutParameter.ShowLoading, false);
       });
   }
 
-  onClickAddDeploymentPath() {
-    this.isAddDeploymentPath = true;
+  public onClickSaveRenameDeploymentPath(e: any): void{
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.deploymentPathService.update(this.deploymentPathToEdit.Id, { Name: this.deploymentPathToEdit.Name})
+      .then(() => this.layoutService.notify({
+        type: NotificationType.Success,
+        message: "The name change has been saved successfully."
+      }))
+      .catch(() => this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The name change could not be saved."
+      }))
+      .finally(() => {
+        this.isRenameDeploymentPathVisible = false;
+        this.deploymentPathToEdit = {};
+        this.loadDeploymentPaths();
+        this.layoutService.change(LayoutParameter.ShowLoading, false);
+      });
   }
 
-  public onClickDeleteDeploymentPathOrStep(e: any, entry: any): void {
+  public onClickOpenAddDeploymentPath(): void{
+    this.isAddDeploymentPathVisible = true;
+  }
+
+  public onClickDeleteDeploymentPathOrStep(e: any, entry: any): void{
     let result: Promise<boolean>;
     if (entry.StepNumber === undefined)
       result = confirm(
@@ -89,43 +105,48 @@ export class DeploymentpathComponent {
       if (dialogResult == true) {
         if (entry["EnvironmentNavigation"] === undefined) {
           //delete deploymentpath
-          this.deploymentpathService
-            .getStore()
-            .remove(entry.Id)
-            .then(() => {
-              this.loadDeploymentPaths().then(() => {
-                this.deploymentPathIdToExpand = entry.Id;
-                this.layoutService.notify({
-                  type: NotificationType.Success,
-                  message: "Changes have been saved",
-                  displayTime: 1000,
-                });
-              });
+          this.layoutService.change(LayoutParameter.ShowLoading, true);
+          this.deploymentPathService.remove(entry.Id)
+            .then(() => this.layoutService.notify({
+              type: NotificationType.Success,
+              message: "The deployment path was successfully deleted."
+            }))
+            .catch(() => this.layoutService.notify({
+              type: NotificationType.Error,
+              message: "The deployment path could not be deleted. "
+            }))
+            .finally(() => {
+              this.loadDeploymentPaths();
+              this.layoutService.change(LayoutParameter.ShowLoading, false);
             });
         } else {
           //delete deploymentPathEnvironment
-          this.deploymentPathEnvironmentService
-            .getStore()
-            .remove({
-              DeploymentPath: entry.DeploymentPath,
-              Environment: entry.Environment,
-            })
-            .then(() => {
-              this.loadDeploymentPaths().then(() => {
-                this.deploymentPathIdToExpand = entry.DeploymentPath;
-                this.layoutService.notify({
-                  type: NotificationType.Success,
-                  message: "Changes have been saved",
-                  displayTime: 1000,
-                });
-              });
+          this.deploymentPathIdToExpand = entry.DeploymentPath;
+          this.layoutService.change(LayoutParameter.ShowLoading, true);
+          this.deploymentPathEnvironmentService.remove(entry.DeploymentPath, entry.Environment)
+            .then(() => this.layoutService.notify({
+              type: NotificationType.Success,
+              message: "The deployment path step was successfully deleted."
+            }))
+            .catch(() => this.layoutService.notify({
+              type: NotificationType.Error,
+              message: "The deployment path step could not be deleted. "
+            }))
+            .finally(() => {
+              this.loadDeploymentPaths();
+              this.layoutService.change(LayoutParameter.ShowLoading, false);
             });
         }
       }
     });
   }
 
-  onAdd(e) {
+  public onClickOpenRenameDeploymentPath(e: any, entry: any): void {
+    this.deploymentPathToEdit = { Id: entry.Id, Name: entry.Name };
+    this.isRenameDeploymentPathVisible = true;
+  }
+
+  public onAdd(e: any): void{
     if (e.fromComponent === e.toComponent && e.fromIndex === e.toIndex) {
       return;
     }
@@ -201,7 +222,7 @@ export class DeploymentpathComponent {
     }
   }
 
-  onDragChange(e) {
+  public onDragChange(e: any): void{
     if (e.fromComponent === e.toComponent) {
       const fromNode = this.findNode(this.getTreeView(e.fromData), e.fromIndex);
 
@@ -216,7 +237,7 @@ export class DeploymentpathComponent {
     }
   }
 
-  onContentReadyTreeViewDeploymentPaths(e) {
+  public onContentReadyTreeViewDeploymentPaths(e: any): void{
     if (this.deploymentPathIdToExpand) {
       this.treeViewDeploymentpath.instance.expandItem(
         this.deploymentPathIdToExpand
@@ -225,38 +246,7 @@ export class DeploymentpathComponent {
     }
   }
 
-  loadDeploymentPaths() {
-    return this.deploymentpathService
-      .getStore()
-      .load({
-        expand: [
-          "CreatedByNavigation",
-          "Environments",
-          "DeploymentPathEnvironments",
-          "DeploymentPathEnvironments.EnvironmentNavigation",
-        ],
-      })
-      .then((data) => {
-        let sortedDeploymentPaths: DeploymentPath[] = data;
-
-        let deploymentPathEnvironments: DeploymentPathEnvironment[] = [];
-
-        for (let i = 0; i < data.length; i++) {
-          for (let j = 0; j < data[i].DeploymentPathEnvironments.length; j++) {
-            let stepNumber = data[i].DeploymentPathEnvironments[j].StepNumber;
-            deploymentPathEnvironments[stepNumber - 1] =
-              data[i].DeploymentPathEnvironments[j];
-          }
-          sortedDeploymentPaths[i].DeploymentPathEnvironments =
-            deploymentPathEnvironments;
-          deploymentPathEnvironments = [];
-        }
-
-        this.deploymentPaths = sortedDeploymentPaths;
-      });
-  }
-
-  onReorder(e) {
+  public onReorder(e: any): void{
     if (e.fromComponent === e.toComponent && e.fromIndex === e.toIndex) {
       return;
     }
@@ -293,7 +283,8 @@ export class DeploymentpathComponent {
         });
       });
   }
-  onDragEnd(e) {
+
+  public onDragEnd(e: any): void{
     if (e.fromComponent === e.toComponent && e.fromIndex === e.toIndex) {
       return;
     }
@@ -321,7 +312,38 @@ export class DeploymentpathComponent {
     toTreeView.scrollToItem(toTopVisibleNode);
   }
 
-  findNode(treeView, index) {
+  private loadDeploymentPaths(): Promise<void>{
+    return this.deploymentPathService
+      .getStore()
+      .load({
+        expand: [
+          "CreatedByNavigation",
+          "Environments",
+          "DeploymentPathEnvironments",
+          "DeploymentPathEnvironments.EnvironmentNavigation",
+        ],
+      })
+      .then((data) => {
+        let sortedDeploymentPaths: DeploymentPath[] = data;
+
+        let deploymentPathEnvironments: DeploymentPathEnvironment[] = [];
+
+        for (let i = 0; i < data.length; i++) {
+          for (let j = 0; j < data[i].DeploymentPathEnvironments.length; j++) {
+            let stepNumber = data[i].DeploymentPathEnvironments[j].StepNumber;
+            deploymentPathEnvironments[stepNumber - 1] =
+              data[i].DeploymentPathEnvironments[j];
+          }
+          sortedDeploymentPaths[i].DeploymentPathEnvironments =
+            deploymentPathEnvironments;
+          deploymentPathEnvironments = [];
+        }
+
+        this.deploymentPaths = sortedDeploymentPaths;
+      });
+  }
+
+  private findNode(treeView: any, index: number): any {
     const nodeElement = treeView
       .element()
       .querySelectorAll(".dx-treeview-node")[index];
@@ -334,7 +356,7 @@ export class DeploymentpathComponent {
     return null;
   }
 
-  findNodeById(nodes, id) {
+  private findNodeById(nodes, id: number): any{
     for (var i = 0; i < nodes.length; i++) {
       if (nodes[i].itemData.Id == id) {
         return nodes[i];
@@ -349,7 +371,7 @@ export class DeploymentpathComponent {
     return null;
   }
 
-  moveNode(fromNode, toNode, fromItems, toItems, isDropInsideItem) {
+  private moveNode(fromNode, toNode, fromItems, toItems, isDropInsideItem): void{
     const fromNodeContainingArray = this.getNodeContainingArray(
       fromNode,
       fromItems
@@ -399,12 +421,12 @@ export class DeploymentpathComponent {
     }
   }
 
-  getNodeContainingArray(node, rootArray) {
+  private getNodeContainingArray(node, rootArray): Environment[]{
     if (node === null || node.parent === null) return rootArray;
     else return node.parent.itemData.Environments;
   }
 
-  isChildNode(parentNode, childNode) {
+  private isChildNode(parentNode, childNode): boolean {
     let parent = childNode.parent;
     while (parent !== null) {
       if (parent.itemData.id === parentNode.itemData.id) {
@@ -415,7 +437,7 @@ export class DeploymentpathComponent {
     return false;
   }
 
-  getTopVisibleNode(component) {
+  private getTopVisibleNode(component): void{
     const treeViewElement = component.element();
     const treeViewTopPosition = treeViewElement.getBoundingClientRect().top;
     const nodes = treeViewElement.querySelectorAll(".dx-treeview-node");
@@ -429,13 +451,13 @@ export class DeploymentpathComponent {
     return null;
   }
 
-  getTreeView(name) {
+  private getTreeView(name): dxTreeView<any> {
     return name === "deploymentpath"
       ? this.treeViewDeploymentpath.instance
       : this.treeViewEnvironment.instance;
   }
 
-  calculateToIndex(e) {
+  private calculateToIndex(e): number {
     if (e.fromComponent != e.toComponent || e.dropInsideItem) {
       return e.toIndex;
     }
