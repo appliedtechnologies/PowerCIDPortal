@@ -4,7 +4,9 @@ import {
   Input,
   OnChanges,
   Output,
+  ViewChild,
 } from "@angular/core";
+import { DxTextBoxComponent } from "devextreme-angular";
 import { Application } from "src/app/shared/models/application.model";
 import { Patch } from "src/app/shared/models/patch.model";
 import { Upgrade } from "src/app/shared/models/upgrade.model";
@@ -26,6 +28,9 @@ export class SolutionDetailComponent implements OnChanges {
   @Input() application: Application;
   @Input() isAddUpgrade: boolean;
   @Output() onSaveCompleted = new EventEmitter<void>();
+  @Output() onRenamed = new EventEmitter<void>();
+
+  @ViewChild("textBoxName") public textBoxName: DxTextBoxComponent;
 
   public isUpgrade: boolean;
   public isAdd: boolean;
@@ -50,10 +55,10 @@ export class SolutionDetailComponent implements OnChanges {
     if (validation.isValid) {
       this.layoutService.change(LayoutParameter.ShowLoading, true);
       this.solution.Application = this.application.Id;
+      this.solution.Name = this.textBoxName.value;
       if (this.isAddUpgrade) {
         this.upgradeService
-          .getStore()
-          .insert(this.solution)
+          .add(this.solution)
           .then(() => {
             this.layoutService.notify({
               type: NotificationType.Success,
@@ -72,8 +77,7 @@ export class SolutionDetailComponent implements OnChanges {
           });
       } else {
         this.patchService
-          .getStore()
-          .insert(this.solution)
+          .add(this.solution)
           .then(() => {
             this.layoutService.notify({
               type: NotificationType.Success,
@@ -94,7 +98,22 @@ export class SolutionDetailComponent implements OnChanges {
     }
   }
 
-  ngOnChanges() {
+  public onFocusOutSolutionName(e: any): void {
+    if(!this.isAdd)
+    {
+      let newValue: string = this.textBoxName.value;
+
+      if(newValue && newValue != this.solution.Name){
+        if (this.isUpgrade) {
+          this.renameUpgrade(this.solution.Id, e.component.option("value"));
+        } else {
+          this.renamePatch(this.solution.Id, e.component.option("value"));
+        }
+      }
+    }
+  }
+
+  public ngOnChanges(): void{
     if (this.solution != undefined) {
       this.isUpgrade = "ApplyManually" in this.solution;
       this.isAdd = false;
@@ -109,5 +128,59 @@ export class SolutionDetailComponent implements OnChanges {
         EnableWorkflows: true
       };
     }
+  }
+
+  private renamePatch(id: number, newName: string): void{
+    this.patchService
+    .update(id, { Name: newName })
+    .then(() => {
+      this.layoutService.notify({
+        type: NotificationType.Success,
+        message: "The Patch was successfully renamed.",
+      });
+      this.onRenamed.emit();
+    })
+    .catch((error) => {
+      if(error != null)
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: `An error occurred while renaming the Patch: ${error.message}`,
+        });
+      else
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred while renaming the Patch.",
+        });
+      })
+    .then(() => {
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
+    });
+  }
+
+  private renameUpgrade(id: number, newName: string): void{
+    this.upgradeService
+    .update(id, { Name: newName })
+    .then(() => {
+      this.layoutService.notify({
+        type: NotificationType.Success,
+        message: "The Upgrade was successfully renamed.",
+      });
+      this.onRenamed.emit();
+    })
+    .catch((error) => {
+      if(error != null)
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: `An error occurred while renaming the Upgrade: ${error.message}`,
+        });
+      else
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred while renaming the Upgrade.",
+        });
+    })
+    .then(() => {
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
+    });
   }
 }
