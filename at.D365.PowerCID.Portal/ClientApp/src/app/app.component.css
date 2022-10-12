@@ -85,3 +85,7 @@
     padding-left: 10px; 
     margin: 0; 
 }
+
+::ng-deep .dx-loadpanel-wrapper{
+    z-index: 2000 !important;
+}
