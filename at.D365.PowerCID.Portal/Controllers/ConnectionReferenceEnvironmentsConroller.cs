@@ -78,6 +78,10 @@ namespace at.D365.PowerCID.Portal.Controllers
             connectionReferenceEnvironment.Patch(entity);
             try
             {
+                //remove ConnectionReferenceEnvironment without ConnectionId
+                if(String.IsNullOrWhiteSpace(entity.ConnectionId))
+                    base.dbContext.Remove(entity);
+
                 await base.dbContext.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
