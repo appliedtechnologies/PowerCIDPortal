@@ -16,6 +16,7 @@ export interface Action {
   FinishTime?: Date;
   Solution?: number;
   ErrorMessage?: string;
+  DeploymentDetails?: string;
   CreatedBy?: number;
   CreatedOn?: string;
   CreatedByNavigation?: User;

@@ -48,9 +48,14 @@
       editorType="dxTextArea"
       [editorOptions]="{ height: 100 }"
     ></dxi-item>
+    <dxi-item *ngIf="this.action?.Type == 2"
+      dataField="DeploymentDetails"
+      editorType="dxTextArea"
+      [editorOptions]="{ height: 100 }"
+    ></dxi-item>
     <dxi-item [label]="{ text: 'Created by' }" >
       <div *dxTemplate>
-        <dx-text-box value="{{this.action?.CreatedByNavigation | fullname}}" >
+        <dx-text-box [readOnly]="true" value="{{this.action?.CreatedByNavigation | fullname}}" >
         </dx-text-box>
       </div>
     </dxi-item>
