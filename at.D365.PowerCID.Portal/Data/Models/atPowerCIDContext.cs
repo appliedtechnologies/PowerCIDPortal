@@ -228,6 +228,10 @@ namespace at.D365.PowerCID.Portal.Data.Models
                     .IsUnicode(false)
                     .HasColumnName("Error Message");
 
+                    entity.Property(e => e.DeploymentDetails)
+                    .IsUnicode(false)
+                    .HasColumnName("Deployment Details");
+
                 entity.Property(e => e.FinishTime).HasColumnName("Finish Time");
 
                 entity.Property(e => e.Name)
