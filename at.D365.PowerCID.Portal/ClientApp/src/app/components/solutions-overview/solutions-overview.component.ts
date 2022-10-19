@@ -269,7 +269,9 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
       this.applicationService.getDeploymentSettingsStatus(this.selectedApplication.Id, targetEnvironmentId).then((status) => {
         if (status == 0) {
           let confirmResult = confirm("Import without completed Deployment Settings (e.g. Connection References)?", "Incomplete Deployment Settings");
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
           confirmResult.then((result) => {
+            this.layoutService.change(LayoutParameter.ShowLoading, true);
             if (result == true) {
               this.startImport(cellInfo.data.Id, targetEnvironmentId, deploymentPathId)
                 .then(() => {
