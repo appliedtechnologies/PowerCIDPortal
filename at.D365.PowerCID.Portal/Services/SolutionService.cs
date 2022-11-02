@@ -331,6 +331,10 @@ namespace at.D365.PowerCID.Portal.Services
                 query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+
+                if(response.Entities.Count == 0)
+                    return Guid.Empty;
+
                 var solutionId = (Guid)response.Entities.First()["solutionid"];
                 return solutionId;
             }
