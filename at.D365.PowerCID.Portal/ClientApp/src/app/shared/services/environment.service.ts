@@ -1,5 +1,6 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { MsalService } from "@azure/msal-angular";
 import ODataStore from "devextreme/data/odata/store";
 import { AppConfig } from "../config/app.config";
 import { ODataService } from "./odata.service";
@@ -12,7 +13,8 @@ export class EnvironmentService {
   constructor(
     private odataService: ODataService,
     private http: HttpClient,
-    private userService: UserService
+    private userService: UserService,
+    private authService: MsalService,
   ) {
     this.callPullEnvironments = this.callPullEnvironments.bind(this);
   }
@@ -27,7 +29,14 @@ export class EnvironmentService {
         .post(`${AppConfig.settings.api.url}/Environments/PullExisting`, {})
         .subscribe({
           next: () => resolve(),
-          error: () => reject(),
+          error: (e: HttpErrorResponse) => {
+            if(e.status == 403){
+              this.authService.acquireTokenRedirect({
+                scopes: [`api://${AppConfig.settings.azure.applicationId}/access_as_user`],
+                extraScopesToConsent: ["https://management.azure.com//user_impersonation"]
+              });
+            }
+          },
         });
     });
   }
