@@ -1,6 +1,7 @@
 import {
   MsalGuardConfiguration,
   MsalInterceptorConfiguration,
+  ProtectedResourceScopes,
 } from "@azure/msal-angular";
 import {
   BrowserCacheLocation,
@@ -46,14 +47,9 @@ export function MSALInstanceFactory(): IPublicClientApplication {
 }
 
 export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
-  const protectedResourceMap = new Map<string, Array<string>>();
-  protectedResourceMap.set("https://graph.microsoft.com/v1.0/*", ["user.read"]);
-  protectedResourceMap.set(
-    "https://management.azure.com/providers/Microsoft.ProcessSimple/environments?api-version=2016-11-01",
-    ["https://management.azure.com//user_impersonation"]
-  );
-  protectedResourceMap.set(location.origin + "/odata/*", [
-    `api://${AppConfig.settings.azure.applicationId}/access_as_user`,
+  const protectedResourceMap = new Map<string, Array<string | ProtectedResourceScopes>>([
+    ["https://graph.microsoft.com/v1.0/*", ["user.read"]],
+    [location.origin + "/odata/*", [`api://${AppConfig.settings.azure.applicationId}/access_as_user`]],
   ]);
 
   return {

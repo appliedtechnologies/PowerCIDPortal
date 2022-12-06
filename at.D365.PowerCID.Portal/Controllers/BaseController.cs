@@ -12,15 +12,16 @@ namespace at.D365.PowerCID.Portal.Controllers
     {
         protected atPowerCIDContext dbContext;
         protected IDownstreamWebApi downstreamWebApi;
-
+        protected ITokenAcquisition tokenAcquisition;
         protected Guid msIdTenantCurrentUser;
         protected Guid msIdCurrentUser;
 
         
-        public BaseController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor)
+        public BaseController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ITokenAcquisition tokenAcquisition = null)
         {
             dbContext = atPowerCIDContext;
             this.downstreamWebApi = downstreamWebApi;
+            this.tokenAcquisition = tokenAcquisition;
             this.msIdTenantCurrentUser = Guid.Parse(httpContextAccessor.HttpContext.User.FindFirst(ClaimConstants.TenantId).Value);
             this.msIdCurrentUser = Guid.Parse(httpContextAccessor.HttpContext.User.FindFirst(ClaimConstants.ObjectId).Value);
             this.dbContext.MsIdCurrentUser = this.msIdCurrentUser;
