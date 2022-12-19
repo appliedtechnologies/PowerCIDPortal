@@ -220,7 +220,7 @@ namespace at.D365.PowerCID.Portal.Services
             bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, action.TargetEnvironmentNavigation.BasicUrl);
             var holdingSolution = action.TargetEnvironmentNavigation.DeployUnmanaged ? false : !isPatch && existsSolutionInTargetEnvironment == true;
 
-            EntityCollection solutionComponentParameters = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
+            (EntityCollection solutionComponentParameters, string deploymentDetails) = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
 
             ImportSolutionAsyncRequest importSolutionAsyncRequest = new ImportSolutionAsyncRequest
             {
@@ -234,6 +234,7 @@ namespace at.D365.PowerCID.Portal.Services
             using (var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
                 ImportSolutionAsyncResponse response = (ImportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(importSolutionAsyncRequest);
+                action.DeploymentDetails = deploymentDetails;
 
                 AsyncJob asyncJob = new AsyncJob
                 {
@@ -330,6 +331,10 @@ namespace at.D365.PowerCID.Portal.Services
                 query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+
+                if(response.Entities.Count == 0)
+                    return Guid.Empty;
+
                 var solutionId = (Guid)response.Entities.First()["solutionid"];
                 return solutionId;
             }
@@ -381,26 +386,28 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: SolutionService CreateUpgradeInDataverse(solutionUniqueName: {solutionUniqueName}, solutionDisplayName: {solutionDisplayName}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()}, upgrade Version: {upgrade.Version})");
         }
 
-        private async Task<EntityCollection> GetSolutionComponentsForImport(int environmentId, int applicationId)
+        private async Task<(EntityCollection, string)> GetSolutionComponentsForImport(int environmentId, int applicationId)
         {
             logger.LogDebug($"Begin: SolutionService GetSolutionComponentsForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
             EntityCollection solutionComponentParameters = new EntityCollection();
 
-            var connectionReferenceEntities = await this.GetConnectionReferencesForImport(environmentId, applicationId);
-            var environmentVariableEntities = await this.GetEnvironmentVariablesForImport(environmentId, applicationId);
+            (var connectionReferenceEntities, string deploymentDetailsConnectionReferences) = await this.GetConnectionReferencesForImport(environmentId, applicationId);
+            (var environmentVariableEntities, string deploymentDetailsEnvironmentVariables) = await this.GetEnvironmentVariablesForImport(environmentId, applicationId);
             solutionComponentParameters.Entities.AddRange(connectionReferenceEntities.Entities);
             solutionComponentParameters.Entities.AddRange(environmentVariableEntities.Entities);
 
             if (solutionComponentParameters.Entities.Count == 0)
-                return null;
+                return (null, null);
+
+            string deploymentDetails = $"{deploymentDetailsConnectionReferences}\n{deploymentDetailsEnvironmentVariables}";
 
             logger.LogDebug($"End: SolutionService GetSolutionComponentsForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
-            return solutionComponentParameters;
+            return (solutionComponentParameters, deploymentDetails);
         }
 
-        private async Task<EntityCollection> GetEnvironmentVariablesForImport(int environmentId, int applicationId)
+        private async Task<(EntityCollection, string)> GetEnvironmentVariablesForImport(int environmentId, int applicationId)
         {
 
             logger.LogDebug($"Begin: SolutionService  GetEnvironmentVariablesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
@@ -408,29 +415,41 @@ namespace at.D365.PowerCID.Portal.Services
             await this.environmentVariableService.CleanEnvironmentVariables(applicationId);
 
             EntityCollection environmentVariableEntities = new EntityCollection();
+            string deploymentDetails = "";
 
             var environmentVariableEnvironments = this.dbContext.EnvironmentVariableEnvironments.Where(e => e.Environment == environmentId && e.EnvironmentVariableNavigation.Application == applicationId).ToList();
+
+            if(environmentVariableEnvironments.Count > 0)
+                deploymentDetails += "Used Environment Variables:\n";
+
             foreach (EnvironmentVariableEnvironment environmentVariableEnvironment in environmentVariableEnvironments)
             {
                 Entity connRecord = new Entity("environmentvariablevalue");
                 connRecord.Attributes.Add("schemaname", environmentVariableEnvironment.EnvironmentVariableNavigation.LogicalName);
                 connRecord.Attributes.Add("value", environmentVariableEnvironment.Value);
                 environmentVariableEntities.Entities.Add(connRecord);
+
+                deploymentDetails += $"-{environmentVariableEnvironment.EnvironmentVariableNavigation.LogicalName}: {environmentVariableEnvironment.Value}\n";
             }
             logger.LogDebug($"End: SolutionService  GetEnvironmentVariablesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
-            return environmentVariableEntities;
+            return (environmentVariableEntities, deploymentDetails);
         }
 
-        private async Task<EntityCollection> GetConnectionReferencesForImport(int environmentId, int applicationId)
+        private async Task<(EntityCollection, string)> GetConnectionReferencesForImport(int environmentId, int applicationId)
         {
             logger.LogDebug($"Begin: SolutionService  GetConnectionReferencesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
             await this.connectionReferenceService.CleanConnectionReferences(applicationId);
 
             EntityCollection connectionReferenceEntities = new EntityCollection();
+            string deploymentDetails = "";
 
             var connectionReferenceEnvironments = this.dbContext.ConnectionReferenceEnvironments.Where(e => e.Environment == environmentId && e.ConnectionReferenceNavigation.Application == applicationId).ToList();
+
+            if(connectionReferenceEnvironments.Count > 0)
+                deploymentDetails += "Used Connection References:\n";
+
             foreach (ConnectionReferenceEnvironment connectionReferenceEnvironment in connectionReferenceEnvironments)
             {
                 Entity connRecord = new Entity("connectionreference");
@@ -439,10 +458,12 @@ namespace at.D365.PowerCID.Portal.Services
                 connRecord.Attributes.Add("connectorid", connectionReferenceEnvironment.ConnectionReferenceNavigation.ConnectorId);
                 connRecord.Attributes.Add("connectionid", connectionReferenceEnvironment.ConnectionId);
                 connectionReferenceEntities.Entities.Add(connRecord);
+
+                deploymentDetails += $"-{connectionReferenceEnvironment.ConnectionReferenceNavigation.LogicalName}: {connectionReferenceEnvironment.ConnectionId}\n";
             }
             logger.LogDebug($"End: SolutionService  GetConnectionReferencesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
-            return connectionReferenceEntities;
+            return (connectionReferenceEntities, deploymentDetails);
         }
     }
 }

@@ -79,6 +79,10 @@ namespace at.D365.PowerCID.Portal.Controllers
             environmentVariableEnvironment.Patch(entity);
             try
             {
+                //remove EnvironmentVariableEnvironment without value
+                if(String.IsNullOrWhiteSpace(entity.Value))
+                    base.dbContext.Remove(entity);
+
                 await base.dbContext.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)

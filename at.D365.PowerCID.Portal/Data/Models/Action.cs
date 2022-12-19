@@ -16,6 +16,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public DateTime? StartTime { get; set; }
         public int? Solution { get; set; }
         public string ErrorMessage { get; set; }
+        public string DeploymentDetails { get; set; }
         public int CreatedBy { get; set; }
         public DateTime CreatedOn { get; set; }
         public DateTime? FinishTime { get; set; }
