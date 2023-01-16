@@ -168,7 +168,7 @@
             (click)="onClickActionInfo(lastAction)"
           ></i>
           <i
-            *ngIf="lastAction.Type == 2 && (lastAction.SolutionNavigation | isPatch) == false"
+            *ngIf="!lastAction.TargetEnvironmentNavigation.DeployUnmanaged && lastAction.Type == 2 && (lastAction.SolutionNavigation | isPatch) == false"
             class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, false, true)"
             title="apply upgrade"
