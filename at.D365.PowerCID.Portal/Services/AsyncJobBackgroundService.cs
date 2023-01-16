@@ -23,6 +23,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly GitHubService gitHubService;
         private readonly SolutionService solutionService;
         private readonly ActionService actionService;
+        private readonly EnvironmentService environmentService;
         private readonly SolutionHistoryService solutionHistoryService;
 
         private System.Timers.Timer timer;
@@ -38,6 +39,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
             this.actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
             this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
+            this.environmentService = scope.ServiceProvider.GetRequiredService<EnvironmentService>();
             this.logger = logger;
         }
 
@@ -214,6 +216,9 @@ namespace at.D365.PowerCID.Portal.Services
                                                                     Solution = asyncJob.ActionNavigation.Solution,
                                                                 });
                                                             }
+                                                        }
+                                                        else{ //Publish all Customizations
+                                                            this.environmentService.PublishAllCustomizations(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl);
                                                         }
                                                     }
                                                     dbContext.AsyncJobs.Remove(asyncJob);
