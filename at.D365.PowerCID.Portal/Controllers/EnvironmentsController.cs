@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
 
@@ -21,7 +22,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     {
         private readonly ILogger logger;
 
-        public EnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<EnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public EnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ITokenAcquisition tokenAcquisition, ILogger<EnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor, tokenAcquisition)
         {
             this.logger = logger;
         }
@@ -87,22 +88,35 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug("Begin: EnvironmentsController PullExisting()");
 
-            IEnumerable<Environment> pulledEnvironments = await this.GetExistingEnvironments();
+            try
+            {
+                IEnumerable<Environment> pulledEnvironments = await this.GetExistingEnvironments();
 
-            //update existing environments
-            var pulledAlreadyExistingEnvironments = pulledEnvironments.Where(e => this.dbContext.Environments.Select(t => t.MsId).Contains(e.MsId));
-            foreach (Environment pulledEnvironment in pulledAlreadyExistingEnvironments)
-                this.UpdateEnvironmentIfNeeded(pulledEnvironment);
+                //update existing environments
+                var pulledAlreadyExistingEnvironments = pulledEnvironments.Where(e => this.dbContext.Environments.Select(t => t.MsId).Contains(e.MsId));
+                foreach (Environment pulledEnvironment in pulledAlreadyExistingEnvironments)
+                    this.UpdateEnvironmentIfNeeded(pulledEnvironment);
 
-            //add NOT existing environments
-            var pulledNotExisting = pulledEnvironments.Except(pulledAlreadyExistingEnvironments);
-            await this.dbContext.Environments.AddRangeAsync(pulledNotExisting);
+                //add NOT existing environments
+                var pulledNotExisting = pulledEnvironments.Except(pulledAlreadyExistingEnvironments);
+                await this.dbContext.Environments.AddRangeAsync(pulledNotExisting);
 
-            await this.dbContext.SaveChangesAsync();
+                await this.dbContext.SaveChangesAsync();
 
-            logger.LogDebug("End: EnvironmentsController PullExisting()");
+                logger.LogDebug("End: EnvironmentsController PullExisting()");
 
-            return Ok();
+                return Ok();
+            } 
+            catch (MicrosoftIdentityWebChallengeUserException ex)
+            {
+                this.tokenAcquisition.ReplyForbiddenWithWwwAuthenticateHeader(new string[] {"https://management.azure.com//user_impersonation"}, ex.MsalUiRequiredException);
+                return Forbid();
+            }
+            catch (MsalUiRequiredException ex)
+            {
+                this.tokenAcquisition.ReplyForbiddenWithWwwAuthenticateHeader(new string[] {"https://management.azure.com//user_impersonation"}, ex);
+                return Forbid();
+            }   
         }
 
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
@@ -164,6 +178,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug("Begin: EnvironmentsController GetExistingEnvironments()");
 
+
             var environmentsRepsonse = await this.downstreamWebApi.CallWebApiForUserAsync(
                 "AzureManagementApi",
                 options =>
@@ -196,7 +211,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
             logger.LogDebug("End: EnvironmentsController GetExistingEnvironments()");
 
-            return environments;
+            return environments;         
         }
 
         private bool EnvironmentExists(int key)

@@ -7,7 +7,7 @@ export interface Environment {
   Name?: string;
   BasicUrl?: string;
   ConnectionsOwner?: string;
-  DeployUnmanged?: boolean;
+  DeployUnmanaged?: boolean;
   IsDevelopmentEnvironment?: boolean;
   MsId?: string;
   Tenant?: number;
