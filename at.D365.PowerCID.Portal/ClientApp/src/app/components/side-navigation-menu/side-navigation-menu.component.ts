@@ -96,6 +96,12 @@ export class SideNavigationMenuComponent {
           visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
         },
         {
+          text: "EnvironmentVariable",
+          icon: "at-icon powercid-icon-unit",
+          routerLink: "/environmentvariable",
+          visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
+        },
+        {
           text: "Deployment Paths",
           icon: "at-icon powercid-icon-route",
           routerLink: "/deploymentpaths",

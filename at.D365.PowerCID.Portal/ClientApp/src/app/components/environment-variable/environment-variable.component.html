@@ -1,0 +1,24 @@
+
+<dx-data-grid
+#solutionsGrid
+[dataSource]="dataSourceSolutions"
+[columns]="dataGridColumns"
+[showBorders]="true"
+[columnAutoWidth]="true"
+[sorting]="{ mode: 'multiple' }"
+[scrolling]="{ mode: 'virtual' }"
+[headerFilter]="{ visible: true }"
+class="solutions-grid"
+[loadPanel]="{ enabled: true }"
+[allowColumnReordering]="false"
+[remoteOperations]="{
+  sorting: false,
+  filtering: true,
+  paging: true,
+  groupPaging: true,
+  grouping: true
+}"
+height="100%"
+(onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
+>
+</dx-data-grid>

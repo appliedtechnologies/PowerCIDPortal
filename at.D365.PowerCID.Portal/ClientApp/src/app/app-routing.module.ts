@@ -13,6 +13,7 @@ import { SettingsComponent } from "./components/settings/settings.component";
 import { UserComponent } from "./components/user/user.component";
 import { RoleGuard } from "./shared/guards/role.guard";
 import { AppConfig } from "./shared/config/app.config";
+import { EnvironmentVariableComponent } from "./components/environment-variable/environment-variable.component";
 
 const routes: Routes = [
   { path: "", component: HomeComponent, pathMatch: "full" },
@@ -31,6 +32,14 @@ const routes: Routes = [
   {
     path: "environments",
     component: EnvironmentComponent,
+    canActivate: [MsalGuard, RoleGuard],
+    data: {
+      expectedRoles: ["atPowerCID.Admin", "atPowerCID.Manager"],
+    },
+  },
+  {
+    path: "environmentvariable",
+    component: EnvironmentVariableComponent,
     canActivate: [MsalGuard, RoleGuard],
     data: {
       expectedRoles: ["atPowerCID.Admin", "atPowerCID.Manager"],
