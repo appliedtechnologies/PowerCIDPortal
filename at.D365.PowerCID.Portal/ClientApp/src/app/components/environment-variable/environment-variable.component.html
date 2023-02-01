@@ -1,24 +1,20 @@
-
 <dx-data-grid
-#solutionsGrid
-[dataSource]="dataSourceSolutions"
-[columns]="dataGridColumns"
-[showBorders]="true"
-[columnAutoWidth]="true"
-[sorting]="{ mode: 'multiple' }"
-[scrolling]="{ mode: 'virtual' }"
-[headerFilter]="{ visible: true }"
-class="solutions-grid"
-[loadPanel]="{ enabled: true }"
-[allowColumnReordering]="false"
-[remoteOperations]="{
-  sorting: false,
-  filtering: true,
-  paging: true,
-  groupPaging: true,
-  grouping: true
-}"
-height="100%"
-(onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
+  id="gridContainer"
+  [showRowLines]="true"
+  [showBorders]="true"
+  [dataSource]="dataSource"
+  [allowColumnResizing]="true"
+  (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
+  [columnAutoWidth]="true"
+  [width]="'100%'"
 >
+
+
+<dxi-column dataField="Application" [allowEditing]="false"></dxi-column>
+<dxi-column dataField="DisplayName" [allowEditing]="false"></dxi-column>
+<dxi-column dataField="MsId" [allowEditing]="false"></dxi-column>
+<dxi-column dataField="Id" [allowEditing]="false"></dxi-column>
+<dxi-column dataField="ModifiedBy" [allowEditing]="false"></dxi-column>
+<dxi-column dataField="ModifiedOn" [allowEditing]="false"></dxi-column>
+
 </dx-data-grid>
