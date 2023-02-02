@@ -3,7 +3,7 @@ import { DxDataGridComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import { EnvironmentVariableService } from "src/app/shared/services/environmentvariable.service";
 import { EnvironmentVariableEnvironmentService } from "src/app/shared/services/environmentvariableenvironment.service";
-import { LayoutService } from "src/app/shared/services/layout.service";
+import { LayoutParameter, LayoutService, NotificationType } from "src/app/shared/services/layout.service";
 
 @Component({
   selector: 'app-environment-variable',
@@ -17,7 +17,6 @@ export class EnvironmentVariableComponent {
   
   constructor(
     private environmentVariableService: EnvironmentVariableService,
-    private environmentVariableEnvironmentService : EnvironmentVariableEnvironmentService,
     private layoutService: LayoutService
     ) {
       this.dataSource = new DataSource({
@@ -43,6 +42,35 @@ export class EnvironmentVariableComponent {
       },
       location: "after",
     });
+    toolbarItems.unshift({
+      widget: "dxButton",
+      options: {
+        icon: "download",
+        text: "Pull Environments",
+        stylingMode: "contained",
+        type: "success",
+        hint: "Pull the existing environments from tenant and saves them in PowerCID Portal.",
+        onClick: this.onClickPullEnvironments.bind(this),
+      },
+      location: "after",
+    });
+  }
+
+  private onClickPullEnvironments(): void {
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.environmentVariableService
+      .getExistingForApplication(32)
+      .then(() => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message:
+            "Existing environments were successfully pulled from tenant.",
+        });
+        this.dataGrid.instance.refresh();
+      })
+      .finally(() => {
+        this.layoutService.change(LayoutParameter.ShowLoading, false);
+      });
   }
 
   private onClickRefreshDataGrid(): void {
