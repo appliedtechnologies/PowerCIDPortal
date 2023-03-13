@@ -7,6 +7,6 @@ namespace at.D365.PowerCID.Portal.Data.Models
 {
     public partial class Patch : Solution
     {
-       
+        public bool WasDeleted { get; set; }
     }
 }
