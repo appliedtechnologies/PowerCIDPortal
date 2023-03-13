@@ -22,24 +22,26 @@
   (onToolbarPreparing)="onToolbarPreparingSolutionsGrid($event)"
 >
   <div *dxTemplate="let cellInfo of 'typeCellTemplate'">
-    <div class="card dx-card dx-theme-text-color">
+    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''"> 
       {{ cellInfo.value }}
     </div>
   </div>
 
   <div *dxTemplate="let cellInfo of 'versionCellTemplate'">
-    <div class="card dx-card dx-theme-text-color">
+    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
       {{ cellInfo.value }}
     </div>
   </div>
 
   <div *dxTemplate="let cellInfo of 'nameCellTemplate'">
-    <div class="card dx-card dx-theme-text-color">
-      <i
+    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
+      <i 
+        *ngIf="cellInfo.data.WasDeleted != true"
         class="dx-icon-info clickable-icon at-icon"
         (click)="onClickSolutionInfo(cellInfo)"
       ></i>
       <i
+        *ngIf="cellInfo.data.WasDeleted != true"
         class="dx-icon-folder clickable-icon at-icon"
         (click)="onClickOpenMakerPortal(cellInfo)"
       ></i>
@@ -72,18 +74,22 @@
       <div
         *ngIf="lastAction.Result == 1"
         class="card dx-card dx-theme-text-color card-success"
+        [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''"
       >
         <i
+          *ngIf="cellInfo.data.WasDeleted != true"  
           class="dx-icon-info clickable-icon at-icon"
           title="show details"
           (click)="onClickActionInfo(lastAction)"
         ></i>
         <i
+          *ngIf="cellInfo.data.WasDeleted != true"
           class="dx-icon-download clickable-icon at-icon"
           title="download managed solution"
           (click)="onClickDownloadSolution(cellInfo, lastAction)"
         ></i>
         <i
+          *ngIf="cellInfo.data.WasDeleted != true"
           class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
           title="renew export"
@@ -114,13 +120,16 @@
       <div
         *ngIf="lastAction.Result != 1 && lastAction.Status == 3"
         class="card dx-card dx-theme-text-color card-error"
+        [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''"
       >
         <i
+          *ngIf="cellInfo.data.WasDeleted != true"
           class="dx-icon-info clickable-icon at-icon"
           title="show details"
           (click)="onClickActionInfo(lastAction)"
         ></i>
         <i
+          *ngIf="cellInfo.data.WasDeleted != true"
           class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
           title="renew export"
@@ -131,9 +140,10 @@
       </div>
     </div>
     <ng-template #noActionAvailable>
-      <div class="card dx-card dx-theme-text-color card-ready">
+      <div class="card dx-card dx-theme-text-color card-ready" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
         <span>
           <i
+            *ngIf="cellInfo.data.WasDeleted != true"
             class="dx-icon-newfolder clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, true)"
             title="export only"
@@ -146,7 +156,7 @@
 
   <div *dxTemplate="let cellInfo of 'environmentCellTemplate'">
     <div *ngIf="canDeployToEnv(cellInfo) == false; else canDeploy">
-      <div class="card dx-card dx-theme-text-color card-not-yet-available">
+      <div class="card dx-card dx-theme-text-color card-not-yet-available" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
         via {{ this.previousEnvironmentName }}
       </div>
     </div>
@@ -229,9 +239,10 @@
       </div>
     </ng-template>
     <ng-template #noActionAvailable>
-      <div class="card dx-card dx-theme-text-color card-ready">
+      <div class="card dx-card dx-theme-text-color card-ready" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
         <span>
           <i
+            *ngIf="cellInfo.data.WasDeleted != true"
             class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo)"
             title="deploy here"
