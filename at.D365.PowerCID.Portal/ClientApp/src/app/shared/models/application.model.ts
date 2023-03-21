@@ -25,4 +25,5 @@ export interface Application {
   DeploymentPaths?: DeploymentPath[];
   ApplicationDeploymentPaths?: ApplicationDeploymentPath[];
   Solutions? : Solution[];
+  IsDeactive?: boolean;
 }
