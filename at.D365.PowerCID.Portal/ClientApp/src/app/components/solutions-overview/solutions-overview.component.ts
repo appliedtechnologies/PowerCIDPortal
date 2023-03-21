@@ -74,7 +74,8 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     private solutionService: SolutionService,
     private environmentService: EnvironmentService,
     private actionService: ActionService,
-    private layoutService: LayoutService
+    private layoutService: LayoutService,
+    private patchService: PatchService
   ) {
     this.dataSourceApplications = new DataSource({
       store: this.applicationService.getStore(),
@@ -365,6 +366,28 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
         });
       }
     });
+  }
+
+  onClickDeletePatch(patch: Patch) {
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.patchService
+          .delete(patch.Id)
+          .then(() => {
+            this.layoutService.notify({
+              type: NotificationType.Success,
+              message: "Patch was successfully deleted.",
+            });
+          })
+          .catch(() => {
+            this.layoutService.notify({
+              type: NotificationType.Error,
+              message: "An error occurred while deleting the patch.",
+            });
+          })
+          .then(() => {
+            this.layoutService.change(LayoutParameter.ShowLoading, false);
+            this.dataGrid.instance.refresh();
+          });
   }
 
   public getLastActionForEnvironment(cellInfo): Action {

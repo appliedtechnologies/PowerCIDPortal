@@ -36,4 +36,8 @@ export class PatchService {
   public update(id: number, patch: Patch): Promise<void>{
     return this.getStore().update(id, patch);
   }
+
+  public delete(id: number): Promise<void>{
+    return this.getStore().remove(id);
+  }
 }

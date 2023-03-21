@@ -45,6 +45,11 @@
         class="dx-icon-folder clickable-icon at-icon"
         (click)="onClickOpenMakerPortal(cellInfo)"
       ></i>
+      <i 
+        *ngIf="(cellInfo.data | isPatch) && cellInfo.data.WasDeleted != true && (cellInfo.data | isPatchDeletable)"
+        class="dx-icon-trash clickable-icon at-icon"
+        (click)="onClickDeletePatch(cellInfo.data)"
+      ></i>
       {{ cellInfo.value }}
     </div>
   </div>
