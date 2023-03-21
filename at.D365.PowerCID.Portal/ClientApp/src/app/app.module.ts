@@ -86,6 +86,7 @@ import { EnvironmentVariableService } from "./shared/services/environmentvariabl
 import { SideNavigationMenuComponent } from './components/side-navigation-menu/side-navigation-menu.component';
 import { FullNamePipe } from "./shared/pipes/full-name.pipe";
 import { IsPatchPipe } from "./shared/pipes/is-patch.pipe";
+import { IsPatchDeletablePipe } from "./shared/pipes/is-patch-deletable.pipe";
 
 export function initializeAppConfig(appConfig: AppConfig, router: Router) {
   return () => appConfig.load();
@@ -109,7 +110,8 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     LogPipe, 
     SideNavigationMenuComponent, 
     FullNamePipe,
-    IsPatchPipe
+    IsPatchPipe,
+    IsPatchDeletablePipe
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: "ng-cli-universal" }),
@@ -191,6 +193,7 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     ConnectionReferenceEnvironmentService,
     ConnectionReferenceService,
     EnvironmentVariableService,
+    IsPatchPipe
   ],
   bootstrap: [AppComponent, MsalRedirectComponent],
 })

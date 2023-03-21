@@ -65,3 +65,8 @@
 .red-icon{
   color: #ef7d59;
 }
+
+.deleted-patch{
+  background-color: #c4c4c44f;
+  text-decoration: line-through;
+}
