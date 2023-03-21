@@ -369,25 +369,30 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   onClickDeletePatch(patch: Patch) {
-    this.layoutService.change(LayoutParameter.ShowLoading, true);
-    this.patchService
-          .delete(patch.Id)
-          .then(() => {
-            this.layoutService.notify({
-              type: NotificationType.Success,
-              message: "Patch was successfully deleted.",
-            });
-          })
-          .catch(() => {
-            this.layoutService.notify({
-              type: NotificationType.Error,
-              message: "An error occurred while deleting the patch.",
-            });
-          })
-          .then(() => {
-            this.layoutService.change(LayoutParameter.ShowLoading, false);
-            this.dataGrid.instance.refresh();
-          });
+    let result = confirm("Are you sure you want to delete this patch?<br /> This will also delete the patch in the development environment.", "Confirm Deletion");
+    result.then((dialogResult) => {
+      if (dialogResult) {
+        this.layoutService.change(LayoutParameter.ShowLoading, true);
+        this.patchService
+              .delete(patch.Id)
+              .then(() => {
+                this.layoutService.notify({
+                  type: NotificationType.Success,
+                  message: "Patch was successfully deleted.",
+                });
+              })
+              .catch(() => {
+                this.layoutService.notify({
+                  type: NotificationType.Error,
+                  message: "An error occurred while deleting the patch.",
+                });
+              })
+              .then(() => {
+                this.layoutService.change(LayoutParameter.ShowLoading, false);
+                this.dataGrid.instance.refresh();
+              });
+      }
+    });
   }
 
   public getLastActionForEnvironment(cellInfo): Action {
@@ -669,6 +674,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
             "ApplicationNavigation",
             "ApplicationNavigation.DeploymentPaths",
             "ApplicationNavigation.ApplicationDeploymentPaths",
+            "ApplicationNavigation.Solutions",
             "CreatedByNavigation",
             "ModifiedByNavigation",
           ],

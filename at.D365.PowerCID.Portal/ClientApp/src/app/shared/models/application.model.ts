@@ -3,6 +3,7 @@ import { Environment } from "./environment.model";
 import { Publisher } from "./publisher.model";
 import { DeploymentPath } from "./deploymentpath.model";
 import { ApplicationDeploymentPath } from "./applicationdeploymentpath.model";
+import { Solution } from "./solution.model";
 
 export interface Application {
   Id?: number;
@@ -23,4 +24,5 @@ export interface Application {
   ModifiedByNavigation?: User;
   DeploymentPaths?: DeploymentPath[];
   ApplicationDeploymentPaths?: ApplicationDeploymentPath[];
+  Solutions? : Solution[];
 }

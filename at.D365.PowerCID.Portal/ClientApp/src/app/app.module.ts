@@ -193,6 +193,7 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     ConnectionReferenceEnvironmentService,
     ConnectionReferenceService,
     EnvironmentVariableService,
+    IsPatchPipe
   ],
   bootstrap: [AppComponent, MsalRedirectComponent],
 })
