@@ -26,8 +26,7 @@ import { confirm } from 'devextreme/ui/dialog';
   styleUrls: ["./application.component.css"],
 })
 export class ApplicationComponent {
-  @ViewChild(DxDataGridComponent, { static: false })
-  dataGrid: DxDataGridComponent;
+  @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;
   publisherSelectionDisabled = true;
   filteredPublishers: Publisher[] = [];
   dataSourceApplications: DataSource;
@@ -209,8 +208,25 @@ export class ApplicationComponent {
     let result = confirm("Are you sure you want to disable this application?<br /> This will NOT delete the application in any environment.", "Confirm Deactivation");
     result.then((dialogResult) => {
       if (dialogResult) {
+        this.layoutService.change(LayoutParameter.ShowLoading, true);
         let applicationId: number = e.row.data.Id;
-        this.applicationService.delete(applicationId);
+        this.applicationService.delete(applicationId)
+          .then(() => {
+            this.layoutService.notify({
+              type: NotificationType.Success,
+              message: "Application was successfully disabled.",
+            });
+          })
+          .catch(() => {
+            this.layoutService.notify({
+              type: NotificationType.Error,
+              message: "An error occurred while disabling the application.",
+            });
+          })
+          .then(() => {
+            this.layoutService.change(LayoutParameter.ShowLoading, false);
+            this.dataGrid.instance.refresh();
+          });
       }
     });
   }
