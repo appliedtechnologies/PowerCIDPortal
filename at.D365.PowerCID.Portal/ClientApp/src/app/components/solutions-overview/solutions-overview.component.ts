@@ -83,6 +83,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
         { selector: "OrdinalNumber", desc: false },
         { selector: "Name", desc: false },
       ],
+      filter: [ "IsDeactive", "=", false ]
     });
     this.environmentService
       .getStore()

@@ -71,6 +71,7 @@ export class ApplicationComponent {
         "DevelopmentEnvironmentNavigation",
         "PublisherNavigation",
       ],
+      filter: [ "IsDeactive", "=", false ]
     });
     this.dataSourceEnvironments = new DataSource({
       store: this.environmentService.getStore(),
