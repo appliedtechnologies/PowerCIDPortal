@@ -123,6 +123,12 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             var patch = await this.dbContext.Patches.FindAsync(key);
 
+            if (patch == null)
+                return NotFound();
+
+            if (patch.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId != this.msIdTenantCurrentUser)
+                return Forbid();
+
             if(!patch.IsDeletable)
                 throw new Exception("This patch is not deletable.");
 

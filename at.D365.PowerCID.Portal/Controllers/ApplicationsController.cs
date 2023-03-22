@@ -154,16 +154,18 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: ApplicationsController Delete(key: {key})");
 
-            var application = await dbContext.Applications.FindAsync(key);
+            var application = await this.dbContext.Applications.FindAsync(key);
+            
+            if (application == null)
+                return NotFound();
 
-            if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == key && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if (application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId != this.msIdTenantCurrentUser)
                 return Forbid();
 
             if (application == null)
-            {
                 return NotFound();
-            }
-            dbContext.Applications.Remove(application);
+
+            application.IsDeactive = true;
             await dbContext.SaveChangesAsync();
 
             logger.LogDebug($"End: ApplicationsController Delete(key: {key})");

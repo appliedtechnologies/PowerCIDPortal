@@ -98,8 +98,12 @@
       icon="at-icon powercid-icon-route"
       text="Assign deploymentpaths"
       [onClick]="onClickAssignDeploymentPaths"
-    >
-    </dxi-button>
+    ></dxi-button>
+    <dxi-button
+      icon="dx-icon-trash at-icon"
+      text="Disable application"
+      [onClick]="onClickDisableApplication"
+    ></dxi-button>
   </dxi-column>
 
   <div *dxTemplate="let cellInfo of 'environmentsDropdownTemplate'">

@@ -18,6 +18,8 @@ import { PublisherService } from "src/app/shared/services/publisher.service";
 import { ApplicationdeploymentpathService } from "src/app/shared/services/applicationdeploymentpath.service";
 import { ApplicationDeploymentPath } from "src/app/shared/models/applicationdeploymentpath.model";
 import { from } from "rxjs";
+import { confirm } from 'devextreme/ui/dialog';
+
 @Component({
   selector: "app-application",
   templateUrl: "./application.component.html",
@@ -54,8 +56,8 @@ export class ApplicationComponent {
     this.onAdd = this.onAdd.bind(this);
     this.onRemove = this.onRemove.bind(this);
     this.onReorder = this.onReorder.bind(this);
-    this.onClickAssignDeploymentPaths =
-    this.onClickAssignDeploymentPaths.bind(this);
+    this.onClickAssignDeploymentPaths = this.onClickAssignDeploymentPaths.bind(this);
+    this.onClickDisableApplication = this.onClickDisableApplication.bind(this);
     this.onClickOpenPage = this.onClickOpenPage.bind(this);
     this.onClickOpenMakerPortal = this.onClickOpenMakerPortal.bind(this);
     this.loadFilteredPublishers = this.loadFilteredPublishers.bind(this);
@@ -200,6 +202,16 @@ export class ApplicationComponent {
       });
 
     this.isAssignDevelopmentPaths = true;
+  }
+
+  onClickDisableApplication(e) {
+    let result = confirm("Are you sure you want to disable this application?<br /> This will NOT delete the application in any environment.", "Confirm Deactivation");
+    result.then((dialogResult) => {
+      if (dialogResult) {
+        let applicationId: number = e.row.data.Id;
+        this.applicationService.delete(applicationId);
+      }
+    });
   }
 
   onClickAddNewRow() {
