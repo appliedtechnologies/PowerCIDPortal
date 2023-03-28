@@ -243,8 +243,17 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == environment.Id && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
+            var existingApplication = base.dbContext.Applications.FirstOrDefault(a => a.DevelopmentEnvironment == environment.Id && a.SolutionUniqueName == applicationUniqueName);
+            
+            // reactivation of a deactivated application
+            if(existingApplication?.IsDeactive == true){
+                existingApplication.IsDeactive = false;
+                await base.dbContext.SaveChangesAsync();
+                return Ok();
+            }
+
             // Check if application already exists
-            if (base.dbContext.Applications.Any(a => a.SolutionUniqueName == applicationUniqueName))
+            if (existingApplication != null)
             {
                 return BadRequest("Application already exists with that name");
             }
