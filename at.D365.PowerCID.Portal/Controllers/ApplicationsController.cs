@@ -154,16 +154,18 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: ApplicationsController Delete(key: {key})");
 
-            var application = await dbContext.Applications.FindAsync(key);
+            var application = await this.dbContext.Applications.FindAsync(key);
+            
+            if (application == null)
+                return NotFound();
 
-            if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == key && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if (application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId != this.msIdTenantCurrentUser)
                 return Forbid();
 
             if (application == null)
-            {
                 return NotFound();
-            }
-            dbContext.Applications.Remove(application);
+
+            application.IsDeactive = true;
             await dbContext.SaveChangesAsync();
 
             logger.LogDebug($"End: ApplicationsController Delete(key: {key})");
@@ -241,8 +243,17 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == environment.Id && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
+            var existingApplication = base.dbContext.Applications.FirstOrDefault(a => a.DevelopmentEnvironment == environment.Id && a.SolutionUniqueName == applicationUniqueName);
+            
+            // reactivation of a deactivated application
+            if(existingApplication?.IsDeactive == true){
+                existingApplication.IsDeactive = false;
+                await base.dbContext.SaveChangesAsync();
+                return Ok();
+            }
+
             // Check if application already exists
-            if (base.dbContext.Applications.Any(a => a.SolutionUniqueName == applicationUniqueName))
+            if (existingApplication != null)
             {
                 return BadRequest("Application already exists with that name");
             }

@@ -18,14 +18,15 @@ import { PublisherService } from "src/app/shared/services/publisher.service";
 import { ApplicationdeploymentpathService } from "src/app/shared/services/applicationdeploymentpath.service";
 import { ApplicationDeploymentPath } from "src/app/shared/models/applicationdeploymentpath.model";
 import { from } from "rxjs";
+import { confirm } from 'devextreme/ui/dialog';
+
 @Component({
   selector: "app-application",
   templateUrl: "./application.component.html",
   styleUrls: ["./application.component.css"],
 })
 export class ApplicationComponent {
-  @ViewChild(DxDataGridComponent, { static: false })
-  dataGrid: DxDataGridComponent;
+  @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;
   publisherSelectionDisabled = true;
   filteredPublishers: Publisher[] = [];
   dataSourceApplications: DataSource;
@@ -54,8 +55,8 @@ export class ApplicationComponent {
     this.onAdd = this.onAdd.bind(this);
     this.onRemove = this.onRemove.bind(this);
     this.onReorder = this.onReorder.bind(this);
-    this.onClickAssignDeploymentPaths =
-    this.onClickAssignDeploymentPaths.bind(this);
+    this.onClickAssignDeploymentPaths = this.onClickAssignDeploymentPaths.bind(this);
+    this.onClickDisableApplication = this.onClickDisableApplication.bind(this);
     this.onClickOpenPage = this.onClickOpenPage.bind(this);
     this.onClickOpenMakerPortal = this.onClickOpenMakerPortal.bind(this);
     this.loadFilteredPublishers = this.loadFilteredPublishers.bind(this);
@@ -69,6 +70,7 @@ export class ApplicationComponent {
         "DevelopmentEnvironmentNavigation",
         "PublisherNavigation",
       ],
+      filter: [ "IsDeactive", "=", false ]
     });
     this.dataSourceEnvironments = new DataSource({
       store: this.environmentService.getStore(),
@@ -200,6 +202,33 @@ export class ApplicationComponent {
       });
 
     this.isAssignDevelopmentPaths = true;
+  }
+
+  onClickDisableApplication(e) {
+    let result = confirm("Are you sure you want to disable this application?<br /> This will NOT delete the application in any environment.", "Confirm Deactivation");
+    result.then((dialogResult) => {
+      if (dialogResult) {
+        this.layoutService.change(LayoutParameter.ShowLoading, true);
+        let applicationId: number = e.row.data.Id;
+        this.applicationService.delete(applicationId)
+          .then(() => {
+            this.layoutService.notify({
+              type: NotificationType.Success,
+              message: "Application was successfully disabled.",
+            });
+          })
+          .catch(() => {
+            this.layoutService.notify({
+              type: NotificationType.Error,
+              message: "An error occurred while disabling the application.",
+            });
+          })
+          .then(() => {
+            this.layoutService.change(LayoutParameter.ShowLoading, false);
+            this.dataGrid.instance.refresh();
+          });
+      }
+    });
   }
 
   onClickAddNewRow() {
