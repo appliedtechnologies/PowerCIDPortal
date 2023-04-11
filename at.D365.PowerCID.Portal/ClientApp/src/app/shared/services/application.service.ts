@@ -113,4 +113,8 @@ export class ApplicationService {
         });
     });
   }
+
+  public delete(id: number): Promise<void>{
+    return this.getStore().remove(id);
+  }
 }

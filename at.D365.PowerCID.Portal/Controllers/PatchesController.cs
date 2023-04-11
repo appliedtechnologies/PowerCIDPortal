@@ -117,11 +117,55 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
         }
 
+        public async Task<IActionResult> Delete([FromODataUri] int key)
+        {
+            logger.LogDebug($"Begin: PatchesController Delete(key: {key}");
+
+            var patch = await this.dbContext.Patches.FindAsync(key);
+
+            if (patch == null)
+                return NotFound();
+
+            if (patch.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId != this.msIdTenantCurrentUser)
+                return Forbid();
+
+            if(!patch.IsDeletable)
+                throw new Exception("This patch is not deletable.");
+
+            await this.DeletePatchInDataverse(patch.MsId, patch.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl);
+
+            patch.WasDeleted = true;
+            await this.dbContext.SaveChangesAsync();
+
+            logger.LogDebug($"End: PatchesController Delete(key: {key}");
+            return Ok();
+        }
+
         private bool PatchExists(int key)
         {
             logger.LogDebug($"Begin & End: PatchesController UpgradeExists(key: {key})");
 
             return base.dbContext.Patches.Any(p => p.Id == key);
+        }
+
+        private async Task DeletePatchInDataverse (Guid solutionMsId, string basicUrl){
+            logger.LogDebug($"Begin: PatchesController DeletePatchInDataverse(solutionUniqueName: {solutionMsId}, basicUrl: {basicUrl})");
+
+            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            {
+                options.Tenant = $"{this.msIdTenantCurrentUser}";
+                options.BaseUrl = basicUrl + options.BaseUrl;
+                options.RelativePath = $"/solutions({solutionMsId})";
+                options.HttpMethod = HttpMethod.Delete;
+                options.Scopes = $"{basicUrl}/.default";
+            });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception("Could not create Patch in Dataverse");
+            }
+
+            logger.LogDebug($"End: PatchesController DeletePatchInDataverse(solutionUniqueName: {solutionMsId}, basicUrl: {basicUrl})");
         }
 
         private async Task CreatePatchInDataverse(string solutionUniqueName, string displayNameDataversePatch, string basicUrl, Patch patch)

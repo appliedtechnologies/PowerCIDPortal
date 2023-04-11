@@ -74,7 +74,8 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     private solutionService: SolutionService,
     private environmentService: EnvironmentService,
     private actionService: ActionService,
-    private layoutService: LayoutService
+    private layoutService: LayoutService,
+    private patchService: PatchService
   ) {
     this.dataSourceApplications = new DataSource({
       store: this.applicationService.getStore(),
@@ -82,6 +83,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
         { selector: "OrdinalNumber", desc: false },
         { selector: "Name", desc: false },
       ],
+      filter: [ "IsDeactive", "=", false ]
     });
     this.environmentService
       .getStore()
@@ -367,6 +369,33 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     });
   }
 
+  onClickDeletePatch(patch: Patch) {
+    let result = confirm("Are you sure you want to delete this patch?<br /> This will also delete the patch in the development environment.", "Confirm Deletion");
+    result.then((dialogResult) => {
+      if (dialogResult) {
+        this.layoutService.change(LayoutParameter.ShowLoading, true);
+        this.patchService
+              .delete(patch.Id)
+              .then(() => {
+                this.layoutService.notify({
+                  type: NotificationType.Success,
+                  message: "Patch was successfully deleted.",
+                });
+              })
+              .catch(() => {
+                this.layoutService.notify({
+                  type: NotificationType.Error,
+                  message: "An error occurred while deleting the patch.",
+                });
+              })
+              .then(() => {
+                this.layoutService.change(LayoutParameter.ShowLoading, false);
+                this.dataGrid.instance.refresh();
+              });
+      }
+    });
+  }
+
   public getLastActionForEnvironment(cellInfo): Action {
     let allActionOfSolution: Action[] = cellInfo.data.Actions;
     let targetEnvironmentId =
@@ -646,6 +675,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
             "ApplicationNavigation",
             "ApplicationNavigation.DeploymentPaths",
             "ApplicationNavigation.ApplicationDeploymentPaths",
+            "ApplicationNavigation.Solutions",
             "CreatedByNavigation",
             "ModifiedByNavigation",
           ],
