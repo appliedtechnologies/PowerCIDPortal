@@ -46,7 +46,7 @@ export class EnvironmentVariableComponent {
       widget: "dxButton",
       options: {
         icon: "download",
-        text: "Pull Environments",
+        text: "Pull Environment Variable",
         stylingMode: "contained",
         type: "success",
         hint: "Pull the existing environments from tenant and saves them in PowerCID Portal.",
@@ -64,7 +64,7 @@ export class EnvironmentVariableComponent {
         this.layoutService.notify({
           type: NotificationType.Success,
           message:
-            "Existing environments were successfully pulled from tenant.",
+            "Existing environment variables were successfully pulled from tenant.",
         });
         this.dataGrid.instance.refresh();
       })
