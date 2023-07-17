@@ -306,7 +306,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             Guid appId = Guid.Parse(configuration["AzureAd:ClientId"]);
             Guid enterpriseAppId = await this.GetEnterpriseAppId(appId);
 
-            var response = await this.downstreamWebApi.CallWebApiForAppAsync(
+            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
@@ -371,7 +371,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
 
             string roleAssignmentId = parameters["roleAssignmentId"].ToString();
-            var response = await this.downstreamWebApi.CallWebApiForAppAsync(
+            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
@@ -420,7 +420,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             var user = base.dbContext.Users.FirstOrDefault(u => u.MsId == this.msIdCurrentUser);
 
-            var response = await this.downstreamWebApi.CallWebApiForAppAsync(
+            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
@@ -463,7 +463,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: UsersController GetUserRolesInAzure(msIdUser: {msIdUser.ToString()})");
 
-            var response = await this.downstreamWebApi.CallWebApiForAppAsync(
+            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
@@ -510,7 +510,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             StringContent roleContent = new StringContent(JsonConvert.SerializeObject(newRoleAssignment), Encoding.UTF8, mediaType: "application/json");
 
-            var response = await this.downstreamWebApi.CallWebApiForAppAsync(
+            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
