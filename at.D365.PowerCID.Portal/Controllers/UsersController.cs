@@ -20,25 +20,24 @@ using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
+using at.D365.PowerCID.Portal.Services;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
     public class UsersController : BaseController
     {
-
+        public AzureService AzureService { get; set; }
         private readonly IConfiguration configuration;
         private readonly ILogger logger;
 
-        public UsersController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, ILogger<UsersController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public UsersController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, ILogger<UsersController> logger, AzureService azureService) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.configuration = configuration;
             this.logger = logger;
-
+            this.AzureService = azureService;
         }
 
-        // GET: odata/Users
-        [AllowAnonymous]
+        [Authorize(Roles = "atPowerCID.Admin")]
         [EnableQuery]
         public IQueryable<User> Get()
         {
@@ -68,8 +67,10 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (string.IsNullOrEmpty(currentUser.Firstname))
                 currentUser.Firstname = currentUser.Email;
 
+            if (string.IsNullOrEmpty(currentUser.Lastname))
+                currentUser.Lastname = string.Empty;
+
             Guid msIdTenantCurrentUser = Guid.Parse(this.HttpContext.User.FindFirst(ClaimConstants.TenantId).Value);
-            bool newTenantCreated = false;
 
             //check if current user exists in database
             if (this.dbContext.Users.Any(e => e.MsId == currentUser.MsId))
@@ -83,110 +84,13 @@ namespace at.D365.PowerCID.Portal.Controllers
                 if (this.dbContext.Tenants.Any(e => e.MsId == msIdTenantCurrentUser))
                     currentUser.Tenant = this.dbContext.Tenants.First(e => e.MsId == msIdTenantCurrentUser).Id;
                 else
-                {
-                    currentUser.TenantNavigation = await this.AddTenant(msIdTenantCurrentUser);
-                    newTenantCreated = true;
-                }
+                    currentUser.TenantNavigation = await this.AddTenant(base.downstreamWebApi, msIdTenantCurrentUser);
             }
 
             await this.dbContext.SaveChangesAsync();
-
-            if (newTenantCreated || currentUser.MakeAdmin)
-            {
-                try
-                {
-                    Guid appId = Guid.Parse(configuration["AzureAd:ClientId"]);
-                    Guid appRoleIdInitAdmin = Guid.Parse(configuration["AppRoleIdAdmin"]);
-                    await this.AssignInitAdmin(appId, appRoleIdInitAdmin);
-                    currentUser.MakeAdmin = false;
-                }
-                catch (Exception e)
-                {
-                    currentUser.MakeAdmin = true;
-                }
-                await this.dbContext.SaveChangesAsync();
-            }
             logger.LogDebug($"End: UsersController Login()");
 
             return Ok();
-        }
-
-
-        private User UpdateUserIfNeeded(User currentUser)
-        {
-            logger.LogDebug($"Begin: UsersController UpdateUserIfNeeded(currentUser MsId: {currentUser.MsId})");
-
-            User currentDbUser = this.dbContext.Users.First(e => e.MsId == currentUser.MsId);
-
-            if (currentDbUser.Firstname != currentUser.Firstname)
-                currentDbUser.Firstname = currentUser.Firstname;
-
-            if (currentDbUser.Lastname != currentUser.Lastname)
-                currentDbUser.Lastname = currentUser.Lastname;
-
-            if (currentDbUser.Email != currentUser.Email)
-                currentDbUser.Email = currentUser.Email;
-
-            logger.LogDebug($"End: UsersController UpdateUserIfNeeded(currentUser MsId: {currentUser.MsId})");
-
-            return currentDbUser;
-        }
-
-        private async Task<Tenant> AddTenant(Guid msId)
-        {
-            logger.LogDebug($"Begin: UsersController AddTenant(msId: {msId.ToString()})");
-
-            string tenantName = await this.GetTenantName(msId);
-
-            Tenant newTenant = new Tenant
-            {
-                Name = tenantName,
-                MsId = msId
-            };
-
-            this.dbContext.Tenants.Add(newTenant);
-
-            logger.LogDebug($"End: UsersController AddTenant(msId: {msId.ToString()})");
-
-            return newTenant;
-        }
-
-        private async Task<HttpResponseMessage> CallWebApiForUserAsyncWithDataVerseApi(Data.Models.Environment environment, User user, HttpMethod httpMethod, string relativePath, StringContent content = null)
-        {
-            logger.LogDebug($"Begin: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
-
-            if (content == null)
-            {
-                logger.LogInformation("content null");
-                logger.LogDebug($"End: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
-
-                return await this.downstreamWebApi.CallWebApiForUserAsync(
-                               "DataverseApi",
-                               options =>
-                               {
-                                   options.BaseUrl = environment.BasicUrl + options.BaseUrl;
-                                   options.Tenant = $"{user.TenantNavigation.MsId}";
-                                   options.RelativePath = relativePath;
-                                   options.HttpMethod = httpMethod;
-                                   options.Scopes = $"{environment.BasicUrl}/user_impersonation";
-                               });
-            }
-            else
-            {
-                logger.LogInformation("content not null");
-                logger.LogDebug($"End: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
-
-                return await this.downstreamWebApi.CallWebApiForUserAsync(
-                               "DataverseApi",
-                               options =>
-                               {
-                                   options.BaseUrl = environment.BasicUrl + options.BaseUrl;
-                                   options.Tenant = $"{user.TenantNavigation.MsId}";
-                                   options.RelativePath = relativePath;
-                                   options.HttpMethod = httpMethod;
-                                   options.Scopes = $"{environment.BasicUrl}/user_impersonation";
-                               }, content: content);
-            }
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
@@ -285,77 +189,29 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         [Authorize(Roles = "atPowerCID.Admin")]
         [HttpPost]
-        public async Task<IEnumerable<UserRole>> GetUserRoles([FromODataUri] int key)
+        public async Task<IEnumerable<AppRoleAssignment>> GetUserRoles([FromODataUri] int key)
         {
             logger.LogDebug($"Begin: UsersController GetUserRoles(key: {key})");
 
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
 
-            logger.LogDebug($"End: UsersController GetUserRoles(key: {key})");
+            var appRoleAssignments = await this.AzureService.GetAppRoleAssignmentsOfUser(base.downstreamWebApi, this.msIdTenantCurrentUser, user.MsId);
 
-            return await this.GetUserRolesInAzure(user.MsId);
+            logger.LogDebug($"End: UsersController GetUserRoles(Count appRoleAssignments: {appRoleAssignments.Count()})");
+
+            return appRoleAssignments;
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
         [HttpPost]
-        public async Task<IEnumerable<AppRole>> GetAppRoles([FromODataUri] int key, [FromServices] IConfiguration configuration)
-        {
-            logger.LogDebug($"Begin: UsersController GetUserRoles(key: {key})");
-
-            var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
-            Guid appId = Guid.Parse(configuration["AzureAd:ClientId"]);
-            Guid enterpriseAppId = await this.GetEnterpriseAppId(appId);
-
-            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
-                "GraphApi",
-                options =>
-                {
-                    options.Tenant = $"{user.TenantNavigation.MsId}";
-                    options.RelativePath = $"/servicePrincipals/{enterpriseAppId}";
-                    options.HttpMethod = HttpMethod.Get;
-                });
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception("Could not get app roles");
-            }
-
-            JToken application = (await response.Content.ReadAsAsync<JObject>());
-            JToken appRolesAsJToken = application["appRoles"];
-
-            List<AppRole> appRoles = new List<AppRole>();
-
-
-            for (int i = 0; i < appRolesAsJToken.Count(); i++)
-            {
-                try
-                {
-                    string id = (string)appRolesAsJToken[i]["id"];
-                    string displayName = (string)appRolesAsJToken[i]["displayName"];
-
-                    appRoles.Add(new AppRole { Id = id, DisplayName = displayName });
-                }
-                catch { }
-            }
-            logger.LogDebug($"End: UsersController GetUserRoles(key: {key})");
-
-            return appRoles;
-        }
-
-        [Authorize(Roles = "atPowerCID.Admin")]
-        [HttpPost]
-        public async Task<IActionResult> AssignRole([FromODataUri] int key, ODataActionParameters parameters, [FromServices] IConfiguration configuration)
+        public async Task<IActionResult> AssignRole([FromODataUri] int key, ODataActionParameters parameters)
         {
             logger.LogDebug($"Begin: UsersController AssignRole(key: {key})");
 
-            Guid principalId = Guid.Parse(parameters["principalId"].ToString());
-            Guid appId = Guid.Parse(configuration["AzureAd:ClientId"]);
-            Guid enterpriseAppId = await this.GetEnterpriseAppId(appId);
             Guid appRoleId = Guid.Parse(parameters["appRoleId"].ToString());
-
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
 
-            await this.AssignRoleInAzure(user.MsId, principalId, enterpriseAppId, appRoleId);
+            await this.AzureService.AssignAppRoleToUser(base.downstreamWebApi, this.msIdTenantCurrentUser, user.MsId, appRoleId);
 
             logger.LogDebug($"End: UsersController AssignRole(key: {key})");
 
@@ -370,160 +226,101 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
 
-            string roleAssignmentId = parameters["roleAssignmentId"].ToString();
-            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
-                "GraphApi",
-                options =>
-                {
-                    options.Tenant = $"{user.TenantNavigation.MsId}";
-                    options.RelativePath = $"/users/{user.MsId}/appRoleAssignments/{roleAssignmentId}";
-                    options.HttpMethod = HttpMethod.Delete;
-                });
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception("Could not remove role");
-            }
-            logger.LogDebug($"End: UsersController RemoveAssignedRole(key: {key}, parameters roleAssignmentId: {parameters["roleAssignmentId"].ToString()})");
-
+            await this.AzureService.RemoveAppRoleFromUser(base.downstreamWebApi, this.msIdTenantCurrentUser, user.MsId, parameters["roleAssignmentId"].ToString());
+            
             return Ok();
         }
 
-        private async Task<string> GetTenantName(Guid msId)
+        private async Task AssignInitAdmin()
         {
-            logger.LogDebug($"Begin: UsersController GetTenantName(msId: {msId.ToString()})");
+            logger.LogDebug($"Begin: UsersController AssignInitAdmin()");
+            Guid appRoleIdAdmin = Guid.Parse(configuration["AppRoleIds:Admin"]);
 
-            var tenantResponse = await this.downstreamWebApi.CallWebApiForUserAsync(
-                "AzureManagementApi",
-                options =>
-                {
-                    options.RelativePath = "tenants?api-version=2020-01-01";
-                });
+            var existingRoles = await this.AzureService.GetAppRoleAssignmentsOfUser(base.downstreamWebApi, this.msIdTenantCurrentUser, this.msIdCurrentUser);
 
-            JToken tenants = (await tenantResponse.Content.ReadAsAsync<JObject>())["value"];
+            if (!existingRoles.Any(e => e.AppRoleId == appRoleIdAdmin))
+                await this.AzureService.AssignAppRoleToUser(base.downstreamWebApi, this.msIdTenantCurrentUser, this.msIdCurrentUser, appRoleIdAdmin);
+            else
+                logger.LogInformation($"User with MsId {this.msIdCurrentUser} already has Admin role)");
 
-            for (int i = 0; i < tenants.Count(); i++)
-            {
-                if (Guid.Parse((string)tenants[i]["tenantId"]) == msId)
-                    return (string)tenants[i]["displayName"];
-            }
-
-            logger.LogDebug($"End: UsersController GetTenantName(msId: {msId.ToString()})");
-
-            //no tenant with msId was found
-            throw new System.Exception($"can not find display name of tenant with id '{msId}'");
-        }
-
-        private async Task<Guid> GetEnterpriseAppId(Guid appId)
-        {
-            logger.LogDebug($"Begin: UsersController GetEnterpriseAppId(appId: {appId.ToString()})");
-
-            var user = base.dbContext.Users.FirstOrDefault(u => u.MsId == this.msIdCurrentUser);
-
-            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
-                "GraphApi",
-                options =>
-                {
-                    options.Tenant = $"{user.TenantNavigation.MsId}";
-                    options.RelativePath = $"/servicePrincipals?$filter=appId eq '{appId}'";
-                    options.HttpMethod = HttpMethod.Get;
-                });
-
-            try
-            {
-                JToken enterpriseApp = (await response.Content.ReadAsAsync<JObject>())["value"][0];
-                Guid enterpriseAppId = Guid.Parse((string)enterpriseApp["id"]);
-
-                logger.LogDebug($"End: UsersController GetEnterpriseAppId(appId: {appId.ToString()})");
-
-                return enterpriseAppId;
-            }
-            catch
-            {
-                throw new Exception("No Enterprise Application found.");
-            }
-        }
-
-        private async Task AssignInitAdmin(Guid appId, Guid appRoleId)
-        {
-            logger.LogDebug($"Begin: UsersController AssignInitAdmin(appId: {appId.ToString()}, appRoleId: {appRoleId.ToString()})");
-
-            List<UserRole> existingRoles = await this.GetUserRolesInAzure(this.msIdCurrentUser);
-
-            if (!existingRoles.Any(e => e.AppRoleId == appRoleId.ToString()))
-            {
-                Guid enterpriseAppId = await this.GetEnterpriseAppId(appId);
-                await this.AssignRoleInAzure(this.msIdCurrentUser, this.msIdCurrentUser, enterpriseAppId, appRoleId);
-            }
-            logger.LogDebug($"End: UsersController AssignInitAdmin(appId: {appId.ToString()}, appRoleId: {appRoleId.ToString()})");
+            logger.LogDebug($"End: UsersController AssignInitAdmin()");
 
         }
 
-        private async Task<List<UserRole>> GetUserRolesInAzure(Guid msIdUser)
+        private User UpdateUserIfNeeded(User currentUser)
         {
-            logger.LogDebug($"Begin: UsersController GetUserRolesInAzure(msIdUser: {msIdUser.ToString()})");
+            logger.LogDebug($"Begin: UsersController UpdateUserIfNeeded(currentUser MsId: {currentUser.MsId})");
 
-            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
-                "GraphApi",
-                options =>
-                {
-                    options.Tenant = $"{this.msIdTenantCurrentUser}";
-                    options.RelativePath = $"/users/{msIdUser}/appRoleAssignments";
-                    options.HttpMethod = HttpMethod.Get;
-                    options.TokenAcquisitionOptions = new TokenAcquisitionOptions { ForceRefresh = true };
-                });
+            User currentDbUser = this.dbContext.Users.First(e => e.MsId == currentUser.MsId);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception("Could not get user roles");
-            }
+            if (currentDbUser.Firstname != currentUser.Firstname)
+                currentDbUser.Firstname = currentUser.Firstname;
 
-            JToken userRolesJToken = (await response.Content.ReadAsAsync<JObject>())["value"];
+            if (currentDbUser.Lastname != currentUser.Lastname)
+                currentDbUser.Lastname = currentUser.Lastname;
 
-            List<UserRole> userRoles = new List<UserRole>();
+            if (currentDbUser.Email != currentUser.Email)
+                currentDbUser.Email = currentUser.Email;
 
-            for (int i = 0; i < userRolesJToken.Count(); i++)
-            {
-                try
-                {
-                    string id = (string)userRolesJToken[i]["id"];
-                    string resourceId = (string)userRolesJToken[i]["resourceId"];
-                    string appRoleId = (string)userRolesJToken[i]["appRoleId"];
+            logger.LogDebug($"End: UsersController UpdateUserIfNeeded(currentUser MsId: {currentUser.MsId})");
 
-                    userRoles.Add(new UserRole { Id = id, ResourceId = resourceId, AppRoleId = appRoleId });
-                }
-                catch { }
-            }
-            logger.LogDebug($"End: UsersController GetUserRolesInAzure(msIdUser: {msIdUser.ToString()})");
-
-            return userRoles;
+            return currentDbUser;
         }
 
-        private async Task AssignRoleInAzure(Guid msIdUser, Guid principalId, Guid resourceId, Guid appRoleId)
+        private async Task<Tenant> AddTenant(IDownstreamWebApi webApi, Guid msId)
         {
-            logger.LogDebug($"Begin: UsersController GetUserRolesInAzure(msIdUser: {msIdUser.ToString()}, principalId: {principalId.ToString()}, appRoleId: {appRoleId.ToString()})");
+            logger.LogDebug($"Begin: UsersController AddTenant(msId: {msId.ToString()})");
 
-            JObject newRoleAssignment = new JObject();
-            newRoleAssignment.Add("principalId", principalId);
-            newRoleAssignment.Add("resourceId", resourceId);
-            newRoleAssignment.Add("appRoleId", appRoleId);
+            string tenantName = await this.AzureService.GetTenantName(webApi, msId);
 
-            StringContent roleContent = new StringContent(JsonConvert.SerializeObject(newRoleAssignment), Encoding.UTF8, mediaType: "application/json");
-
-            var response = await this.downstreamWebApi.CallWebApiForUserAsync(
-                "GraphApi",
-                options =>
-                {
-                    options.Tenant = $"{this.msIdTenantCurrentUser}";
-                    options.RelativePath = $"/users/{msIdUser}/appRoleAssignments";
-                    options.HttpMethod = HttpMethod.Post;
-                }, content: roleContent);
-
-            logger.LogDebug($"End: UsersController GetUserRolesInAzure(msIdUser: {msIdUser.ToString()}, principalId: {principalId.ToString()}, appRoleId: {appRoleId.ToString()})");
-
-            if (!response.IsSuccessStatusCode)
+            Tenant newTenant = new Tenant
             {
-                throw new Exception("Could not assign role");
+                Name = tenantName,
+                MsId = msId
+            };
+
+            this.dbContext.Tenants.Add(newTenant);
+
+            logger.LogDebug($"End: UsersController AddTenant(msId: {msId.ToString()})");
+
+            return newTenant;
+        }
+
+        private async Task<HttpResponseMessage> CallWebApiForUserAsyncWithDataVerseApi(Data.Models.Environment environment, User user, HttpMethod httpMethod, string relativePath, StringContent content = null)
+        {
+            logger.LogDebug($"Begin: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
+
+            if (content == null)
+            {
+                logger.LogInformation("content null");
+                logger.LogDebug($"End: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
+
+                return await this.downstreamWebApi.CallWebApiForUserAsync(
+                               "DataverseApi",
+                               options =>
+                               {
+                                   options.BaseUrl = environment.BasicUrl + options.BaseUrl;
+                                   options.Tenant = $"{user.TenantNavigation.MsId}";
+                                   options.RelativePath = relativePath;
+                                   options.HttpMethod = httpMethod;
+                                   options.Scopes = $"{environment.BasicUrl}/user_impersonation";
+                               });
+            }
+            else
+            {
+                logger.LogInformation("content not null");
+                logger.LogDebug($"End: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
+
+                return await this.downstreamWebApi.CallWebApiForUserAsync(
+                               "DataverseApi",
+                               options =>
+                               {
+                                   options.BaseUrl = environment.BasicUrl + options.BaseUrl;
+                                   options.Tenant = $"{user.TenantNavigation.MsId}";
+                                   options.RelativePath = relativePath;
+                                   options.HttpMethod = httpMethod;
+                                   options.Scopes = $"{environment.BasicUrl}/user_impersonation";
+                               }, content: content);
             }
         }
     }

@@ -143,6 +143,7 @@ namespace at.D365.PowerCID.Portal
             services.AddScoped<FlowService>();
             services.AddScoped<UserService>();
             services.AddScoped<EnvironmentService>();
+            services.AddScoped<AzureService>();
 
             services.AddHostedService<AsyncJobBackgroundService>();
             services.AddHostedService<ActionBackgroundService>();
