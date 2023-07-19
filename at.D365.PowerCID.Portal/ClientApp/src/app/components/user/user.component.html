@@ -78,7 +78,7 @@
 </dx-popup>
 
 <dx-popup
-  *ngIf="isEditRoles"
+  *ngIf="isEditRolesVisible"
   [width]="480"
   height="auto"
   [showTitle]="true"
@@ -90,30 +90,18 @@
     ')'
   "
   [hideOnOutsideClick]="false"
-  [(visible)]="isEditRoles"
+  [(visible)]="isEditRolesVisible"
 >
-  <div *ngFor="let role of userAssignedAppRoles; index as i; last as isLast">
-    <dx-form id="role" [(formData)]="userAssignedAppRoles[i]">
-      <dxi-item itemType="group" cssClass="first-group" [colCount]="2">
-        <dxi-item
-          [label]="{ text: 'Role' }"
-          disabled="true"
-          dataField="Name"
-        ></dxi-item>
-        <dxi-item dataField="IsAssigned" editorType="dxCheckBox"> </dxi-item>
-      </dxi-item>
-      <dxi-item
-        *ngIf="isLast"
-        itemType="button"
-        horizontalAlignment="left"
-        [buttonOptions]="{
-          icon: 'save',
-          text: 'Save',
-          type: 'success',
-          onClick: this.onClickSaveRoles.bind(this),
-          width: '100%'
-        }"
-      ></dxi-item>
-    </dx-form>
+  <div id="hint-permissions">A higher role contains all the rights of the lower roles. Therefore, only one role needs to be assigned.</div>
+  <div class="dx-fieldset">
+    <div *ngFor="let roleName of appRoleNames | keyvalue">
+      <div class="dx-field-label">{{roleName.value}}</div>
+      <div class="dx-field-value">
+        <dx-check-box 
+          [value]="this.currentSelectedUserRoles | hasUserRole: roleName.key"
+          (onValueChanged)="onValueChangedRoleAssignment($event, roleName.key)"
+        ></dx-check-box>
+      </div>  
+    </div>
   </div>
 </dx-popup>

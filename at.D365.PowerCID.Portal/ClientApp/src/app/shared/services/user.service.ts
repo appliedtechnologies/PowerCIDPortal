@@ -16,9 +16,7 @@ import { filter, map, switchMap, takeUntil } from "rxjs/operators";
 import { isDebuggerStatement } from "typescript";
 import { AppConfig } from "../config/app.config";
 import { InitRedirctRequest } from "../config/auth-config";
-import { Approle } from "../models/approle.model";
 import { User } from "../models/user.model";
-import { UserRole } from "../models/userrole.model";
 import {
   LayoutParameter,
   LayoutService,
@@ -26,6 +24,7 @@ import {
 } from "./layout.service";
 import { LogService } from "./log.service";
 import { ODataService } from "./odata.service";
+import { AppRoleAssignment } from "../models/approleassignment.model";
 
 @Injectable()
 export class UserService {
@@ -194,6 +193,7 @@ export class UserService {
         });
     });
   }
+
   setupApplicationUsers() {
     return new Promise<any>((resolve, reject) => {
       this.http
@@ -205,37 +205,21 @@ export class UserService {
     });
   }
 
-  public getUserRoles(userId: number): Promise<UserRole[]> {
-    return new Promise<UserRole[]>((resolve, reject) => {
+  public getUserRoles(userId: number): Promise<AppRoleAssignment[]> {
+    return new Promise<AppRoleAssignment[]>((resolve, reject) => {
       this.http
         .post(`${AppConfig.settings.api.url}/Users(${userId})/GetUserRoles`, {})
         .subscribe({
-          next: (data) => resolve(data as UserRole[]),
+          next: (data) => resolve(data["value"] as AppRoleAssignment[]),
           error: () => reject(),
         });
     });
   }
 
-  public getAppRoles(userId: number): Promise<Approle[]> {
-    return new Promise<Approle[]>((resolve, reject) => {
-      this.http
-        .post(`${AppConfig.settings.api.url}/Users(${userId})/GetAppRoles`, {})
-        .subscribe({
-          next: (data) => resolve(data as Approle[]),
-          error: () => reject(),
-        });
-    });
-  }
-
-  public assignRole(
-    userId: number,
-    principalId: string,
-    appRoleId: string
-  ): Promise<void> {
+  public assignRole(userId: number, appRoleId: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.http
         .post(`${AppConfig.settings.api.url}/Users(${userId})/AssignRole`, {
-          principalId: principalId,
           appRoleId: appRoleId,
         })
         .subscribe({
@@ -245,10 +229,7 @@ export class UserService {
     });
   }
 
-  public removeAssignedRole(
-    userId: number,
-    roleAssignmentId: string
-  ): Promise<void> {
+  public removeAssignedRole(userId: number, roleAssignmentId: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.http
         .post(

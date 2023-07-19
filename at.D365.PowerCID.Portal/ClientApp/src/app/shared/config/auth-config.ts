@@ -67,5 +67,5 @@ export function MSALGuardConfigFactory(): MsalGuardConfiguration {
 
 export const InitRedirctRequest: RedirectRequest = {
   scopes: ["https://admin.services.crm.dynamics.com/user_impersonation"],
-  extraScopesToConsent: ["https://graph.microsoft.com/Application.Read.All", "https://graph.microsoft.com/AppRoleAssignment.ReadWrite.All", "https://graph.microsoft.com/email", "https://graph.microsoft.com/User.Read", "https://management.azure.com/user_impersonation"]
+  extraScopesToConsent: ["https://graph.microsoft.com/Application.Read.All", "https://graph.microsoft.com/AppRoleAssignment.ReadWrite.All", "https://graph.microsoft.com/email", "https://graph.microsoft.com/User.Read.All", "https://management.azure.com/user_impersonation"]
 };

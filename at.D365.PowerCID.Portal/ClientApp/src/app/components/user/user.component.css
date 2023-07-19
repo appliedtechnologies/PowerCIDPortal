@@ -1,8 +1,13 @@
 #hint-permissions{
     margin-bottom: 10px;
     font-weight: 700;
+    text-align: center;
 }
 
 ::ng-deep .dx-datagrid-search-panel{
     margin: 0 !important;
+}
+
+::ng-deep .dx-fieldset {
+    margin: 0px 20px;
 }
