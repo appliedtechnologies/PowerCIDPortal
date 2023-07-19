@@ -16,6 +16,7 @@ using Microsoft.OData.ModelBuilder;
 using Microsoft.Identity.Web;
 using Azureblue.ApplicationInsights.RequestLogging;
 using Microsoft.AspNetCore.Http;
+using System.Collections.Generic;
 
 namespace at.D365.PowerCID.Portal
 {
@@ -71,8 +72,7 @@ namespace at.D365.PowerCID.Portal
             getStatusConnectionReferenceEnvironment.Parameter<int>("environmentId");
 
             // Get Roles
-            builder.EntityType<User>().Action("GetUserRoles");
-            builder.EntityType<User>().Action("GetAppRoles");
+            builder.EntityType<User>().Action("GetUserRoles").Returns<AppRoleAssignment>();
 
             builder.EntityType<User>().Collection.Action("SetupApplicationUsers");
 

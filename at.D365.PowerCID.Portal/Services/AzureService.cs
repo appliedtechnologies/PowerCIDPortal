@@ -68,8 +68,8 @@ namespace at.D365.PowerCID.Portal.Services
             var enterpriseAppId = await this.GetEnterpriseAppId(webApi, tenantMsId);
 
             JObject newRoleAssignment = new JObject();
-            newRoleAssignment.Add("principalId", enterpriseAppId);
-            newRoleAssignment.Add("resourceId", userMsId);
+            newRoleAssignment.Add("principalId", userMsId);
+            newRoleAssignment.Add("resourceId", enterpriseAppId);
             newRoleAssignment.Add("appRoleId", appRoleId);
 
             StringContent roleContent = new StringContent(JsonConvert.SerializeObject(newRoleAssignment), Encoding.UTF8, mediaType: "application/json");

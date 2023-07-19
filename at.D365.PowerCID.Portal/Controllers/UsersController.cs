@@ -37,7 +37,6 @@ namespace at.D365.PowerCID.Portal.Controllers
             this.AzureService = azureService;
         }
 
-        [Authorize(Roles = "atPowerCID.Admin")]
         [EnableQuery]
         public IQueryable<User> Get()
         {
@@ -188,8 +187,9 @@ namespace at.D365.PowerCID.Portal.Controllers
 
 
         [Authorize(Roles = "atPowerCID.Admin")]
+        [EnableQuery]
         [HttpPost]
-        public async Task<IEnumerable<AppRoleAssignment>> GetUserRoles([FromODataUri] int key)
+        public async Task<IQueryable<AppRoleAssignment>> GetUserRoles([FromODataUri] int key)
         {
             logger.LogDebug($"Begin: UsersController GetUserRoles(key: {key})");
 
@@ -199,7 +199,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             logger.LogDebug($"End: UsersController GetUserRoles(Count appRoleAssignments: {appRoleAssignments.Count()})");
 
-            return appRoleAssignments;
+            return appRoleAssignments.AsQueryable();
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
