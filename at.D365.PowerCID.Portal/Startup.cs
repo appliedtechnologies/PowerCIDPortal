@@ -79,7 +79,6 @@ namespace at.D365.PowerCID.Portal
             //Assign / remove roles
             builder.EntityType<User>().Action("RemoveAssignedRole").Parameter<string>("roleAssignmentId");
             var assignRoles = builder.EntityType<User>().Action("AssignRole");
-            assignRoles.Parameter<string>("principalId");
             assignRoles.Parameter<string>("appRoleId");
 
             builder.EntityType<Environment>().Collection.Action("PullExisting");
