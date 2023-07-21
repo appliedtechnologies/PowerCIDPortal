@@ -11,3 +11,10 @@
 ::ng-deep .dx-fieldset {
     margin: 0px 20px;
 }
+
+.hint-role-sync {
+    font-style: italic;
+    position: relative;
+    top: -10px;
+    font-weight: 200;
+}
