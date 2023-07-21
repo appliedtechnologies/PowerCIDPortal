@@ -141,14 +141,18 @@ export class UserComponent {
   }
 
   public onValueChangedRoleAssignment(e: any, roleNameKey: any): void {
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
     let appRoleId: string = AppConfig.settings.azure.appRoleIds[roleNameKey];
     if (e.value) {
       this.userService
         .assignRole(this.currentSelectedUser.Id, appRoleId)
         .then(() => {
-          this.layoutService.notify({
-            type: NotificationType.Success,
-            message: "Role was assigned successfully",
+          this.userService.getUserRoles(this.currentSelectedUser.Id).then((appRoleAssignments) => {
+            this.currentSelectedUserRoles = appRoleAssignments;
+            this.layoutService.notify({
+              type: NotificationType.Success,
+              message: "Role was assigned successfully",
+            });
           });
         })
         .catch(() => {
@@ -157,6 +161,9 @@ export class UserComponent {
             type: NotificationType.Error,
             message: "An error occurred during role assignment",
           });
+        })
+        .finally(() => {
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
         });
     } else {
       this.userService
@@ -173,6 +180,9 @@ export class UserComponent {
             type: NotificationType.Error,
             message: "An error occurred during role withdrawment",
           });
+        })
+        .finally(() => {
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
         });
     }
   }
