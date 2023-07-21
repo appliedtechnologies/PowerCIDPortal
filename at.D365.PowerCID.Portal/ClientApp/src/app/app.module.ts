@@ -88,7 +88,7 @@ import { SideNavigationMenuComponent } from './components/side-navigation-menu/s
 import { FullNamePipe } from "./shared/pipes/full-name.pipe";
 import { IsPatchPipe } from "./shared/pipes/is-patch.pipe";
 import { IsPatchDeletablePipe } from "./shared/pipes/is-patch-deletable.pipe";
-import { HasUserRole } from "./shared/pipes/has-user-role.pipe";
+import { HasUserRole as HasUserRolePipe } from "./shared/pipes/has-user-role.pipe";
 
 export function initializeAppConfig(appConfig: AppConfig, router: Router) {
   return () => appConfig.load();
@@ -114,7 +114,7 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     FullNamePipe,
     IsPatchPipe,
     IsPatchDeletablePipe,
-    HasUserRole
+    HasUserRolePipe
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: "ng-cli-universal" }),
@@ -177,12 +177,12 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
       useClass: MsalInterceptor,
       multi: true,
     },
+    UserService,
     MsalService,
     MsalGuard,
     MsalBroadcastService,
     RoleGuard,
     ODataService,
-    UserService,
     LayoutService,
     ActionService,
     ApplicationService,

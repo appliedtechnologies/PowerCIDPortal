@@ -38,6 +38,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [EnableQuery]
+        [AllowAnonymous]
         public IQueryable<User> Get()
         {
             logger.LogDebug($"Begin & End: UsersController Get()");
@@ -86,7 +87,20 @@ namespace at.D365.PowerCID.Portal.Controllers
                     currentUser.TenantNavigation = await this.AddTenant(base.downstreamWebApi, msIdTenantCurrentUser);
             }
 
-            await this.dbContext.SaveChangesAsync();
+            try{
+                if(await this.AzureService.IsApplicationOwner(base.downstreamWebApi, this.msIdTenantCurrentUser, this.msIdCurrentUser)){
+                    currentUser.IsOwner = true;
+                    await this.AssignOwnerAdmin();
+                }
+                else{
+                    currentUser.IsOwner = false;
+                    await this.RemoveAssignedOwnerAdmin();
+                }
+            }
+            finally{
+                await this.dbContext.SaveChangesAsync();
+            }
+
             logger.LogDebug($"End: UsersController Login()");
 
             return Ok();
@@ -231,9 +245,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Ok();
         }
 
-        private async Task AssignInitAdmin()
+        private async Task AssignOwnerAdmin()
         {
-            logger.LogDebug($"Begin: UsersController AssignInitAdmin()");
+            logger.LogDebug($"Begin: UsersController AssignOwnerAdmin()");
             Guid appRoleIdAdmin = Guid.Parse(configuration["AppRoleIds:Admin"]);
 
             var existingRoles = await this.AzureService.GetAppRoleAssignmentsOfUser(base.downstreamWebApi, this.msIdTenantCurrentUser, this.msIdCurrentUser);
@@ -243,8 +257,22 @@ namespace at.D365.PowerCID.Portal.Controllers
             else
                 logger.LogInformation($"User with MsId {this.msIdCurrentUser} already has Admin role)");
 
-            logger.LogDebug($"End: UsersController AssignInitAdmin()");
+            logger.LogDebug($"End: UsersController AssignOwnerAdmin()");
+        }
 
+        private async Task RemoveAssignedOwnerAdmin()
+        {
+            logger.LogDebug($"Begin: UsersController RemoveAssignedOwnerAdmin()");
+            Guid appRoleIdAdmin = Guid.Parse(configuration["AppRoleIds:Admin"]);
+
+            var existingRoles = await this.AzureService.GetAppRoleAssignmentsOfUser(base.downstreamWebApi, this.msIdTenantCurrentUser, this.msIdCurrentUser);
+
+            if (existingRoles.Any(e => e.AppRoleId == appRoleIdAdmin))
+                await this.AzureService.RemoveAppRoleFromUser(base.downstreamWebApi, this.msIdTenantCurrentUser, this.msIdCurrentUser, existingRoles.First(e => e.AppRoleId == appRoleIdAdmin).Id);
+            else
+                logger.LogInformation($"User with MsId {this.msIdCurrentUser} has Admin no role)");
+
+            logger.LogDebug($"End: UsersController RemoveAssignedOwnerAdmin()");
         }
 
         private User UpdateUserIfNeeded(User currentUser)

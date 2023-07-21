@@ -9,10 +9,6 @@
 ></dx-button>
 
 <div *ngIf="isLoggedIn" class="flex-container">
-  <div *ngIf="user?.MakeAdmin" class="hint-no-roles">
-    <strong>Initial role assignment failed.</strong> Power CID Portal needs a few minutes to configure everything in the background. Please refresh this page in a few moments to try it again.
-  </div> 
-
   <div *ngIf="user" class="flex-container">
     <div>
       <p><strong>First Name: </strong> {{user?.Firstname}}</p>
@@ -25,7 +21,7 @@
     </div>
 
     <div *ngIf="!roles" class="hint-no-roles">
-      <strong>You don't have a role yet.</strong> A PowerCID Portal administrator in your organization can assign you a role. Please log out and log back in to update your roles afterwards. This is also necessary if you are the first user in your organization to receive your initial role.
+      <strong>You don't have a role yet.</strong> A PowerCID Portal administrator in your organization can assign you a role. Please log out and log back in to update your roles afterwards.
     </div>
 
     <app-history *ngIf="roles" [userId]="this.user?.Id" class="flex-container"></app-history>

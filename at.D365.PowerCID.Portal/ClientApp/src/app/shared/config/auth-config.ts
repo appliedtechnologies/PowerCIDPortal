@@ -11,6 +11,7 @@ import {
   LogLevel,
   PublicClientApplication,
   RedirectRequest,
+  SilentRequest,
 } from "@azure/msal-browser";
 
 import { AppConfig } from "src/app/shared/config/app.config";

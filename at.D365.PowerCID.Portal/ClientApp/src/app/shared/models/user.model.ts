@@ -7,7 +7,7 @@ export interface User {
   Email?: string;
   MsId?: string;
   Tenant?: number;
-  MakeAdmin?: boolean;
+  IsOwner?: boolean;
 
   TenantNavigation?: Tenant;
 }

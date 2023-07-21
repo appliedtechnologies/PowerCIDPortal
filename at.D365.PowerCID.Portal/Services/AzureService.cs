@@ -27,6 +27,31 @@ namespace at.D365.PowerCID.Portal.Services
             this.logger = logger;
         }
 
+        public async Task<bool> IsApplicationOwner(IDownstreamWebApi webApi, Guid tenantMsId, Guid userMsId){
+            logger.LogDebug($"Begin: AzureService IsApplicationOwner(tenantMsId: {tenantMsId}, userMsId: {userMsId})");
+
+            var enterpriseAppId = await this.GetEnterpriseAppId(webApi, tenantMsId);
+
+            var response = await webApi.CallWebApiForUserAsync(
+                "GraphApi",
+                options =>
+                {
+                    options.Tenant = tenantMsId.ToString();
+                    options.RelativePath = $"/servicePrincipals/{enterpriseAppId}/owners";
+                    options.HttpMethod = HttpMethod.Get;
+                });
+
+            if (!response.IsSuccessStatusCode)
+                throw new Exception("Could not check if user is application owner");
+
+            JToken owner = (await response.Content.ReadAsAsync<JObject>())["value"];
+            bool isUserOwner = owner.Any(e => (string)e["id"] == userMsId.ToString());
+
+            logger.LogDebug($"End: AzureService IsApplicationOwner(isUserOwner: {isUserOwner})");
+            
+            return isUserOwner;
+        }
+
         public async Task<IEnumerable<AppRoleAssignment>> GetAppRoleAssignmentsOfUser(IDownstreamWebApi webApi, Guid tenantMsId, Guid userMsId){
             logger.LogDebug($"Begin: AzureService GetAppRoleIdsOfUser(tenantMsId: {tenantMsId.ToString()}, userMsId: {userMsId.ToString()})");
 

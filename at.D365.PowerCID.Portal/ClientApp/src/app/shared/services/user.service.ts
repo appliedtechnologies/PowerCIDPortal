@@ -8,10 +8,11 @@ import {
   EventMessage,
   EventType,
   InteractionStatus,
+  SilentRequest,
 } from "@azure/msal-browser";
 import { ThrottlingUtils } from "@azure/msal-common";
 import ODataStore from "devextreme/data/odata/store";
-import { from, merge, Observable, Subject } from "rxjs";
+import { firstValueFrom, forkJoin, from, merge, Observable, Subject } from "rxjs";
 import { filter, map, switchMap, takeUntil } from "rxjs/operators";
 import { isDebuggerStatement } from "typescript";
 import { AppConfig } from "../config/app.config";
@@ -25,6 +26,7 @@ import {
 import { LogService } from "./log.service";
 import { ODataService } from "./odata.service";
 import { AppRoleAssignment } from "../models/approleassignment.model";
+import { alert } from "devextreme/ui/dialog";
 
 @Injectable()
 export class UserService {
@@ -86,6 +88,7 @@ export class UserService {
       switchMap((data) => {
         return this.doPortalLogin()
           .then(() => {
+            this.checkUpdatedOwnership();
             this.layoutService.notify({
               message: "Login completed successfully",
               type: NotificationType.Success,
@@ -127,17 +130,9 @@ export class UserService {
     if (this.isMSALLoggedIn() && this.isPortalLoggedIn()) {
       this.updateUserInformation()
         .then(() => {
-          if (this.currentDbUserWithTenant.MakeAdmin === true)
-            this.doPortalLogin().then(() => {
-              this.updateUserInformation(true).then(() => {
-                this.manualUpdate.next();
-                this.logService.debug("initialized user service");
-              });
-            });
-          else {
-            this.manualUpdate.next();
-            this.logService.debug("initialized user service");
-          }
+          this.checkUpdatedOwnership();
+          this.manualUpdate.next();
+          this.logService.debug("initialized user service");
         })
         .catch(() => {
           this.logService.error("get user information failed, logging out...");
@@ -158,7 +153,9 @@ export class UserService {
   }
 
   public async logout(): Promise<void> {
-    await this.authService.logoutRedirect();
+    await this.authService.logoutRedirect({
+      account: this.currentIdentityUser
+    });
   }
 
   public getStore(): ODataStore {
@@ -245,15 +242,15 @@ export class UserService {
     });
   }
 
-  private updateUserInformation(forceDbReload: boolean = false): Promise<void> {
+  private updateUserInformation(forceDbReload: boolean = false, forceIdentityReload: boolean = false): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.isLogggedIn = this.isMSALLoggedIn() && this.isPortalLoggedIn();
       this.manualUpdate.next();
       if (this.isLogggedIn) {
-        if (this.currentIdentityUser == undefined)
+        if (this.currentIdentityUser == undefined || forceIdentityReload)
           this.currentIdentityUser =
             this.authService.instance.getAllAccounts()[0];
-        if (this.currentUserRoles == undefined)
+        if (this.currentUserRoles == undefined || forceIdentityReload)
           this.currentUserRoles =
             this.currentIdentityUser.idTokenClaims["roles"];
         if (this.currentDbUserWithTenant == undefined || forceDbReload)
@@ -298,8 +295,8 @@ export class UserService {
             .then(() => {
               localStorage.setItem("atPowerCIDPortal_PortalLoginState", "true");
               this.updateUserInformation().then(() => {
-                this.isPortalLogginInProgess = false;
-                resolve();
+                      this.isPortalLogginInProgess = false;
+                  resolve();
               });
             })
             .finally(() =>
@@ -315,5 +312,13 @@ export class UserService {
     this.currentUserRoles = undefined;
     this.currentIdentityUser = undefined;
     this.currentDbUserWithTenant = undefined;
+  }
+
+  private checkUpdatedOwnership(){
+    if ((this.currentDbUserWithTenant.IsOwner && (!this.currentUserRoles || !this.currentUserRoles.includes("atPowerCID.Admin"))) || (!this.currentDbUserWithTenant.IsOwner && (this.currentUserRoles && this.currentUserRoles.includes("atPowerCID.Admin")))) {
+      alert("Your status of being an admin of this application has changed. That's why you need to log in once again to reload your permissions.", "Admin status has changed").then(() => {
+        this.logout();
+      }); 
+    }
   }
 }
