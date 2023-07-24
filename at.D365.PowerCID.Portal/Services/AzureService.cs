@@ -19,16 +19,50 @@ namespace at.D365.PowerCID.Portal.Services
     {
         private readonly ILogger logger;
         private readonly IConfiguration configuration;
+        private readonly atPowerCIDContext dbContext;
 
-        public AzureService(IServiceProvider serviceProvider, ILogger<AzureService> logger)
+        public AzureService(IServiceProvider serviceProvider, atPowerCIDContext dbContext, ILogger<AzureService> logger)
         {
             var scope = serviceProvider.CreateScope();
             this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+            this.dbContext  = dbContext;
             this.logger = logger;
         }
 
-        public async Task<bool> IsApplicationOwner(IDownstreamWebApi webApi, Guid tenantMsId, Guid userMsId){
-            logger.LogDebug($"Begin: AzureService IsApplicationOwner(tenantMsId: {tenantMsId}, userMsId: {userMsId})");
+        public async Task AdminRoleSync(IDownstreamWebApi webApi, Guid tenantMsId){
+            logger.LogDebug($"Begin: AzureService AdminRoleSync(tenantMsId: {tenantMsId})");
+
+            var appRoleIdAdmin = Guid.Parse(configuration["AppRoleIds:Admin"]);
+            var ownerMsIds = await this.GetApplicationOwnerMsIds(webApi, tenantMsId);
+
+            foreach(var user in this.dbContext.Users.Where(e => e.TenantNavigation.MsId == tenantMsId && (e.IsOwner || e.RemoveAdminRole))){
+                if(!ownerMsIds.Contains(user.MsId)){
+                    var existingRoles = await this.GetAppRoleAssignmentsOfUser(webApi, tenantMsId, user.MsId);
+
+                    if (existingRoles.Any(e => e.AppRoleId == appRoleIdAdmin)){
+                        await this.RemoveAppRoleFromUser(webApi, tenantMsId, user.MsId, existingRoles.First(e => e.AppRoleId == appRoleIdAdmin).Id);
+                    }
+                    else
+                        logger.LogInformation($"User with MsId {user.MsId} has Admin no role)");
+
+                    user.IsOwner = false;
+                    user.RemoveAdminRole = false;
+                }
+            }
+
+            foreach(var ownerMsId in ownerMsIds){
+                var user = this.dbContext.Users.FirstOrDefault(e => e.TenantNavigation.MsId == tenantMsId && e.MsId == ownerMsId);
+                if(!user.IsOwner){
+                    await this.AssignAppRoleToUser(webApi, tenantMsId, ownerMsId, appRoleIdAdmin);
+                    user.IsOwner = true;
+                }
+            }
+
+            logger.LogDebug($"End: AzureService AdminRoleSync()");
+        }
+
+        public async Task<IEnumerable<Guid>> GetApplicationOwnerMsIds(IDownstreamWebApi webApi, Guid tenantMsId){
+            logger.LogDebug($"Begin: AzureService GetApplicationOwnerMsIds(tenantMsId: {tenantMsId})");
 
             var enterpriseAppId = await this.GetEnterpriseAppId(webApi, tenantMsId);
 
@@ -42,10 +76,25 @@ namespace at.D365.PowerCID.Portal.Services
                 });
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception("Could not check if user is application owner");
+                throw new Exception("Could not get application owner");
 
-            JToken owner = (await response.Content.ReadAsAsync<JObject>())["value"];
-            bool isUserOwner = owner.Any(e => (string)e["id"] == userMsId.ToString());
+            JToken owners = (await response.Content.ReadAsAsync<JObject>())["value"];
+
+            var ownerMsIds = new List<Guid>();
+
+            foreach (var owner in owners)
+                ownerMsIds.Add(Guid.Parse((string)owner["id"]));
+
+            logger.LogDebug($"End: AzureService GetApplicationOwnerMsIds(Count ownerMsIds: {ownerMsIds.Count})");
+            
+            return ownerMsIds;
+        }
+
+        public async Task<bool> IsApplicationOwner(IDownstreamWebApi webApi, Guid tenantMsId, Guid userMsId){
+            logger.LogDebug($"Begin: AzureService IsApplicationOwner(tenantMsId: {tenantMsId}, userMsId: {userMsId})");
+
+            var ownerMsIds = await this.GetApplicationOwnerMsIds(webApi, tenantMsId);
+            bool isUserOwner = ownerMsIds.Any(e => e == userMsId);
 
             logger.LogDebug($"End: AzureService IsApplicationOwner(isUserOwner: {isUserOwner})");
             

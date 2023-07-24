@@ -75,6 +75,7 @@ namespace at.D365.PowerCID.Portal
             builder.EntityType<User>().Action("GetUserRoles").Returns<AppRoleAssignment>();
 
             builder.EntityType<User>().Collection.Action("SetupApplicationUsers");
+            builder.EntityType<User>().Collection.Action("SyncAdminRole");
 
             //Assign / remove roles
             builder.EntityType<User>().Action("RemoveAssignedRole").Parameter<string>("roleAssignmentId");

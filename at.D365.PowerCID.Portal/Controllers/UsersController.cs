@@ -89,16 +89,11 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             try{
                 if(await this.AzureService.IsApplicationOwner(base.downstreamWebApi, this.msIdTenantCurrentUser, this.msIdCurrentUser)){
-                    currentUser.IsOwner = true;
-                    await this.AssignOwnerAdmin();
-                    await this.RemoveWithdrawnAdminRoles();
+                    await this.AzureService.AdminRoleSync(this.downstreamWebApi, this.msIdTenantCurrentUser);
                 }
                 else{
-                    if(currentUser.IsOwner){
-                        if ((await this.AzureService.GetAppRoleAssignmentsOfUser(this.downstreamWebApi, this. msIdTenantCurrentUser, this.msIdCurrentUser)).Any(e => e.AppRoleId == Guid.Parse(configuration["AppRoleIds:Admin"])))
-                            currentUser.RemoveAdminRole = true;
-                        currentUser.IsOwner = false;
-                    }
+                    if ((await this.AzureService.GetAppRoleAssignmentsOfUser(this.downstreamWebApi, this. msIdTenantCurrentUser, this.msIdCurrentUser)).Any(e => e.AppRoleId == Guid.Parse(configuration["AppRoleIds:Admin"])))
+                        currentUser.RemoveAdminRole = true;
                 }
             }
             finally{
@@ -245,49 +240,24 @@ namespace at.D365.PowerCID.Portal.Controllers
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
 
             await this.AzureService.RemoveAppRoleFromUser(base.downstreamWebApi, this.msIdTenantCurrentUser, user.MsId, parameters["roleAssignmentId"].ToString());
+
+            logger.LogDebug($"End: UsersController RemoveAssignedRole(key: {key})");
             
             return Ok();
         }
 
-        private async Task RemoveWithdrawnAdminRoles(){
-            logger.LogDebug($"Begin: UsersController RemoveWithdrawnAdminRoles()");
-
-            foreach(var user in this.dbContext.Users.Where(e => e.RemoveAdminRole == true)){
-                await this.RemoveAssignedOwnerAdmin(user.MsId);
-                user.RemoveAdminRole = false;
-            }
-
-            logger.LogDebug($"End: UsersController RemoveWithdrawnAdminRoles()");
-        }
-
-        private async Task AssignOwnerAdmin()
+        [Authorize(Roles = "atPowerCID.Admin")]
+        [HttpPost]
+        public async Task<IActionResult> SyncAdminRole()
         {
-            logger.LogDebug($"Begin: UsersController AssignOwnerAdmin()");
-            Guid appRoleIdAdmin = Guid.Parse(configuration["AppRoleIds:Admin"]);
+            logger.LogDebug($"Begin: UsersController SyncAdminRole()");
 
-            var existingRoles = await this.AzureService.GetAppRoleAssignmentsOfUser(base.downstreamWebApi, this.msIdTenantCurrentUser, this.msIdCurrentUser);
+            await this.AzureService.AdminRoleSync(this.downstreamWebApi, this.msIdTenantCurrentUser);
+            await this.dbContext.SaveChangesAsync();
 
-            if (!existingRoles.Any(e => e.AppRoleId == appRoleIdAdmin))
-                await this.AzureService.AssignAppRoleToUser(base.downstreamWebApi, this.msIdTenantCurrentUser, this.msIdCurrentUser, appRoleIdAdmin);
-            else
-                logger.LogInformation($"User with MsId {this.msIdCurrentUser} already has Admin role)");
+            logger.LogDebug($"End: UsersController SyncAdminRole()");
 
-            logger.LogDebug($"End: UsersController AssignOwnerAdmin()");
-        }
-
-        private async Task RemoveAssignedOwnerAdmin(Guid userMsId)
-        {
-            logger.LogDebug($"Begin: UsersController RemoveAssignedOwnerAdmin(userMsId: {userMsId})");
-            Guid appRoleIdAdmin = Guid.Parse(configuration["AppRoleIds:Admin"]);
-
-            var existingRoles = await this.AzureService.GetAppRoleAssignmentsOfUser(base.downstreamWebApi, this.msIdTenantCurrentUser, userMsId);
-
-            if (existingRoles.Any(e => e.AppRoleId == appRoleIdAdmin))
-                await this.AzureService.RemoveAppRoleFromUser(base.downstreamWebApi, this.msIdTenantCurrentUser, userMsId, existingRoles.First(e => e.AppRoleId == appRoleIdAdmin).Id);
-            else
-                logger.LogInformation($"User with MsId {userMsId} has Admin no role)");
-
-            logger.LogDebug($"End: UsersController RemoveAssignedOwnerAdmin()");
+            return Ok();
         }
 
         private User UpdateUserIfNeeded(User currentUser)

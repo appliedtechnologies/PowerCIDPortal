@@ -202,6 +202,17 @@ export class UserService {
     });
   }
 
+  public syncAdminRole(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.http
+        .post(`${AppConfig.settings.api.url}/Users/SyncAdminRole`, {})
+        .subscribe({
+          next: (data) => resolve(),
+          error: () => reject(),
+        });
+    });
+  }
+
   public getUserRoles(userId: number): Promise<AppRoleAssignment[]> {
     return new Promise<AppRoleAssignment[]>((resolve, reject) => {
       this.http

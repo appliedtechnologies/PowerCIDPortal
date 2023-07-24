@@ -70,6 +70,19 @@ export class UserComponent {
       },
       location: "after",
     });
+
+    toolbarItems.unshift({
+      widget: "dxButton",
+      options: {
+        icon: "download",
+        stylingMode: "contained",
+        type: "success",
+        hint: "Sync Admin Role",
+        text: "Sync Admin Role",
+        onClick: this.onClickSyncAdminRole.bind(this),
+      },
+      location: "after",
+    });
   }
 
   public onClickRefresh(): void {
@@ -138,6 +151,27 @@ export class UserComponent {
         message: "An error occurred while querying the existing role assignment",
       });
     });;
+  }
+
+  public onClickSyncAdminRole(e: any): void {
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.userService
+      .syncAdminRole()
+      .then(() => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Admin role was successfully synchronised",
+        });
+      })
+      .catch(() => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred during synchronisation of admin role",
+        });
+      })
+      .finally(() => {
+        this.layoutService.change(LayoutParameter.ShowLoading, false);
+      });
   }
 
   public onValueChangedRoleAssignment(e: any, roleNameKey: any): void {
