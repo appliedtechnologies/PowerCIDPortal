@@ -8,6 +8,7 @@ export interface User {
   MsId?: string;
   Tenant?: number;
   IsOwner?: boolean;
-
+  RemoveAdminRole?: boolean;
+  
   TenantNavigation?: Tenant;
 }

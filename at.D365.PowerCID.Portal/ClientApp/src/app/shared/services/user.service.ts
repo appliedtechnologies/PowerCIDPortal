@@ -315,8 +315,12 @@ export class UserService {
   }
 
   private checkUpdatedOwnership(){
-    if ((this.currentDbUserWithTenant.IsOwner && (!this.currentUserRoles || !this.currentUserRoles.includes("atPowerCID.Admin"))) || (!this.currentDbUserWithTenant.IsOwner && (this.currentUserRoles && this.currentUserRoles.includes("atPowerCID.Admin")))) {
-      alert("Your status of being an admin of this application has changed. That's why you need to log in once again to reload your permissions.", "Admin status has changed").then(() => {
+    if(this.currentDbUserWithTenant.RemoveAdminRole)
+      alert("You are not the admin of this application. Ask an existing admin to synchronise the admin roles. In the meantime, you will be logged out - <a href ='https://github.com/appliedtechnologies/PowerCIDPortal/wiki/Setup-and-maintenance-of-a-tenant/#unilateral-synchronization-of-ownership-and-administrator-role' target='_blank'>more information.</a>", "Admin status has changed").then(() => {
+        this.logout();
+      });
+    else if ((this.currentDbUserWithTenant.IsOwner && (!this.currentUserRoles || !this.currentUserRoles.includes("atPowerCID.Admin"))) || (!this.currentDbUserWithTenant.IsOwner && (this.currentUserRoles && this.currentUserRoles.includes("atPowerCID.Admin")))) {
+      alert("Your status of being an admin of this application has changed. That's why you need to log in once again to reload your permissions - <a href ='https://github.com/appliedtechnologies/PowerCIDPortal/wiki/Setup-and-maintenance-of-a-tenant/#unilateral-synchronization-of-ownership-and-administrator-role' target='_blank'>more information.</a>", "Admin status has changed").then(() => {
         this.logout();
       }); 
     }

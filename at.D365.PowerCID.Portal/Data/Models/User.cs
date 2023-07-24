@@ -27,6 +27,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public Guid MsId { get; set; }
         public int Tenant { get; set; }
         public bool IsOwner { get; set; }
+        public bool RemoveAdminRole { get; set; }
         
         public virtual Tenant TenantNavigation { get; set; }
         public virtual ICollection<DeploymentPath> DeploymentPathCreatedByNavigations { get; set; }
