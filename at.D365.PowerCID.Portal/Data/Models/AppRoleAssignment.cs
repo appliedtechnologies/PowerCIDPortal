@@ -5,12 +5,9 @@ using System.Collections.Generic;
 
 namespace at.D365.PowerCID.Portal.Data.Models
 {
-    public partial class UserRole
+    public partial class AppRoleAssignment
     {
         public string Id { get; set; }
-        public string ResourceId { get; set; }
-
-        public string AppRoleId { get; set; }
-
+        public Guid AppRoleId { get; set; }
     }
 }

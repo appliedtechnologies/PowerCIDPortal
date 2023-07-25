@@ -43,7 +43,8 @@ export class ProfileComponent implements OnInit {
     if(this.isLoggedIn && this.userService.currentDbUserWithTenant){
       this.user = this.userService.currentDbUserWithTenant;
       this.roles = this.userService.currentUserRoles?.join(", ");
-      this.getAllowedEnvironments();     
+      if(this.roles)
+        this.getAllowedEnvironments();     
     }
   }
 

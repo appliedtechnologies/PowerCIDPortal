@@ -10,9 +10,16 @@ export interface IAppConfig {
     },
     azure:{
       applicationId: string;
-      roleNameAdmin: string;
-      roleNameManager: string;
-      roleNameUser: string;
+      appRoleNames: {
+        admin: string,
+        manager: string,
+        user: string
+      },
+      appRoleIds: {
+        admin: string,
+        manager: string,
+        user: string
+      }
     }
     version: string;
   }
