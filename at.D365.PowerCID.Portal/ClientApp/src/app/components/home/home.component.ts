@@ -1,7 +1,6 @@
 import { Input } from "@angular/core";
 import { Component, OnInit } from "@angular/core";
 import DevExpress from "devextreme";
-import { Button } from "protractor";
 import { UserService } from "src/app/shared/services/user.service";
 
 @Component({

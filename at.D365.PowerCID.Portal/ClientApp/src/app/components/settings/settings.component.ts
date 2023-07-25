@@ -1,6 +1,5 @@
 import { Component, OnInit } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
-import { Key } from "selenium-webdriver";
 import { AppConfig } from "src/app/shared/config/app.config";
 import {
   LayoutParameter,
