@@ -51,7 +51,10 @@ namespace at.D365.PowerCID.Portal.Services
             action.ErrorMessage = friendlyErrormessage;
             if ((action.ErrorMessage == String.Empty || action.ErrorMessage == "An unexpected error occurred.")&& asyncJobForExeptionMessage != null)
             {
-                action.ErrorMessage = await this.solutionHistoryService.GetExceptionMessage(asyncJobForExeptionMessage);
+                var asyncJobExeptionMessage = await this.solutionHistoryService.GetExceptionMessage(asyncJobForExeptionMessage);
+                if(!String.IsNullOrEmpty(asyncJobExeptionMessage))
+                    action.ErrorMessage = asyncJobExeptionMessage; 
+                    
             }
             logger.LogDebug($"End: ActionService UpdateSuccessfulAction(friendlyErrormessage: {friendlyErrormessage})");
         }
