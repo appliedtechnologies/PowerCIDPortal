@@ -49,7 +49,7 @@ namespace at.D365.PowerCID.Portal.Services
             action.FinishTime = DateTime.Now;
 
             action.ErrorMessage = friendlyErrormessage;
-            if (action.ErrorMessage == String.Empty && asyncJobForExeptionMessage != null)
+            if ((action.ErrorMessage == String.Empty || action.ErrorMessage == "An unexpected error occurred.")&& asyncJobForExeptionMessage != null)
             {
                 action.ErrorMessage = await this.solutionHistoryService.GetExceptionMessage(asyncJobForExeptionMessage);
             }

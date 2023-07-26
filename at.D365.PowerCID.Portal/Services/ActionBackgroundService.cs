@@ -113,6 +113,7 @@ namespace at.D365.PowerCID.Portal.Services
             using(var dbContext = this.serviceProvider.CreateScope().ServiceProvider.GetRequiredService<atPowerCIDContext>()){
                 foreach (Action queuedAction in dbContext.Actions.Where(e => e.Status == 1).ToList())
                 {
+                    logger.LogDebug($"queuedAction Id: {queuedAction.Id}");
                     try
                     {
                         switch (queuedAction.Type)
@@ -176,10 +177,10 @@ namespace at.D365.PowerCID.Portal.Services
                     }
                     catch (Exception e)
                     {
-                        await this.actionService.UpdateFailedAction(queuedAction, e.Message);
+                        await this.actionService.UpdateFailedAction(queuedAction, e.Message, queuedAction.AsyncJobs.FirstOrDefault());
                         await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                        logger.LogError($"Error: ActionBackgroundService DoBackgroundWork() Exception: {e}");
+                        logger.LogError(e, $"Error: ActionBackgroundService DoBackgroundWork() Exception: {e}");
 
                         continue;
                     }
