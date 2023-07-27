@@ -36,7 +36,8 @@ jobs:
         field: version
         value: "${{ github.event.inputs.versionName }}"
         
-    - name: Commit files
+    - name: Commit and push files
       run: |
         git add -A
         git commit -m "stamp v${{ github.event.inputs.versionName }}"
+        git push
