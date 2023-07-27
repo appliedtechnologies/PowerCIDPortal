@@ -46,7 +46,7 @@ jobs:
     - name: Update at.D365.PowerCID.Portal.csproj
       uses: Mudlet/xmlstarlet-action@master
       with:
-        args: ed -P -S -O --inplace -u "/Project/PropertyGroup/Version" -v "${{ github.event.inputs.versionName }}" at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
+        args: ed -S -O --inplace -u "/Project/PropertyGroup/Version" -v "${{ github.event.inputs.versionName }}" at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
         
     - name: Commit and push files
       run: |
