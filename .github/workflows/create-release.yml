@@ -7,7 +7,7 @@ on:
         required: true
 
 jobs:
-  createrelease:
+  create-release:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,4 +40,4 @@ jobs:
       run: |
         git add -A
         git commit -m "stamp v${{ github.event.inputs.versionName }}"
-        git push
+        git push --set-upstream origin release/v${{ github.event.inputs.versionName }}
