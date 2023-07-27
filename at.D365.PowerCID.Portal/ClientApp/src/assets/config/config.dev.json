@@ -1,19 +1,25 @@
 {
-    "logging": {
-      "console": true
+  "logging": {
+    "console": true
+  },
+  "api": {
+    "url": "/odata"
+  },
+  "github": {
+    "installation_url": "https://github.com/apps/power-cid-portal-github-conn-dev/installations/new"
+  },
+  "azure": {
+    "applicationId": "d5364903-9843-443c-bee3-cc0f336acfe2",
+    "appRoleNames": {
+      "admin": "atPowerCID.Admin",
+      "manager": "atPowerCID.Manager",
+      "user": "atPowerCID.User"
     },
-    "api": {
-      "url": "/odata"
-    },
-    "github": {
-      "installation_url": "https://github.com/apps/power-cid-portal-github-conn-dev/installations/new"
-    },
-    "azure":{
-      "applicationId": "d5364903-9843-443c-bee3-cc0f336acfe2",
-      "roleNameAdmin": "atPowerCID.Admin",
-      "roleNameManager": "atPowerCID.Manager",
-      "roleNameUser": "atPowerCID.User"
-    },
-    "version": "1.1.2303.2920"
-  }
-  
+    "appRoleIds": {
+      "admin": "a8afc5c9-c87b-429e-ab92-d5afbf1f24f1",
+      "manager": "4378f55d-1380-46ca-8232-be075d7aed31",
+      "user": "37fb1144-871c-4fd5-8a7e-60a11da92a55"
+    }
+  },
+  "version": "1.1.2307.2712"
+}

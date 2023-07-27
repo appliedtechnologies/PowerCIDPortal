@@ -18,7 +18,6 @@ namespace at.D365.PowerCID.Portal.Data.Models
             SolutionModifiedByNavigations = new HashSet<Solution>();
             DeploymentPathCreatedByNavigations = new HashSet<DeploymentPath>();
             DeploymentPathModifiedByNavigations = new HashSet<DeploymentPath>();
-
         }
 
         public int Id { get; set; }
@@ -27,7 +26,8 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public string Email { get; set; }
         public Guid MsId { get; set; }
         public int Tenant { get; set; }
-        public bool MakeAdmin { get; set; }
+        public bool IsOwner { get; set; }
+        public bool RemoveAdminRole { get; set; }
         
         public virtual Tenant TenantNavigation { get; set; }
         public virtual ICollection<DeploymentPath> DeploymentPathCreatedByNavigations { get; set; }

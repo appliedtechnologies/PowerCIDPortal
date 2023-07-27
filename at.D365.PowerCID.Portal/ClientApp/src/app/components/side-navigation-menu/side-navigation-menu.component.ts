@@ -69,49 +69,49 @@ export class SideNavigationMenuComponent {
         text: "Solutions Overview",
         icon: "at-icon powercid-icon-code-file",
         routerLink: "/solutions",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager, AppConfig.settings.azure.roleNameUser].includes(e))
+        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.manager, AppConfig.settings.azure.appRoleNames.user].includes(e))
       },
       {
         text: "Deployment History",
         icon: "at-icon powercid-icon-vergangenheit",
         routerLink: "/history",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
+        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.manager].includes(e))
       },
       {
         text: "App Settings",
         icon: "at-icon powercid-icon-einstellungen",
         expanded: expanded,
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e)),
+        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.manager].includes(e)),
         items: [
         {
           text: "Applications",
           icon: "at-icon powercid-icon-web-design",
           routerLink: "/applications",
-          visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
+          visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.manager].includes(e))
         },
         {
           text: "Environments",
           icon: "at-icon powercid-icon-unit",
           routerLink: "/environments",
-          visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
+          visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.manager].includes(e))
         },
         {
           text: "Deployment Paths",
           icon: "at-icon powercid-icon-route",
           routerLink: "/deploymentpaths",
-          visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.roleNameAdmin, AppConfig.settings.azure.roleNameManager].includes(e))
+          visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.manager].includes(e))
         },
       {
         text: "Users",
         icon: "at-icon powercid-icon-conference-hintergrund-ausgew-hlte",
         routerLink: "/users",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.includes(AppConfig.settings.azure.roleNameAdmin)
+        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.includes(AppConfig.settings.azure.appRoleNames.admin)
       },
       {
         text: "Settings",
         icon: "at-icon powercid-icon-einstellungen",
         routerLink: "/settings",
-        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.includes(AppConfig.settings.azure.roleNameAdmin)
+        visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.includes(AppConfig.settings.azure.appRoleNames.admin)
       }]}
     ];
 

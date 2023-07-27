@@ -1,7 +1,6 @@
 import { Component, OnInit, ViewChild } from "@angular/core";
 import DataSource from "devextreme/data/data_source";
 import { UserService } from "src/app/shared/services/user.service";
-import { Approle } from "../../shared/models/approle.model";
 import {
   LayoutParameter,
   LayoutService,
@@ -15,6 +14,7 @@ import { environment } from "src/environments/environment";
 import { UserEnvironmentService } from "src/app/shared/services/userenvironment.service";
 import { UserEnvironment } from "src/app/shared/models/userenvironment.model";
 import { DxListComponent, DxPopupComponent } from "devextreme-angular";
+import { AppRoleAssignment } from "src/app/shared/models/approleassignment.model";
 
 @Component({
   selector: "app-user",
@@ -22,21 +22,18 @@ import { DxListComponent, DxPopupComponent } from "devextreme-angular";
   styleUrls: ["./user.component.css"],
 })
 export class UserComponent {
-  @ViewChild(DxPopupComponent, { static: false })
-  popupPermissionEnvironments: DxPopupComponent;
-  dataSourceUsers: DataSource;
-  dataSourceEnvironments: DataSource;
-  isEditRoles: boolean;
-  isEditPermissionsPopupVisible: boolean;
-  selectedItemKeysPermissionEnvironments: number[];
+  @ViewChild(DxPopupComponent, { static: false }) popupPermissionEnvironments: DxPopupComponent;
 
-  currentSelectedUser: User;
-  isInitPermissionEnvironmentSelection: boolean;
-  userRoles;
-  appRoles;
+  public appRoleNames: any = AppConfig.settings.azure.appRoleNames;
+  public dataSourceUsers: DataSource;
+  public dataSourceEnvironments: DataSource;
+  public isEditRolesVisible: boolean;
+  public isEditPermissionsPopupVisible: boolean;
+  public selectedItemKeysPermissionEnvironments: number[];
+  public currentSelectedUser: User;
+  public currentSelectedUserRoles: AppRoleAssignment[];
 
-  userAssignedAppRoles: Approle[] = [];
-  userAssignedAppRolesBeforeChange: Approle[] = [];
+  private isInitPermissionEnvironmentSelection: boolean;
 
   constructor(
     private userService: UserService,
@@ -70,6 +67,19 @@ export class UserComponent {
         type: "success",
         hint: "Refresh Applications",
         onClick: this.onClickRefresh.bind(this),
+      },
+      location: "after",
+    });
+
+    toolbarItems.unshift({
+      widget: "dxButton",
+      options: {
+        icon: "download",
+        stylingMode: "contained",
+        type: "success",
+        hint: "Sync Admin Role",
+        text: "Sync Admin Role",
+        onClick: this.onClickSyncAdminRole.bind(this),
       },
       location: "after",
     });
@@ -126,121 +136,88 @@ export class UserComponent {
   }
 
   public onClickEditRoles(e: any) {
-    this.userAssignedAppRoles = [];
-    this.userAssignedAppRolesBeforeChange = [];
-    this.currentSelectedUser = e.row.data;
     this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.currentSelectedUser = e.row.data;
 
-    this.storeAppRoles(this.currentSelectedUser.Id).then(() =>
-      this.storeUserAssignedRoles(this.currentSelectedUser.Id).then(() => {
-        this.storeUserAssignedAppRoles(e.row.data.MsId._value);
-        this.setIsAssigned();
-        this.userAssignedAppRolesBeforeChange = JSON.parse(
-          JSON.stringify(this.userAssignedAppRoles)
-        );
+    this.userService.getUserRoles(this.currentSelectedUser.Id).then((appRoleAssignments) => {
+      this.currentSelectedUserRoles = appRoleAssignments;
 
-        this.isEditRoles = true;
-        this.layoutService.change(LayoutParameter.ShowLoading, false);
-      })
-    );
-  }
-
-  public onClickSaveRoles(): void {
-    for (let index = 0; index < this.userAssignedAppRoles.length; index++) {
-      if (
-        this.userAssignedAppRoles[index].IsAssigned !=
-        this.userAssignedAppRolesBeforeChange[index].IsAssigned
-      ) {
-        if (this.userAssignedAppRoles[index].IsAssigned) {
-          //if changed to true http post
-          this.userService
-            .assignRole(
-              this.currentSelectedUser.Id,
-              this.userAssignedAppRoles[index].PrincipalId,
-              this.userAssignedAppRoles[index].Id
-            )
-            .then(() => {
-              this.layoutService.notify({
-                type: NotificationType.Success,
-                message: "Roles successfully changed",
-              });
-            })
-            .catch(() => {
-              this.layoutService.notify({
-                type: NotificationType.Error,
-                message: "An error occurred",
-              });
-            });
-        } else {
-          //else http delete
-          this.userService
-            .removeAssignedRole(
-              this.currentSelectedUser.Id,
-              this.userAssignedAppRoles[index].AppRoleAssignmentId
-            )
-            .then(() => {
-              this.layoutService.notify({
-                type: NotificationType.Success,
-                message: "Roles successfully changed",
-              });
-            })
-            .catch(() => {
-              this.layoutService.notify({
-                type: NotificationType.Error,
-                message: "An error occurred",
-              });
-            });
-        }
-      }
-    }
-    this.isEditRoles = false;
-  }
-
-  private storeAppRoles(userId): Promise<void> {
-    return new Promise<void>(
-      (resolve, reject) =>
-        (this.appRoles = this.userService.getAppRoles(userId).then((r) => {
-          this.appRoles = r;
-          resolve();
-        }))
-    );
-  }
-
-  private storeUserAssignedRoles(userId): Promise<void> {
-    return new Promise<void>((resolve, reject) =>
-      this.userService.getUserRoles(userId).then((r) => {
-        this.userRoles = r;
-        resolve();
-      })
-    );
-  }
-
-  private storeUserAssignedAppRoles(principalId): void {
-    if (this.userAssignedAppRoles.length == 0) {
-      this.appRoles.forEach((element) => {
-        this.userAssignedAppRoles.push({
-          Id: element.id,
-          Name: element.displayName,
-          IsAssigned: false,
-          AppRoleAssignmentId: this.userRoles.filter(
-            (ur) => element.id === ur.appRoleId
-          )[0]?.id,
-          PrincipalId: principalId,
-        });
+      this.isEditRolesVisible = true;
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
+    }).catch(() => {
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "An error occurred while querying the existing role assignment",
       });
-    }
+    });;
   }
 
-  private setIsAssigned(): void {
-    for (let index = 0; index < this.userRoles?.length; index++) {
-      if (
-        this.appRoles.filter((ar) => ar.id === this.userRoles[index].appRoleId)
-          .length > 0
-      ) {
-        this.userAssignedAppRoles.filter(
-          (r) => r.Id === this.userRoles[index].appRoleId
-        )[0].IsAssigned = true;
-      }
+  public onClickSyncAdminRole(e: any): void {
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.userService
+      .syncAdminRole()
+      .then(() => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Admin role was successfully synchronised",
+        });
+      })
+      .catch(() => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred during synchronisation of admin role",
+        });
+      })
+      .finally(() => {
+        this.layoutService.change(LayoutParameter.ShowLoading, false);
+      });
+  }
+
+  public onValueChangedRoleAssignment(e: any, roleNameKey: any): void {
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    let appRoleId: string = AppConfig.settings.azure.appRoleIds[roleNameKey];
+    if (e.value) {
+      this.userService
+        .assignRole(this.currentSelectedUser.Id, appRoleId)
+        .then(() => {
+          this.userService.getUserRoles(this.currentSelectedUser.Id).then((appRoleAssignments) => {
+            this.currentSelectedUserRoles = appRoleAssignments;
+            this.layoutService.notify({
+              type: NotificationType.Success,
+              message: "Role was assigned successfully",
+            });
+          });
+        })
+        .catch(() => {
+          this.isEditRolesVisible = false;
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: "An error occurred during role assignment",
+          });
+        })
+        .finally(() => {
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+        });
+    } else {
+      this.userService
+        .removeAssignedRole(this.currentSelectedUser.Id, this.currentSelectedUserRoles.find(e => e.AppRoleId == appRoleId).Id)
+        .then(() => {
+          this.layoutService.notify({
+            type: NotificationType.Success,
+            message: "Role was successfully withdrawn",
+          });
+        })
+        .catch(() => {
+          this.isEditRolesVisible = false;
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: "An error occurred during role withdrawment",
+          });
+        })
+        .finally(() => {
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+        });
     }
   }
 }
