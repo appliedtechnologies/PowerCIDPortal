@@ -1,0 +1,42 @@
+name: Create release
+on:
+  workflow_dispatch:
+    inputs:
+      versionName:
+        description: 'Name of version  (ie 1.12307.271)'
+        required: true
+
+jobs:
+  createrelease:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+      
+    - name: Create release branch
+      run: git checkout -b release/v${{ github.event.inputs.versionName }}
+      
+    - name: Initialize mandatory git config
+      run: |
+       git config user.name "GitHub Actions"
+       git config user.email noreply@github.com
+       
+    - name: Update config.dev.json
+      uses: jossef/action-set-json-field@v2.1
+      with:
+        file: at.D365.PowerCID.Portal/ClientApp/src/assets/config/config.dev.json
+        field: version
+        value: "${{ github.event.inputs.versionName }}"
+        
+    - name: Update config.prod.json
+      uses: jossef/action-set-json-field@v2.1
+      with:
+        file: at.D365.PowerCID.Portal/ClientApp/src/assets/config/config.prod.json
+        field: version
+        value: "${{ github.event.inputs.versionName }}"
+        
+    - name: Commit files
+      run: |
+        git add -A
+        git commit -m "stamp v${{ github.event.inputs.versionName }}"
