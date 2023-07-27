@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       versionName:
-        description: 'Name of version  (ie 1.12307.271)'
+        description: 'Name of version  (ie 1.1.2307.2711)'
         required: true
 
 jobs:
@@ -35,6 +35,18 @@ jobs:
         file: at.D365.PowerCID.Portal/ClientApp/src/assets/config/config.prod.json
         field: version
         value: "${{ github.event.inputs.versionName }}"
+        
+    - name: Update package.json
+      uses: jossef/action-set-json-field@v2.1
+      with:
+        file: at.D365.PowerCID.Portal/ClientApp/package.json
+        field: version
+        value: "${{ github.event.inputs.versionName }}"
+        
+    - name: Update at.D365.PowerCID.Portal.csproj
+      uses: Mudlet/xmlstarlet-action@master
+      with:
+        args: ed --inplace -u "/Project/PropertyGroup/Version" -v "${{ github.event.inputs.versionName }}" at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
         
     - name: Commit and push files
       run: |
