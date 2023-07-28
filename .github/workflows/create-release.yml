@@ -8,6 +8,7 @@ on:
 
 jobs:
   create-release:
+    permissions: write-all
     runs-on: windows-latest
 
     steps:
