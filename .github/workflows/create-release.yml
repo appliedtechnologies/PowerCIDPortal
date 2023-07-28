@@ -47,7 +47,7 @@ jobs:
       uses: rvolo/xml-replace-action@v0.2
       with:
         filepath: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
-        xpath: "//Project/PropertyGroup/Version/text()"
+        xpath: "//Project/PropertyGroup/Version"
         replace: ${{ github.event.inputs.versionName }}
         
     - name: Commit and push files
