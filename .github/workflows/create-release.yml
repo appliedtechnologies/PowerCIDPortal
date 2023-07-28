@@ -44,7 +44,7 @@ jobs:
         value: "${{ github.event.inputs.versionName }}"
         
     - name: replace
-      uses: Nambers/ReplaceStringInFile@v1
+      uses: Nambers/ReplaceStringInFile@v1.3
       with:
         path: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
         oldString: <Version>.+<\/Version>
