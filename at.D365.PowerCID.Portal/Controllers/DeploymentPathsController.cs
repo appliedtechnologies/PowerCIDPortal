@@ -45,7 +45,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(ModelState);
             }
-            if (dbContext.DeploymentPaths.Any(x => x.Name == deploymentPath.Name))
+            if (dbContext.DeploymentPaths.Any(x => x.TenantNavigation.MsId == this.msIdTenantCurrentUser && x.Name == deploymentPath.Name))
             {
                 return BadRequest("Deploymentpath already exists with this name");
             }
