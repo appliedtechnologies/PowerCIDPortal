@@ -44,6 +44,13 @@ jobs:
         value: "${{ github.event.inputs.versionName }}"
         
     - name: Update at.D365.PowerCID.Portal.csproj
+      uses: MathieuSoysal/replace-string-in-file@v1.0.0
+      with:
+        file: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
+        old-string: '<Version>.+<\/Version>'
+        new-string: "<Version>${{ github.event.inputs.versionName }}</Version>"
+        
+    - name: Update at.D365.PowerCID.Portal.csproj
       uses: Mudlet/xmlstarlet-action@master
       with:
         args: ed -O -P --inplace -u "/Project/PropertyGroup/Version" -v "${{ github.event.inputs.versionName }}" at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
