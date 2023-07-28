@@ -22,7 +22,7 @@ export class DeploymentpathService {
       this.getStore()
         .update(id, deploymentPath)
         .then(() => resolve())
-        .catch(() => reject());
+        .catch((error: Error) => reject(error));
     });
   }
 
@@ -31,7 +31,7 @@ export class DeploymentpathService {
       this.getStore()
         .insert(deploymentPath)
         .then(() => resolve())
-        .catch(() => reject());
+        .catch((error: Error) => reject(error));
     });
   }
 
