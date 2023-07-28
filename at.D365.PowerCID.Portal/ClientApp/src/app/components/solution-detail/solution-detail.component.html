@@ -9,6 +9,8 @@
           (onFocusOut)="onFocusOutSolutionName($event)">
         </dx-text-box>
       </div>
+      <dxi-validation-rule type="stringLength" [max]="100" message="Must not be longer than 100 characters."> </dxi-validation-rule>
+      <dxi-validation-rule *ngIf="this.isAdd" type="required" message="A name must be entered."> </dxi-validation-rule>
     </dxi-item>
     <dxi-item [isRequired]="this.isAdd" [label]="{ text: 'Application' }">
       <div *dxTemplate>
