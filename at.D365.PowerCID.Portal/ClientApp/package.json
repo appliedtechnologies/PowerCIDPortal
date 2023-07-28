@@ -1,6 +1,6 @@
 {
   "name": "at.d365.powercid.portal",
-  "version": "0.0.0",
+  "version": "12.23.56.7",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
