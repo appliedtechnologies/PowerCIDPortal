@@ -48,7 +48,7 @@ jobs:
       with:
         file: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
         old-string: '<Version>.+<\/Version>'
-        new-string: "<Version>${{ github.event.inputs.versionName }}</Version>"
+        new-string: <Version>${{ github.event.inputs.versionName }}</Version>
         
     - name: Update at.D365.PowerCID.Portal.csproj
       uses: Mudlet/xmlstarlet-action@master
