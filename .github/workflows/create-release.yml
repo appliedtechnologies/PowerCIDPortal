@@ -44,7 +44,7 @@ jobs:
         value: "${{ github.event.inputs.versionName }}"
     
     - name: Modify version number
-      uses: mingjun97/file-regex-replace@v2
+      uses: mingjun97/file-regex-replace@latest
       with:
         regex: '"<Version>.+<\/Version>",'
         replacement: "<Version>${{ github.event.inputs.versionName }}</Version>"
