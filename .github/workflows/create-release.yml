@@ -8,7 +8,7 @@ on:
 
 jobs:
   create-release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - name: Check out code
@@ -47,8 +47,8 @@ jobs:
       uses: Nambers/ReplaceStringInFile@v1.3
       with:
         path: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
-        oldString: <Version>.+<\/Version>
-        newString: <Version>${{ github.event.inputs.versionName }}</Version>
+        oldString: <Version>.+<//Version>
+        newString: <Version>${{ github.event.inputs.versionName }}<//Version>
         escapeBackslash: true
         
     - name: Commit and push files
