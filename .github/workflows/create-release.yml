@@ -44,19 +44,11 @@ jobs:
         value: "${{ github.event.inputs.versionName }}"
     
     - name: Modify version number
-      uses: mingjun97/file-regex-replace@last
+      uses: mingjun97/file-regex-replace@v2
       with:
         regex: '"<Version>.+<\/Version>",'
         replacement: "<Version>${{ github.event.inputs.versionName }}</Version>"
         include: 'at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj'
-
-        
-    - name: Update at.D365.PowerCID.Portal.csproj
-      uses: rvolo/xml-replace-action@v0.2
-      with:
-        filepath: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
-        xpath: "//Project/PropertyGroup/Version"
-        replace: ${{ github.event.inputs.versionName }}
         
     - name: Commit and push files
       run: |
