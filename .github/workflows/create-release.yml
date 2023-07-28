@@ -66,6 +66,8 @@ jobs:
     - name: Create pull request into main
       id: create_pr
       uses: thomaseizinger/create-pull-request@1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
        head: release/v${{ github.event.inputs.versionName }}
        base: main
