@@ -42,13 +42,13 @@ jobs:
         file: at.D365.PowerCID.Portal/ClientApp/package.json
         field: version
         value: "${{ github.event.inputs.versionName }}"
-    
-    - name: Modify version number
-      uses: mingjun97/file-regex-replace@latest
+        
+    - name: replace
+      uses: Nambers/ReplaceStringInFile@v1
       with:
-        regex: '"<Version>.+<\/Version>",'
-        replacement: "<Version>${{ github.event.inputs.versionName }}</Version>"
-        include: 'at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj'
+        path: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
+        oldString: <Version>.+<\/Version>
+        newString: <Version>${{ github.event.inputs.versionName }}</Version>
         
     - name: Commit and push files
       run: |
