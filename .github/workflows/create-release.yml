@@ -42,6 +42,14 @@ jobs:
         file: at.D365.PowerCID.Portal/ClientApp/package.json
         field: version
         value: "${{ github.event.inputs.versionName }}"
+    
+    - name: Modify version number
+      uses: mingjun97/file-regex-replace@last
+      with:
+        regex: '"<Version>.+<\/Version>",'
+        replacement: "<Version>${{ github.event.inputs.versionName }}</Version>"
+        include: 'at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj'
+
         
     - name: Update at.D365.PowerCID.Portal.csproj
       uses: rvolo/xml-replace-action@v0.2
