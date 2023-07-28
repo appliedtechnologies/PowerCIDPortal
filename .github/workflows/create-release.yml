@@ -57,22 +57,15 @@ jobs:
         git commit -m "stamp v${{ github.event.inputs.versionName }}"
         git push --set-upstream origin release/v${{ github.event.inputs.versionName }}
         
-    - name: Gets semantic release info
-      id: semantic_release_info
-      uses: jossef/action-semantic-release-info@v1
+    - name: Create release
       env:
-        GITHUB_TOKEN: ${{ github.token }}
-        
-    - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      with:
-        tag_name: v${{ github.event.inputs.versionName }}
-        release_name: v${{ github.event.inputs.versionName }}
-        body: ${{ steps.semantic_release_info.outputs.notes }}
-        draft: false
-        prerelease: false
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        tag: v${{ github.event.inputs.versionName }}
+      run: |
+        gh release create "$tag" \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="${{tag}}" \
+            --generate-notes
         
     - name: Create pull request into main
       id: create_pr
