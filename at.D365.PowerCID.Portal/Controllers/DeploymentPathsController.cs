@@ -14,7 +14,7 @@ using System.Net.Http;
 using Newtonsoft.Json.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
+using Microsoft.OData;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
@@ -42,13 +42,10 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"Begin: DeploymentPathsController Post(deploymentPath Name: {deploymentPath.Name})");
 
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
+
             if (dbContext.DeploymentPaths.Any(x => x.TenantNavigation.MsId == this.msIdTenantCurrentUser && x.Name == deploymentPath.Name))
-            {
-                return BadRequest("Deploymentpath already exists with this name");
-            }
+                return BadRequest(new ODataError { ErrorCode =  "400", Message = "A Deployment Path with this name already exists." });
 
             deploymentPath.Tenant = this.dbContext.Tenants.First(e => e.MsId == this.msIdTenantCurrentUser).Id;
             base.dbContext.DeploymentPaths.Add(deploymentPath);
@@ -81,6 +78,8 @@ namespace at.D365.PowerCID.Portal.Controllers
                     return NotFound();
                 }
                 deploymentPath.Patch(entity);
+                if (dbContext.DeploymentPaths.Any(x => x.TenantNavigation.MsId == this.msIdTenantCurrentUser && x.Name == entity.Name))
+                    return BadRequest(new ODataError { ErrorCode =  "400", Message = "A Deployment Path with this name already exists." });
                 try
                 {
                     await base.dbContext.SaveChangesAsync();
