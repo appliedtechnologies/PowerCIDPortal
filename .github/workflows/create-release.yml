@@ -60,11 +60,10 @@ jobs:
     - name: Create release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        tag: v${{ github.event.inputs.versionName }}
       run: |
-        gh release create "$tag" \
+        gh release create "v${{ github.event.inputs.versionName }}" \
             --repo="$GITHUB_REPOSITORY" \
-            --title="${{tag}}" \
+            --title="v${{ github.event.inputs.versionName }}" \
             --generate-notes
         
     - name: Create pull request into main
