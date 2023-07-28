@@ -43,7 +43,7 @@ jobs:
         field: version
         value: "${{ github.event.inputs.versionName }}"
         
-    - name: replace
+    - name: Update at.D365.PowerCID.Portal.csproj 
       uses: Nambers/ReplaceStringInFile@v1.3
       with:
         path: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
@@ -56,3 +56,29 @@ jobs:
         git add -A
         git commit -m "stamp v${{ github.event.inputs.versionName }}"
         git push --set-upstream origin release/v${{ github.event.inputs.versionName }}
+        
+    - name: Gets semantic release info
+      id: semantic_release_info
+      uses: jossef/action-semantic-release-info@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        tag_name: v${{ github.event.inputs.versionName }}
+        release_name: v${{ github.event.inputs.versionName }}
+        body: ${{ steps.semantic_release_info.outputs.notes }}
+        draft: false
+        prerelease: false
+        
+    - name: Create pull request into main
+      id: create_pr
+      uses: thomaseizinger/create-pull-request@1.0.0
+      with:
+       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+       head: release/v${{ github.event.inputs.versionName }}
+       base: main
+       title: v${{ github.event.inputs.versionName }} into main
