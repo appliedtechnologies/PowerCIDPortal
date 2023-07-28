@@ -49,6 +49,7 @@ jobs:
         path: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
         oldString: <Version>.+<\/Version>
         newString: <Version>${{ github.event.inputs.versionName }}</Version>
+        escapeBackslash: true
         
     - name: Commit and push files
       run: |
