@@ -67,7 +67,7 @@ jobs:
       id: create_pr
       uses: thomaseizinger/create-pull-request@1.0.0
       with:
-       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
        head: release/v${{ github.event.inputs.versionName }}
        base: main
        title: v${{ github.event.inputs.versionName }} into main
+       body: "pull v${{ github.event.inputs.versionName }} into main for releasing a new version 🥳"
