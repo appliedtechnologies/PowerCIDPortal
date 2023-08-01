@@ -96,6 +96,9 @@ namespace at.D365.PowerCID.Portal.Controllers
                         currentUser.RemoveAdminRole = true;
                 }
             }
+            catch(Exception ex){
+                logger.LogDebug(ex, $"Error in UsersController Login()");
+            }
             finally{
                 await this.dbContext.SaveChangesAsync();
             }
