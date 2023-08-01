@@ -17,6 +17,7 @@ import {
 } from "src/app/shared/services/layout.service";
 import { PatchService } from "src/app/shared/services/patch.service";
 import { UpgradeService } from "src/app/shared/services/upgrade.service";
+import Validator from "devextreme/ui/validator";
 
 @Component({
   selector: "app-solution-detail",
@@ -102,8 +103,8 @@ export class SolutionDetailComponent implements OnChanges {
     if(!this.isAdd)
     {
       let newValue: string = this.textBoxName.value;
-
-      if(newValue && newValue != this.solution.Name){
+      let validation = (Validator.getInstance(e.element) as Validator).validate();
+      if(validation.isValid && newValue && newValue != this.solution.Name){
         if (this.isUpgrade) {
           this.renameUpgrade(this.solution.Id, e.component.option("value"));
         } else {

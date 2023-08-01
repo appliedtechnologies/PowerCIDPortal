@@ -1,0 +1,75 @@
+name: Create release
+on:
+  workflow_dispatch:
+    inputs:
+      versionName:
+        description: 'Name of version  (ie 1.1.2307.2711)'
+        required: true
+
+jobs:
+  create-release:
+    runs-on: windows-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+      
+    - name: Create release branch
+      run: git checkout -b release/v${{ github.event.inputs.versionName }}
+      
+    - name: Initialize mandatory git config
+      run: |
+       git config user.name "GitHub Actions"
+       git config user.email noreply@github.com
+       
+    - name: Update config.dev.json
+      uses: jossef/action-set-json-field@v2.1
+      with:
+        file: at.D365.PowerCID.Portal/ClientApp/src/assets/config/config.dev.json
+        field: version
+        value: "${{ github.event.inputs.versionName }}"
+        
+    - name: Update config.prod.json
+      uses: jossef/action-set-json-field@v2.1
+      with:
+        file: at.D365.PowerCID.Portal/ClientApp/src/assets/config/config.prod.json
+        field: version
+        value: "${{ github.event.inputs.versionName }}"
+        
+    - name: Update package.json
+      uses: jossef/action-set-json-field@v2.1
+      with:
+        file: at.D365.PowerCID.Portal/ClientApp/package.json
+        field: version
+        value: "${{ github.event.inputs.versionName }}"
+        
+    - name: Update at.D365.PowerCID.Portal.csproj 
+      uses: Nambers/ReplaceStringInFile@v1.3
+      with:
+        path: at.D365.PowerCID.Portal/at.D365.PowerCID.Portal.csproj
+        oldString: <Version>.+</Version>
+        newString: <Version>${{ github.event.inputs.versionName }}</Version>
+        escapeBackslash: true
+        
+    - name: Commit and push files
+      run: |
+        git add -A
+        git commit -m "stamp v${{ github.event.inputs.versionName }}"
+        git push --set-upstream origin release/v${{ github.event.inputs.versionName }}
+        
+    - name: Create release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create v${{ github.event.inputs.versionName }} --generate-notes --target release/v${{ github.event.inputs.versionName }}
+        
+    - name: Create pull request into main
+      id: create_pr
+      uses: thomaseizinger/create-pull-request@1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+       head: release/v${{ github.event.inputs.versionName }}
+       base: main
+       title: v${{ github.event.inputs.versionName }} into main
+       body: "pull v${{ github.event.inputs.versionName }} into main for releasing a new version 🥳"

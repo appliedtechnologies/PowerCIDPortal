@@ -481,7 +481,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
 
                 entity.Property(e => e.UniqueName)
                     .IsRequired()
-                    .HasMaxLength(100)
+                    .HasMaxLength(200)
                     .IsUnicode(false)
                     .HasColumnName("Unique Name");
 

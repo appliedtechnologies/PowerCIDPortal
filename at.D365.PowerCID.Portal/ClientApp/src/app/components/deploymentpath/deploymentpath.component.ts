@@ -54,9 +54,9 @@ export class DeploymentpathComponent {
         type: NotificationType.Success,
         message: "The new deployment path has been created successfully."
       }))
-      .catch(() => this.layoutService.notify({
+      .catch((error: Error) => this.layoutService.notify({
         type: NotificationType.Error,
-        message: "The new deployment path could not be created."
+        message: error.message ? `The new deployment path could not be created: ${error.message}` : "The new deployment path could not be created."
       }))
       .finally(() => {
         this.isAddDeploymentPathVisible = false;
@@ -73,9 +73,9 @@ export class DeploymentpathComponent {
         type: NotificationType.Success,
         message: "The name change has been saved successfully."
       }))
-      .catch(() => this.layoutService.notify({
+      .catch((error: Error) => this.layoutService.notify({
         type: NotificationType.Error,
-        message: "The name change could not be saved."
+        message: error.message ? `The name change could not be saved: ${error.message}` : "The name change could not be saved."
       }))
       .finally(() => {
         this.isRenameDeploymentPathVisible = false;
