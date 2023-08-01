@@ -53,10 +53,13 @@ namespace at.D365.PowerCID.Portal.Services
             foreach(var ownerMsId in ownerMsIds){
                 var user = this.dbContext.Users.FirstOrDefault(e => e.TenantNavigation.MsId == tenantMsId && e.MsId == ownerMsId);
                 if(!user.IsOwner){
-                    await this.AssignAppRoleToUser(webApi, tenantMsId, ownerMsId, appRoleIdAdmin);
+                    if(!(await this.GetAppRoleAssignmentsOfUser(webApi, tenantMsId, ownerMsId)).Any(e => e.AppRoleId == appRoleIdAdmin))
+                        await this.AssignAppRoleToUser(webApi, tenantMsId, ownerMsId, appRoleIdAdmin);
                     user.IsOwner = true;
                 }
             }
+
+            logger.LogDebug($"End: AzureService AdminRoleSync(tenantMsId: {tenantMsId})");
         }
 
         public async Task<IEnumerable<Guid>> GetApplicationOwnerMsIds(IDownstreamWebApi webApi, Guid tenantMsId){
@@ -145,6 +148,8 @@ namespace at.D365.PowerCID.Portal.Services
             newRoleAssignment.Add("appRoleId", appRoleId);
 
             StringContent roleContent = new StringContent(JsonConvert.SerializeObject(newRoleAssignment), Encoding.UTF8, mediaType: "application/json");
+
+            logger.LogDebug($"Graph Request Body: {tenantMsId}");
 
             var response = await webApi.CallWebApiForUserAsync(
                 "GraphApi",
