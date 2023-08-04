@@ -1,6 +1,7 @@
 <h1>Solutions Overview</h1>
 <dx-data-grid
   #solutionsGrid
+  *ngIf="this.userService.currentDbUserWithTenant"
   [dataSource]="dataSourceSolutions"
   [columns]="dataGridColumns"
   [showBorders]="true"

@@ -69,7 +69,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   private refreshAfterPopupClose: boolean = false;
 
   constructor(
-    private userService: UserService,
+    public userService: UserService,
     private applicationService: ApplicationService,
     private solutionService: SolutionService,
     private environmentService: EnvironmentService,
@@ -168,22 +168,30 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           dataSource: this.dataSourceApplications,
         },
         location: "before",
-      },
-      {
-        location: "before",
-        widget: "dxButton",
-        options: {
-          text: "Add Patch",
-          icon: "add",
-          stylingMode: "contained",
-          type: "success",
-          disabled: this.selectedApplication == null ? true : false,
-          onClick: this.onClickAddPatch.bind(this),
-          onInitialized: (args: any) => {
-            this.addPatchButtonInstance = args.component;
+      }
+    );
+
+    if(!this.userService.currentDbUserWithTenant.TenantNavigation.DisablePatchCreation){
+      toolbarItems.push(
+        {
+          location: "before",
+          widget: "dxButton",
+          options: {
+            text: "Add Patch",
+            icon: "add",
+            stylingMode: "contained",
+            type: "success",
+            disabled: this.selectedApplication == null ? true : false,
+            onClick: this.onClickAddPatch.bind(this),
+            onInitialized: (args: any) => {
+              this.addPatchButtonInstance = args.component;
+            },
           },
-        },
-      },
+        }
+      );
+    }
+
+    toolbarItems.push(
       {
         location: "before",
         widget: "dxButton",
