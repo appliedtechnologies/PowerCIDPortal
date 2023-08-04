@@ -24,7 +24,8 @@ import {
   DxScrollViewModule,
   DxContextMenuModule,
   DxResponsiveBoxModule, 
-  DxCheckBoxModule
+  DxCheckBoxModule,
+  DxSwitchModule
 } from "devextreme-angular";
 
 import {
@@ -144,7 +145,8 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     DxScrollViewModule,
     DxContextMenuModule,
     DxResponsiveBoxModule,
-    DxCheckBoxModule 
+    DxCheckBoxModule,
+    DxSwitchModule 
   ],
   providers: [
     AppConfig,

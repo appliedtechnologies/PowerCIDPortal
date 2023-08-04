@@ -19,6 +19,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         
         public int GitHubInstallationId { get; set; }
         public string GitHubRepositoryName { get; set; }
+        public bool DisablePatchCreation { get; set; }
 
         public virtual ICollection<DeploymentPath> DeploymentPaths { get; set; }
         public virtual ICollection<Environment> Environments { get; set; }

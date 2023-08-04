@@ -4,4 +4,5 @@ export interface Tenant {
   MsId?: string;
   GitHubInstallationId?: number;
   GitHubRepositoryName?: string;
+  DisablePatchCreation?: boolean;
 }
