@@ -48,7 +48,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Tenants.FindAsync(key)).MsId != this.msIdTenantCurrentUser)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { nameof(Tenant.GitHubInstallationId), nameof(Tenant.GitHubRepositoryName) };
+            string[] propertyNamesAllowedToChange = { nameof(Tenant.GitHubInstallationId), nameof(Tenant.GitHubRepositoryName), nameof(Tenant.DisablePatchCreation) };
             if (tenant.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() != 0)
             {
                 return BadRequest();
