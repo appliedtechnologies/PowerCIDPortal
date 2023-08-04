@@ -1,100 +1,98 @@
 <h1>Deployment Paths</h1>
 
-<dx-button
-  id="addButton"
-  icon="add"
-  text="Add Deployment Path"
-  type="success"
-  (onClick)="this.onClickOpenAddDeploymentPath()"
-  width="250"
->
-</dx-button>
+<div class="flex-container">
+  <dx-button
+    id="addButton"
+    icon="add"
+    text="Add Deployment Path"
+    type="success"
+    (onClick)="this.onClickOpenAddDeploymentPath()"
+    width="250"
+  >
+  </dx-button>
 
-<div class="form">
-  <div class="drive-panel">
-    <div class="drive-header dx-treeview-item">
-      <div class="dx-treeview-item-content">
-        <i class="dx-icon at-icon powercid-icon-route"></i
-        ><span>Deployment Paths:</span>
+  <div class="form flex-container">
+    <div class="drive-panel">
+      <div class="drive-header">
+          <i class="dx-icon at-icon powercid-icon-route"></i
+          ><span>Deployment Paths:</span>
       </div>
-    </div>
 
-    <dx-sortable
-      filter=".dx-treeview-item"
-      group="shared"
-      data="deploymentpath"
-      [allowDropInsideItem]="true"
-      [allowReordering]="true"
-      (onDragChange)="onDragChange($event)"
-      (onDragEnd)="onDragEnd($event)"
-      (onAdd)="onAdd($event)"
-      (onReorder)="onReorder($event)"
-    >
-      <dx-tree-view
-        #treeViewDeploymentpath
-        id="treeViewDeploymentpath"
-        dataStructure="tree"
-        displayExpr="Name"
-        [dataSource]="deploymentPaths"
-        itemsExpr="DeploymentPathEnvironments"
-        keyExpr="Id"
-        itemTemplate="DeploymentPaths"
-        (onContentReady)="onContentReadyTreeViewDeploymentPaths($event)"
+      <dx-sortable
+        filter=".dx-treeview-item"
+        group="shared"
+        data="deploymentpath"
+        [allowDropInsideItem]="true"
+        [allowReordering]="true"
+        (onDragChange)="onDragChange($event)"
+        (onDragEnd)="onDragEnd($event)"
+        (onAdd)="onAdd($event)"
+        (onReorder)="onReorder($event)"
       >
-        <div
-          *dxTemplate="let entry of 'DeploymentPaths'"
-          class="treeview-entry"
+        <dx-tree-view
+          #treeViewDeploymentpath
+          id="treeViewDeploymentpath"
+          dataStructure="tree"
+          displayExpr="Name"
+          [dataSource]="deploymentPaths"
+          itemsExpr="DeploymentPathEnvironments"
+          keyExpr="Id"
+          itemTemplate="DeploymentPaths"
+          (onContentReady)="onContentReadyTreeViewDeploymentPaths($event)"
         >
-          <div *ngIf="entry.EnvironmentNavigation">
-            {{ entry.StepNumber + ". " }}
-            {{ entry.EnvironmentNavigation.Name }}
-          </div>
+          <div
+            *dxTemplate="let entry of 'DeploymentPaths'"
+            class="treeview-entry"
+          >
+            <div *ngIf="entry.EnvironmentNavigation">
+              {{ entry.StepNumber + ". " }}
+              {{ entry.EnvironmentNavigation.Name }}
+            </div>
 
-          <div *ngIf="!entry.EnvironmentNavigation">
-            {{ entry.Name }}
+            <div *ngIf="!entry.EnvironmentNavigation">
+              {{ entry.Name }}
+            </div>
+            <div class="button-wrapper">
+              <dx-button 
+                *ngIf="!entry.EnvironmentNavigation"
+                icon="rename"
+                (onClick)="onClickOpenRenameDeploymentPath($event, entry)">
+              </dx-button>
+              <dx-button
+                icon="trash"
+                (onClick)="onClickDeleteDeploymentPathOrStep($event, entry)">
+              </dx-button>
+            </div>
           </div>
-          <div class="button-wrapper">
-            <dx-button 
-              *ngIf="!entry.EnvironmentNavigation"
-              icon="rename"
-              (onClick)="onClickOpenRenameDeploymentPath($event, entry)">
-            </dx-button>
-            <dx-button
-              icon="trash"
-              (onClick)="onClickDeleteDeploymentPathOrStep($event, entry)">
-            </dx-button>
-          </div>
-        </div>
-      </dx-tree-view>
-    </dx-sortable>
-  </div>
-  <div class="drive-panel">
-    <div class="drive-header dx-treeview-item">
-      <div class="dx-treeview-item-content">
-        <i class="dx-icon at-icon powercid-icon-unit"></i>
-        <span>Environments:</span>
-      </div>
+        </dx-tree-view>
+      </dx-sortable>
     </div>
+    <div class="drive-panel">
+      <div class="drive-header">
+          <i class="dx-icon at-icon powercid-icon-unit"></i>
+          <span>Environments:</span>
+      </div>
 
-    <dx-sortable
-      filter=".dx-treeview-item"
-      group="shared"
-      data="environment"
-      [allowDropInsideItem]="true"
-      [allowReordering]="true"
-      (onDragChange)="onDragChange($event)"
-      (onDragEnd)="onDragEnd($event)"
-    >
-      <dx-tree-view
-        #treeViewEnvironment
-        id="treeViewEnvironment"
-        dataStructure="tree"
-        displayExpr="Name"
-        [dataSource]="dataSourceEnvironments"
-        keyExpr="Id"
+      <dx-sortable
+        filter=".dx-treeview-item"
+        group="shared"
+        data="environment"
+        [allowDropInsideItem]="true"
+        [allowReordering]="true"
+        (onDragChange)="onDragChange($event)"
+        (onDragEnd)="onDragEnd($event)"
       >
-      </dx-tree-view>
-    </dx-sortable>
+        <dx-tree-view
+          #treeViewEnvironment
+          id="treeViewEnvironment"
+          dataStructure="tree"
+          displayExpr="Name"
+          [dataSource]="dataSourceEnvironments"
+          keyExpr="Id"
+        >
+        </dx-tree-view>
+      </dx-sortable>
+    </div>
   </div>
 </div>
 

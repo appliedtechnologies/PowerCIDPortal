@@ -2,6 +2,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin: 0 5px;
 }
 
 :host ::ng-deep .form .button-wrapper {
@@ -23,13 +24,13 @@
 }
 
 .form {
-  display: flex;
-  height: 100%;
-  width: 100%;
   margin-top: 20px;
+  flex-direction: row;
 }
 
 .drive-panel {
+  display: flex;
+  flex-direction: column;
   padding: 20px 30px;
   font-size: 115%;
   font-weight: bold;
@@ -40,4 +41,8 @@
 
 .drive-panel:last-of-type {
   border-right: none;
+}
+
+.drive-header {
+  margin-bottom: 10px;
 }
