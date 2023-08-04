@@ -57,6 +57,17 @@
 >
 </dx-button>
 
+<h1>Disable Patch Creation</h1>
+<p>Disable the creation of patches for all applications of this tenant. This can be helpful if you only want to work with updates, for example with unmanaged deployments. This setting has no effect on existing patches. These can continue to be delivered even if they have already been created.</p>
+<dx-switch 
+  width="200"
+  switchedOnText="patch creation is disabled"
+  switchedOffText="patch creation is enabled"
+  [(value)]="valueDisablePatchCreation"
+  (onValueChanged)="onValueChangedDisablePatchCreation($event)">
+</dx-switch>
+
+
 <dx-popup
   *ngIf="isSetupApplicationUser"
   [width]="700"

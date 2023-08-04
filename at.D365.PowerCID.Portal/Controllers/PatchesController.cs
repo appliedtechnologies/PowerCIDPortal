@@ -51,6 +51,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == patch.Application && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
+            if((await this.dbContext.Tenants.FirstAsync(e => e.MsId == this.msIdTenantCurrentUser)).DisablePatchCreation)
+                return BadRequest(new ODataError { ErrorCode =  "400", Message = "Creation of patches is disabled." });
+
             Application application = this.dbContext.Applications.First(e => e.Id == patch.Application);
             string displayNameDataversePatch = $"{application.Name}_{patch.Name}";
             Solution lastSolution = application.Solutions.OrderByDescending(e => e.CreatedOn).FirstOrDefault();

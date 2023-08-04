@@ -85,10 +85,10 @@ export class SolutionDetailComponent implements OnChanges {
               message: "Patch was successfully created.",
             });
           })
-          .catch(() => {
+          .catch((error: Error) => {
             this.layoutService.notify({
               type: NotificationType.Error,
-              message: "An error occurred while creating the patch.",
+              message: error.message ? `An error occurred while creating the patch: ${error.message}` : "An error occurred while creating the patch."
             });
           })
           .then(() => {

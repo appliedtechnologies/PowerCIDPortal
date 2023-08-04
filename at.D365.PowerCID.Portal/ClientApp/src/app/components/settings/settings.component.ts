@@ -19,6 +19,7 @@ export class SettingsComponent implements OnInit {
   public isGitHubConnected;
   public dataSourceGitHubRepositories;
   public valueSelectBoxRepositoryName: string;
+  public valueDisablePatchCreation: boolean;
   public isSetupApplicationUser: boolean = false;
   public environmentMessages;
   public appId: string;
@@ -35,10 +36,10 @@ export class SettingsComponent implements OnInit {
 
   public ngOnInit(): void {
     if (this.userService.currentDbUserWithTenant)
-      this.refreshGitHubConnectionDisplay();
+      this.refreshCurrentSettings();
       
     this.userService.stateChanged$.subscribe(() => {
-      this.refreshGitHubConnectionDisplay();
+      this.refreshCurrentSettings();
 
       this.route.queryParams.subscribe((params) => {
         if (
@@ -103,6 +104,35 @@ export class SettingsComponent implements OnInit {
       .then(() => {
         this.layoutService.change(LayoutParameter.ShowLoading, false);
       });
+  }
+
+  public onValueChangedDisablePatchCreation(e): void {
+    if(this.userService.currentDbUserWithTenant.TenantNavigation.DisablePatchCreation == this.valueDisablePatchCreation)
+      return;
+      
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.tenatService
+      .setDisablePatchCreation(this.valueDisablePatchCreation)
+      .then(() => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "You have successfully saved the disablement of patches state.",
+        });
+      })
+      .catch(() => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred while saving the disablement of patches state.",
+        });
+      })
+      .then(() => {
+        this.layoutService.change(LayoutParameter.ShowLoading, false);
+      });
+  }
+
+  private refreshCurrentSettings() {
+    this.valueDisablePatchCreation = this.userService.currentDbUserWithTenant.TenantNavigation.DisablePatchCreation;
+    this.refreshGitHubConnectionDisplay();
   }
 
   private refreshGitHubConnectionDisplay() {

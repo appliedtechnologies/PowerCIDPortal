@@ -9,7 +9,6 @@ import { UserService } from "./user.service";
   providedIn: "root",
 })
 export class TenantService {
-
   constructor(
     private odataService: ODataService,
     private userService: UserService,
@@ -34,6 +33,16 @@ export class TenantService {
     return this.getStore()
       .update(this.userService.currentDbUserWithTenant.Tenant, {
         GitHubRepositoryName: repositoryName,
+      })
+      .then(() => {
+        this.userService.reloadUser();
+      });
+  }
+
+  public setDisablePatchCreation(valueDisablePatchCreation: boolean): Promise<any> {
+    return this.getStore()
+      .update(this.userService.currentDbUserWithTenant.Tenant, {
+        DisablePatchCreation: valueDisablePatchCreation,
       })
       .then(() => {
         this.userService.reloadUser();
