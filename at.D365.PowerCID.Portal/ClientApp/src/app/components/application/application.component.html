@@ -36,7 +36,11 @@
     ><dxi-validation-rule type="required"> </dxi-validation-rule
   ></dxi-column>
 
-  <dxi-column dataField="MsId" caption="App Id"></dxi-column>
+  <dxi-column 
+    dataField="MsId" 
+    caption="App Id"
+    [allowSearch]="false">
+  </dxi-column>
 
   <dxi-column
     dataField="InternalDescription"
@@ -55,6 +59,7 @@
     dataField="DevelopmentEnvironment"
     caption="Development Environment"
     editCellTemplate="environmentsDropdownTemplate"
+    [allowSearch]="false"
     ><dxi-validation-rule type="required"> </dxi-validation-rule>
     <dxo-lookup
       [dataSource]="dataStoreEnvironments"
@@ -68,6 +73,7 @@
     caption="Publisher"
     editCellTemplate="publishersDropdownTemplate"
     cellTemplate="publisherTemplate"
+    [allowSearch]="false"
   >
     <dxi-validation-rule type="required" message="Publisher is required">
     </dxi-validation-rule>
@@ -87,6 +93,7 @@
     dataType="datetime"
     format="dd.MM.yyyy HH:mm:ss"
     [allowEditing]="false"
+    [allowSearch]="false"
     >
   </dxi-column>
 
