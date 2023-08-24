@@ -235,7 +235,6 @@
         [dataSource]="deploymentPaths"
         [repaintChangesOnly]="true"
         keyExpr="Id"
-        displayExpr="Name"
       >
         <dxo-item-dragging
           group="deploymentPaths"
@@ -244,6 +243,9 @@
           [onDragStart]="onDragStart"
         >
         </dxo-item-dragging>
+        <div *dxTemplate="let data of 'item'">
+          <div title="{{data.Name}}">{{data.Name}}</div>
+        </div>
       </dx-list>
     </div>
   </div>
