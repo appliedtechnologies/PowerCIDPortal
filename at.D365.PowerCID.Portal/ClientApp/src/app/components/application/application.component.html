@@ -203,50 +203,46 @@
   [hideOnOutsideClick]="true"
   [(visible)]="isAssignDevelopmentPaths"
   [maxHeight]="'90%'"
->
+> 
   <p id="info">Drag and drop one or multiple Deployment Paths to the application for assiging them. The priority decreases from top to bottom.</p>
   <div class="header">
     <p>Application: <i>{{ this.currentApplicationName }}</i></p>
     <p>Deployment Paths</p>
   </div>
-  <div id="list-demo">
-    <div class="widget-container">
-      <dx-list
-        [dataSource]="applicationDeploymentPaths"
-        [repaintChangesOnly]="true"
-        keyExpr="Id"
-        [height]="'100%'"
-        displayExpr="Name"
-        noDataText="No deployment path assigned "
+  <div class="widget-container">
+    <dx-list
+      [dataSource]="applicationDeploymentPaths"
+      [repaintChangesOnly]="true"
+      keyExpr="Id"
+      displayExpr="Name"
+      noDataText="No deployment path assigned "
+    >
+      <dxo-item-dragging
+        group="deploymentPaths"
+        [data]="applicationDeploymentPaths"
+        [allowReordering]="true"
+        [onDragStart]="onDragStart"
+        [onAdd]="onAdd"
+        [onRemove]="onRemove"
+        [onReorder]="onReorder"
       >
-        <dxo-item-dragging
-          group="deploymentPaths"
-          [data]="applicationDeploymentPaths"
-          [allowReordering]="true"
-          [onDragStart]="onDragStart"
-          [onAdd]="onAdd"
-          [onRemove]="onRemove"
-          [onReorder]="onReorder"
-        >
-        </dxo-item-dragging>
-      </dx-list>
-      <dx-list
-        [height]="'100%'"
-        [dataSource]="deploymentPaths"
-        [repaintChangesOnly]="true"
-        keyExpr="Id"
+      </dxo-item-dragging>
+    </dx-list>
+    <dx-list
+      [dataSource]="deploymentPaths"
+      [repaintChangesOnly]="true"
+      keyExpr="Id"
+    >
+      <dxo-item-dragging
+        group="deploymentPaths"
+        [data]="deploymentPaths"
+        [allowReordering]="false"
+        [onDragStart]="onDragStart"
       >
-        <dxo-item-dragging
-          group="deploymentPaths"
-          [data]="deploymentPaths"
-          [allowReordering]="false"
-          [onDragStart]="onDragStart"
-        >
-        </dxo-item-dragging>
-        <div *dxTemplate="let data of 'item'">
-          <div title="{{data.Name}}">{{data.Name}}</div>
-        </div>
-      </dx-list>
-    </div>
+      </dxo-item-dragging>
+      <div *dxTemplate="let data of 'item'">
+        <div title="{{data.Name}}">{{data.Name}}</div>
+      </div>
+    </dx-list>
   </div>
 </dx-popup>
