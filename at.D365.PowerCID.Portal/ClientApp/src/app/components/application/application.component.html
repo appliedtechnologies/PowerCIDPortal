@@ -196,7 +196,7 @@
 
 <dx-popup
   *ngIf="isAssignDevelopmentPaths"
-  [width]="550"
+  [width]="700"
   height="auto"
   [showTitle]="true"
   [title]="'Assign and prioritize Deployment Paths'"
@@ -227,6 +227,10 @@
         [onReorder]="onReorder"
       >
       </dxo-item-dragging>
+
+      <div *dxTemplate="let data of 'item'">
+        <div title="{{data.Name}}">{{data.Name}}</div>
+      </div>
     </dx-list>
     <dx-list
       [dataSource]="deploymentPaths"
