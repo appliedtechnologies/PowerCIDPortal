@@ -118,6 +118,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Tenants.FirstOrDefaultAsync(e => e.Id == deploymentPathToDelete.Tenant && e.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
+            if(this.dbContext.ApplicationDeploymentPaths.Any(e => e.DeploymentPath == key))
+                return BadRequest(new ODataError { ErrorCode =  "400", Message = $"The deployment path is used by application '{this.dbContext.ApplicationDeploymentPaths.First(e => e.DeploymentPath == key).ApplicationNavigation.Name}'." });
+
             this.dbContext.Remove(deploymentPathToDelete);
             await this.dbContext.SaveChangesAsync();
 
