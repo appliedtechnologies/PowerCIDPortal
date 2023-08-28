@@ -28,13 +28,19 @@
   <dxi-column
     dataField="OrdinalNumber"
     dataType="number"
-    [width]="140"
+    [width]="150"
     sortOrder="asc"
+    [sortIndex]="0"
     [calculateSortValue]="ordinalNumberSortValue"
   ></dxi-column>
 
-  <dxi-column dataField="Name" caption="Name"
-    ><dxi-validation-rule type="required"> </dxi-validation-rule
+  <dxi-column 
+    dataField="Name" 
+    caption="Name"
+    sortOrder="asc"
+    [sortIndex]="1"
+  >
+    <dxi-validation-rule type="required"> </dxi-validation-rule
   ></dxi-column>
 
   <dxi-column 
