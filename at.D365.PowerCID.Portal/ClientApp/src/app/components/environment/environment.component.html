@@ -21,6 +21,7 @@
   <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
   <dxi-column
     dataField="OrdinalNumber"
+    dataType="number"
     [width]="140"
     sortOrder="asc"
     [calculateSortValue]="ordinalNumberSortValue"
@@ -35,18 +36,25 @@
     dataField="IsDevelopmentEnvironment"
     caption="Development Environment?"
     [width]="200"
+    [allowSearch]="false"
   ></dxi-column>
   <dxi-column
     dataField="DeployUnmanaged"
     caption="Deploy unmanaged?"
     [width]="150"
+    [allowSearch]="false"
   ></dxi-column>
   <dxi-column
     dataField="ConnectionsOwner"
     caption="Connections Owner (Domainname)"
     [width]="300"
   ></dxi-column>
-  <dxi-column dataField="MsId" caption="Id" [allowEditing]="false"></dxi-column>
+  <dxi-column 
+    dataField="MsId" 
+    caption="Id" 
+    [allowEditing]="false" 
+    [allowSearch]="false"
+  ></dxi-column>
   <dxi-column
     dataField="ModifiedBy"
     caption="Modified By"
@@ -60,5 +68,6 @@
     dataType="datetime"
     format="dd.MM.yyyy HH:mm:ss"
     [allowEditing]="false"
+    [allowSearch]="false"
   ></dxi-column>
 </dx-data-grid>

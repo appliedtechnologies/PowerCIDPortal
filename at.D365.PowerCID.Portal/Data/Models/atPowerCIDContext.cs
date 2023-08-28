@@ -211,7 +211,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
                     .WithMany(a => a.DeploymentPaths)
                     .UsingEntity<ApplicationDeploymentPath>(
                         j => j.HasOne(ad => ad.ApplicationNavigation).WithMany(a => a.ApplicationDeploymentPaths).HasForeignKey(ad => ad.Application).HasConstraintName("FK_ApplicationDeploymentPath_Application"),
-                        j => j.HasOne(ad => ad.DeploymentPathNavigation).WithMany(d => d.ApplicationDeploymentPaths).HasForeignKey(ad => ad.DeploymentPath).HasConstraintName("FK_ApplicationDeploymentPath_DeploymentPath")
+                        j => j.HasOne(ad => ad.DeploymentPathNavigation).WithMany(d => d.ApplicationDeploymentPaths).HasForeignKey(ad => ad.DeploymentPath).HasConstraintName("FK_ApplicationDeploymentPath_DeploymentPath").OnDelete(DeleteBehavior.Restrict)
                     ).ToTable("ApplicationDeploymentPath").HasKey(ad => new { ad.Application, ad.DeploymentPath });
 
 
