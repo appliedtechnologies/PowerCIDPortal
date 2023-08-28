@@ -14,6 +14,7 @@ import { UserService } from "src/app/shared/services/user.service";
 import { UserEnvironmentService } from "src/app/shared/services/userenvironment.service";
 import { UserEnvironment } from "src/app/shared/models/userenvironment.model";
 import { DxListComponent, DxPopupComponent } from "devextreme-angular";
+import { LayoutService, NotificationType } from "src/app/shared/services/layout.service";
 
 @Component({
   selector: "app-profile",
@@ -28,7 +29,8 @@ export class ProfileComponent implements OnInit {
 
   constructor(
     private userService: UserService,
-    private userEnvironmentService: UserEnvironmentService
+    private userEnvironmentService: UserEnvironmentService,
+    private layoutService: LayoutService
   ) {}
 
   ngOnInit(): void {
@@ -43,6 +45,7 @@ export class ProfileComponent implements OnInit {
     localStorage.removeItem("atPowerCIDPortal_Applications_GridState");
     localStorage.removeItem("atPowerCIDPortal_Users_GridState");
     localStorage.removeItem("atPowerCIDPortal_History_GridState");
+    this.layoutService.notify({ message: "The grid settings have been successfully reset.", type: NotificationType.Success });
   }
 
   private getUserInformation(){
