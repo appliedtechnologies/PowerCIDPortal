@@ -38,6 +38,13 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+  public onClickResetGridSettings(e): void {
+    localStorage.removeItem("atPowerCIDPortal_Environments_GridState");
+    localStorage.removeItem("atPowerCIDPortal_Applications_GridState");
+    localStorage.removeItem("atPowerCIDPortal_Users_GridState");
+    localStorage.removeItem("atPowerCIDPortal_History_GridState");
+  }
+
   private getUserInformation(){
     this.isLoggedIn = this.userService.isLogggedIn;
     if(this.isLoggedIn && this.userService.currentDbUserWithTenant){

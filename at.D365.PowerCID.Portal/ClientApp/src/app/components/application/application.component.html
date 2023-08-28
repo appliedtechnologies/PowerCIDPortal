@@ -13,15 +13,13 @@
   [columnAutoWidth]="true"
   [width]="'100%'"
 >
-  <dxo-editing mode="row" [allowUpdating]="true" [useIcons]="true">
-  </dxo-editing>
-
+  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_Applications_GridState"></dxo-state-storing>
+  <dxo-editing mode="row" [allowUpdating]="true" [useIcons]="true"></dxo-editing>
   <dxo-search-panel
     [visible]="true"
     [highlightCaseSensitive]="false"
     placeholder="Search..."
   ></dxo-search-panel>
-
   <dxo-paging [pageSize]="25"></dxo-paging>
   <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
 

@@ -19,6 +19,13 @@
       <p><strong>Roles: </strong> {{roles}}</p>
       <p><strong>Environments (import permission): </strong>{{allowedEnv}}</p>  
     </div>
+    <dx-button
+      text="Reset the settings of the grids"
+      type="success"
+      stylingMode="contained"
+      icon="at-icon powercid-icon-reset"
+      (onClick)="onClickResetGridSettings($event)"
+    ></dx-button>
 
     <div *ngIf="!roles" class="hint-no-roles">
       <strong>You don't have a role yet.</strong> A PowerCID Portal administrator in your organization can assign you a role. Please log out and log back in to update your roles afterwards.
