@@ -24,9 +24,14 @@
     dataType="number"
     [width]="140"
     sortOrder="asc"
+    [sortIndex]="0"
     [calculateSortValue]="ordinalNumberSortValue"
   ></dxi-column>
-  <dxi-column dataField="Name" [allowEditing]="false"></dxi-column>
+  <dxi-column dataField="Name" 
+    [allowEditing]="false"
+    sortOrder="asc"
+    [sortIndex]="1"
+  ></dxi-column>
   <dxi-column
     dataField="BasicUrl"
     caption="Basic Url"
