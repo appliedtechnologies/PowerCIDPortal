@@ -44,6 +44,7 @@ export class DeploymentpathComponent {
     this.loadDeploymentPaths();
     this.dataSourceEnvironments = new DataSource({
       store: this.environmentService.getStore(),
+      sort: [{ selector: "OrdinalNumber", desc: true }, { selector: "Name", desc: false }],
     });
   }
 
@@ -316,6 +317,7 @@ export class DeploymentpathComponent {
     return this.deploymentPathService
       .getStore()
       .load({
+        sort: [{ selector: "Name", desc: false }],
         expand: [
           "CreatedByNavigation",
           "Environments",
