@@ -10,6 +10,7 @@
   [columnAutoWidth]="true"
   [width]="'100%'"
 >
+  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_Environments_GridState"></dxo-state-storing>
   <dxo-editing mode="row" [allowUpdating]="true" [useIcons]="true">
   </dxo-editing>
   <dxo-search-panel
@@ -22,11 +23,16 @@
   <dxi-column
     dataField="OrdinalNumber"
     dataType="number"
-    [width]="140"
+    [width]="150"
     sortOrder="asc"
+    [sortIndex]="0"
     [calculateSortValue]="ordinalNumberSortValue"
   ></dxi-column>
-  <dxi-column dataField="Name" [allowEditing]="false"></dxi-column>
+  <dxi-column dataField="Name" 
+    [allowEditing]="false"
+    sortOrder="asc"
+    [sortIndex]="1"
+  ></dxi-column>
   <dxi-column
     dataField="BasicUrl"
     caption="Basic Url"

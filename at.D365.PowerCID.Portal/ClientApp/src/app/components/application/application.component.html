@@ -13,28 +13,32 @@
   [columnAutoWidth]="true"
   [width]="'100%'"
 >
-  <dxo-editing mode="row" [allowUpdating]="true" [useIcons]="true">
-  </dxo-editing>
-
+  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_Applications_GridState"></dxo-state-storing>
+  <dxo-editing mode="row" [allowUpdating]="true" [useIcons]="true"></dxo-editing>
   <dxo-search-panel
     [visible]="true"
     [highlightCaseSensitive]="false"
     placeholder="Search..."
   ></dxo-search-panel>
-
   <dxo-paging [pageSize]="25"></dxo-paging>
   <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
 
   <dxi-column
     dataField="OrdinalNumber"
     dataType="number"
-    [width]="140"
+    [width]="150"
     sortOrder="asc"
+    [sortIndex]="0"
     [calculateSortValue]="ordinalNumberSortValue"
   ></dxi-column>
 
-  <dxi-column dataField="Name" caption="Name"
-    ><dxi-validation-rule type="required"> </dxi-validation-rule
+  <dxi-column 
+    dataField="Name" 
+    caption="Name"
+    sortOrder="asc"
+    [sortIndex]="1"
+  >
+    <dxi-validation-rule type="required"> </dxi-validation-rule
   ></dxi-column>
 
   <dxi-column 
@@ -75,6 +79,7 @@
     editCellTemplate="publishersDropdownTemplate"
     cellTemplate="publisherTemplate"
     [allowSearch]="false"
+    [allowSorting]="false"
   >
     <dxi-validation-rule type="required" message="Publisher is required">
     </dxi-validation-rule>

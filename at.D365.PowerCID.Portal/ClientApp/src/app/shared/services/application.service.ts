@@ -117,4 +117,8 @@ export class ApplicationService {
   public delete(id: number): Promise<void>{
     return this.getStore().remove(id);
   }
+
+  public update(id: number, environment: Environment){
+    return this.getStore().update(id, environment);
+  }
 }

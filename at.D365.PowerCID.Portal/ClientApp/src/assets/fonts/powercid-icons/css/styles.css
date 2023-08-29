@@ -56,6 +56,9 @@
 .powercid-icon-vergangenheit:before,
 .powercid-icon-conference-hintergrund-ausgew-hlte:before,
 .powercid-icon-benutzer:before,
+.powercid-icon-variable:before,
+.powercid-icon-reset:before,
+.powercid-icon-sortierpfeile:before,
 .icons8,
 [data-icons8]:before {
   display: inline-block;
@@ -135,4 +138,13 @@
 }
 .powercid-icon-benutzer:before {
   content: "\f117";
+}
+.powercid-icon-variable:before {
+  content: "\f118";
+}
+.powercid-icon-reset:before {
+  content: "\f119";
+}
+.powercid-icon-sortierpfeile:before {
+  content: "\f11a";
 }
