@@ -5,6 +5,7 @@ import ODataStore from "devextreme/data/odata/store";
 import { AppConfig } from "../config/app.config";
 import { ODataService } from "./odata.service";
 import { UserService } from "./user.service";
+import { Environment } from "../models/environment.model";
 
 @Injectable({
   providedIn: "root",
@@ -49,5 +50,10 @@ export class EnvironmentService {
           next: (data) => resolve(data),
           error: () => reject(),
         });
-    });  }
+    });  
+  }
+
+  public update(id: number, environment: Environment){
+    return this.getStore().update(id, environment);
+  }
 }

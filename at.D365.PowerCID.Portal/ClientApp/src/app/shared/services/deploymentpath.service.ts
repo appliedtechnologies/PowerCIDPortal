@@ -40,7 +40,7 @@ export class DeploymentpathService {
       this.getStore()
         .remove(id)
         .then(() => resolve())
-        .catch(() => reject());
+        .catch((error) => reject(error));
     });
   }
 }

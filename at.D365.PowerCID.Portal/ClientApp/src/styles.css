@@ -5,6 +5,13 @@ html, body{
   margin: 0;
 }
 
+.flex-container, .dx-popup-content{
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+
 #init-loading-screen {
   font-family: "Helvetica Neue","Segoe UI",helvetica,verdana,sans-serif;
   display: flex;

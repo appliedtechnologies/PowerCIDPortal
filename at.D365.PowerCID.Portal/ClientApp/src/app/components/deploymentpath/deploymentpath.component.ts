@@ -6,7 +6,6 @@ import { DeploymentPathEnvironment } from "src/app/shared/models/deploymentpathe
 import { Environment } from "src/app/shared/models/environment.model";
 import { DeploymentpathService } from "src/app/shared/services/deploymentpath.service";
 import { EnvironmentService } from "src/app/shared/services/environment.service";
-import { DeploymentPathEnvironmentService } from "src/app/shared/services/deploymentpathenvironment.service";
 import { confirm } from "devextreme/ui/dialog";
 import {
   LayoutParameter,
@@ -14,6 +13,7 @@ import {
   NotificationType,
 } from "src/app/shared/services/layout.service";
 import dxTreeView from "devextreme/ui/tree_view";
+import { DeploymentPathEnvironmentService } from "src/app/shared/services/deploymentpathEnvironment.service";
 
 @Component({
   selector: "app-deploymentpath",
@@ -44,6 +44,7 @@ export class DeploymentpathComponent {
     this.loadDeploymentPaths();
     this.dataSourceEnvironments = new DataSource({
       store: this.environmentService.getStore(),
+      sort: [{ selector: "OrdinalNumber", desc: true }, { selector: "Name", desc: false }],
     });
   }
 
@@ -111,9 +112,9 @@ export class DeploymentpathComponent {
               type: NotificationType.Success,
               message: "The deployment path was successfully deleted."
             }))
-            .catch(() => this.layoutService.notify({
+            .catch((error: Error) => this.layoutService.notify({
               type: NotificationType.Error,
-              message: "The deployment path could not be deleted. "
+              message: error.message ? `The deployment path could not be deleted.: ${error.message}` : "The deployment path could not be deleted."
             }))
             .finally(() => {
               this.loadDeploymentPaths();
@@ -316,6 +317,7 @@ export class DeploymentpathComponent {
     return this.deploymentPathService
       .getStore()
       .load({
+        sort: [{ selector: "Name", desc: false }],
         expand: [
           "CreatedByNavigation",
           "Environments",

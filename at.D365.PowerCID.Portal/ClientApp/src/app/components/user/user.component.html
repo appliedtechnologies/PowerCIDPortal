@@ -11,6 +11,7 @@
   [width]="'100%'"
   (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
 >
+  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_Users_GridState"></dxo-state-storing>
   <dxo-header-filter [visible]="true"></dxo-header-filter>
 
   <dxo-search-panel
@@ -21,8 +22,18 @@
   <dxo-paging [pageSize]="20"></dxo-paging>
   <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
 
-  <dxi-column dataField="Firstname" caption="First Name"></dxi-column>
-  <dxi-column dataField="Lastname" caption="Last Name"> </dxi-column>
+  <dxi-column 
+    dataField="Firstname"    
+    sortOrder="asc" 
+    [sortIndex]="0"
+    caption="First Name"
+  ></dxi-column>
+  <dxi-column 
+    dataField="Lastname" 
+    caption="Last Name"
+    sortOrder="asc" 
+    [sortIndex]="1"
+  > </dxi-column>
   <dxi-column dataField="Email"></dxi-column>
   <dxi-column dataField="MsId" caption="Azure AD Id"></dxi-column>
   <dxi-column type="buttons">

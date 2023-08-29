@@ -26,11 +26,11 @@
 }
 
 ::ng-deep .widget-container {
+  min-height: 0;
   display: flex;
 }
 
 ::ng-deep .widget-container > * {
-  height: 400px;
   width: 50%;
   padding: 10px;
 }
