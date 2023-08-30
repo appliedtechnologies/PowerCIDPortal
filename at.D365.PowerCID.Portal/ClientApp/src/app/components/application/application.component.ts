@@ -416,16 +416,23 @@ export class ApplicationComponent {
     let result = confirm("Are you sure you want to save the current sorting of the grid permanently as Ordinal Numbers?<br /> Existing Ordinal Numbers will be overwritten. Hidden rows (by filtering) are not included.", "Overwrite Ordinal Numbers");
     result.then((dialogResult) => {
       if (dialogResult) {
-        var updates = [];
-        this.dataGrid.instance.getVisibleRows().forEach((row, index) => { 
-          updates.push(this.applicationService.update(row.data.Id, {OrdinalNumber: index}));
-        });
-        Promise.all(updates).then(() => {
-          this.dataGrid.instance.refresh();
-          this.layoutService.notify({"message": "The current sorting of the grid was successfully saved as Ordinal Numbers.", "type": NotificationType.Success});
-        })
-        .catch(() => {
-          this.layoutService.notify({"message": "An error occurred while saving the current sorting of the grid as Ordinal Numbers.", "type": NotificationType.Error});
+        var loadOptions = this.dataGrid.instance.getDataSource().loadOptions();
+        var filterExpression = this.dataGrid.instance.getCombinedFilter(true);
+
+        this.dataGrid.instance.getDataSource().store().load({filter: filterExpression, sort: loadOptions?.sort}).then((rows) => {
+          var updates = [];
+
+          rows.forEach((row, index) => { 
+            updates.push(this.applicationService.update(row.Id, {OrdinalNumber: index}));
+          });
+
+          Promise.all(updates).then(() => {
+            this.dataGrid.instance.refresh();
+            this.layoutService.notify({"message": "The current sorting of the grid was successfully saved as Ordinal Numbers.", "type": NotificationType.Success});
+          })
+          .catch(() => {
+            this.layoutService.notify({"message": "An error occurred while saving the current sorting of the grid as Ordinal Numbers.", "type": NotificationType.Error});
+          });
         });
       }
     });
