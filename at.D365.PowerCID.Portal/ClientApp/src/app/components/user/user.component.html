@@ -11,6 +11,7 @@
   [width]="'100%'"
   (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
 >
+  <dxo-sorting mode="multiple"></dxo-sorting>
   <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_Users_GridState"></dxo-state-storing>
   <dxo-header-filter [visible]="true"></dxo-header-filter>
 
