@@ -52,7 +52,7 @@ namespace at.D365.PowerCID.Portal.Services
 
             foreach(var ownerMsId in ownerMsIds){
                 var user = this.dbContext.Users.FirstOrDefault(e => e.TenantNavigation.MsId == tenantMsId && e.MsId == ownerMsId);
-                if(!user.IsOwner){
+                if(user != null && !user.IsOwner){
                     if(!(await this.GetAppRoleAssignmentsOfUser(webApi, tenantMsId, ownerMsId)).Any(e => e.AppRoleId == appRoleIdAdmin))
                         await this.AssignAppRoleToUser(webApi, tenantMsId, ownerMsId, appRoleIdAdmin);
                     user.IsOwner = true;
