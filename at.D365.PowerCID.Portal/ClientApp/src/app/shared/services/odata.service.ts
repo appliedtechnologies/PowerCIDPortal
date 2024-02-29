@@ -55,6 +55,9 @@ export class ODataService {
         Users: {
           key: "Id",
           keyType: "Int32",
+          fieldTypes: {
+            MsId: "Guid"
+          }
         },
         Solutions: {
           key: "Id",
