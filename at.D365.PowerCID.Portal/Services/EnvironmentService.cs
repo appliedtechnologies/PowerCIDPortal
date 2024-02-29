@@ -27,17 +27,14 @@ namespace at.D365.PowerCID.Portal.Services
     public class EnvironmentService
     {
         private readonly ILogger logger;
-        private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
         private readonly IConfiguration configuration;
 
-        public EnvironmentService(IServiceProvider serviceProvider, ILogger<SolutionService> logger)
+        public EnvironmentService(ILogger<SolutionService> logger, atPowerCIDContext dbContext, IConfiguration configuration)
         {
-            this.serviceProvider = serviceProvider;
-            var scope = serviceProvider.CreateScope();
-            this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.logger = logger;
+            this.dbContext = dbContext;
+            this.configuration = configuration;
         }
 
         internal void PublishAllCustomizations(string basicUrl)

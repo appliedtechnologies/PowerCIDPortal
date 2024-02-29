@@ -27,23 +27,21 @@ namespace at.D365.PowerCID.Portal.Services
     public class SolutionService
     {
         private readonly ILogger logger;
-        private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
         private readonly ConnectionReferenceService connectionReferenceService;
         private readonly EnvironmentVariableService environmentVariableService;
         private readonly SolutionHistoryService solutionHistoryService;
         private readonly IConfiguration configuration;
 
-        public SolutionService(IServiceProvider serviceProvider, ILogger<SolutionService> logger)
+        public SolutionService(ILogger<SolutionService> logger, atPowerCIDContext dbContext, ConnectionReferenceService connectionReferenceService, EnvironmentVariableService environmentVariableService, SolutionHistoryService solutionHistoryService, IConfiguration configuration)
         {
-            this.serviceProvider = serviceProvider;
-            var scope = serviceProvider.CreateScope();
-            this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-            this.connectionReferenceService = scope.ServiceProvider.GetRequiredService<ConnectionReferenceService>();
-            this.environmentVariableService = scope.ServiceProvider.GetRequiredService<EnvironmentVariableService>();
-            this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
             this.logger = logger;
+
+            this.dbContext = dbContext;
+            this.configuration = configuration;
+            this.connectionReferenceService = connectionReferenceService;
+            this.environmentVariableService = environmentVariableService;
+            this.solutionHistoryService = solutionHistoryService;
         }
 
         public async Task<Data.Models.Action> AddExportAction(int key, Guid tenantMsIdCurrentUser, Guid msIdCurrentUser, bool exportOnly, int targetEnvironmentForImport = 0)

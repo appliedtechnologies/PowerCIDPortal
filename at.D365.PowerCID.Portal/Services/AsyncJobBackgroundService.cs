@@ -20,26 +20,14 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly ILogger logger;
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
-        private readonly GitHubService gitHubService;
-        private readonly SolutionService solutionService;
-        private readonly ActionService actionService;
-        private readonly EnvironmentService environmentService;
-        private readonly SolutionHistoryService solutionHistoryService;
 
         private System.Timers.Timer timer;
 
         public AsyncJobBackgroundService(IServiceProvider serviceProvider, ILogger<AsyncJobBackgroundService> logger)
         {
             this.serviceProvider = serviceProvider;
+            this.configuration = serviceProvider.GetRequiredService<IConfiguration>();
 
-            var scope = serviceProvider.CreateScope();
-
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-            this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
-            this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
-            this.actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
-            this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
-            this.environmentService = scope.ServiceProvider.GetRequiredService<EnvironmentService>();
             this.logger = logger;
         }
 
@@ -115,7 +103,14 @@ namespace at.D365.PowerCID.Portal.Services
         private async Task DoBackgroundWork(CancellationToken cancellationToken)
         {
             logger.LogDebug("Begin: AsyncJobBackgroundService DoBackgroundWork()");
-            using(var dbContext = this.serviceProvider.CreateScope().ServiceProvider.GetRequiredService<atPowerCIDContext>()){
+            using(var scope = this.serviceProvider.CreateScope()){
+                var dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
+                var gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
+                var solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
+                var actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
+                var solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
+                var environmentService = scope.ServiceProvider.GetRequiredService<EnvironmentService>();
+
                 var asyncJobsByEnvironment = dbContext.AsyncJobs.ToList().GroupBy(e => e.ActionNavigation.TargetEnvironment);
 
                 if (asyncJobsByEnvironment.Count() > 0)
@@ -141,18 +136,18 @@ namespace at.D365.PowerCID.Portal.Services
 
                                                 if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30)
                                                 { // Completed Success
-                                                    string exportSolutionFile = await this.solutionService.DownloadSolutionFileFromDataverse(asyncJob);
-                                                    await this.gitHubService.SaveSolutionFile(asyncJob, exportSolutionFile, environment.TenantNavigation);
+                                                    string exportSolutionFile = await solutionService.DownloadSolutionFileFromDataverse(asyncJob);
+                                                    await gitHubService.SaveSolutionFile(asyncJob, exportSolutionFile, environment.TenantNavigation);
 
                                                     if(!dbContext.AsyncJobs.Any(e => e.Action == asyncJob.Action && e.Id != asyncJob.Id)){
-                                                        this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
+                                                        actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
 
                                                         // Export with Import --> Start Import
                                                         if (asyncJob.ActionNavigation.ExportOnly == false)
                                                         {
                                                             try
                                                             {
-                                                                await this.solutionService.AddImportAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.ImportTargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
+                                                                await solutionService.AddImportAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.ImportTargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
                                                             }
                                                             catch (Exception e)
                                                             {
@@ -174,7 +169,7 @@ namespace at.D365.PowerCID.Portal.Services
                                                 }
                                                 else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
                                                 {
-                                                    await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
+                                                    await actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
                                                     dbContext.AsyncJobs.Remove(asyncJob);
                                                 }
                                                 logger.LogInformation("Export completed: AsyncJobBackgroundService DoBackgroundWork() ");
@@ -188,19 +183,19 @@ namespace at.D365.PowerCID.Portal.Services
 
                                                 if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30)
                                                 { // Completed Success
-                                                    this.actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
+                                                    actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
 
                                                     // Upgrade Solution without manuelly upgrade apply --> Start Apply Upgrade
                                                     bool isPatch = asyncJob.ActionNavigation.SolutionNavigation.GetType().Name.Contains("Patch");
                                                     if (!isPatch)
                                                     {
                                                         Upgrade upgrade = (Upgrade)asyncJob.ActionNavigation.SolutionNavigation;
-                                                        bool existsSolutionInTargetEnvironment = await this.solutionService.ExistsSolutionInTargetEnvironment(upgrade.UniqueName, asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl, upgrade.Version);
+                                                        bool existsSolutionInTargetEnvironment = await solutionService.ExistsSolutionInTargetEnvironment(upgrade.UniqueName, asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl, upgrade.Version);
                                                         if (existsSolutionInTargetEnvironment == true && upgrade.ApplyManually == false)
                                                         {
                                                             try
                                                             {
-                                                                await this.solutionService.AddApplyUpgradeAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.TargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
+                                                                await solutionService.AddApplyUpgradeAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.TargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
                                                             }
                                                             catch (Exception e)
                                                             {
@@ -218,14 +213,14 @@ namespace at.D365.PowerCID.Portal.Services
                                                             }
                                                         }
                                                         else{ //Publish all Customizations
-                                                            this.environmentService.PublishAllCustomizations(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl);
+                                                            environmentService.PublishAllCustomizations(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl);
                                                         }
                                                     }
                                                     dbContext.AsyncJobs.Remove(asyncJob);
                                                 }
                                                 else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
                                                 {
-                                                    await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
+                                                    await actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
                                                     dbContext.AsyncJobs.Remove(asyncJob);
                                                 }
                                                 logger.LogInformation("Import completed: AsyncJobBackgroundService DoBackgroundWork() ");
@@ -235,14 +230,14 @@ namespace at.D365.PowerCID.Portal.Services
                                             {
                                                 logger.LogInformation("Appling upgrade started: AsyncJobBackgroundService DoBackgroundWork() ");
 
-                                                Entity solutionHistoryEntry = await this.solutionHistoryService.GetEntryById((Guid)asyncJob.JobId, environment.BasicUrl);
+                                                Entity solutionHistoryEntry = await solutionHistoryService.GetEntryById((Guid)asyncJob.JobId, environment.BasicUrl);
 
                                                 if (solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
                                                 {
                                                     if ((bool)solutionHistoryEntry["msdyn_result"] == false)
-                                                        await this.actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
+                                                        await actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
                                                     else
-                                                        await this.actionService.FinishSuccessfulApplyUpgradeAction(asyncJob.ActionNavigation);
+                                                        await actionService.FinishSuccessfulApplyUpgradeAction(asyncJob.ActionNavigation);
                                                     
                                                     dbContext.Remove(asyncJob);
                                                 }

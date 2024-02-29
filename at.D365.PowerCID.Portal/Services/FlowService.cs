@@ -14,21 +14,17 @@ namespace at.D365.PowerCID.Portal.Services
     public class FlowService
     {
         private readonly ILogger logger;
-        private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
         private readonly SolutionService solutionService;
         private readonly UserService userService;
 
-        public FlowService(IServiceProvider serviceProvider, ILogger<FlowService> logger)
+        public FlowService(ILogger<FlowService> logger, IConfiguration configuration, SolutionService solutionService, UserService userService)
         {
-            this.serviceProvider = serviceProvider;
 
-            var scope = serviceProvider.CreateScope();
-
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-            this.userService = scope.ServiceProvider.GetRequiredService<UserService>();
-            this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
             this.logger = logger;
+            this.configuration = configuration;
+            this.solutionService = solutionService;
+            this.userService = userService;
         }
 
         public async Task<string> EnableAllCloudFlows(string solutionUniqueName, string connectionsOwnerDomainName, string basicUrlTargetSystem, string basicUrlDevelopmentSystem){

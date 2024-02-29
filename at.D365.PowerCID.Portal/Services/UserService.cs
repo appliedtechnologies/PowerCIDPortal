@@ -14,17 +14,12 @@ namespace at.D365.PowerCID.Portal.Services
     public class UserService
     {
         private readonly ILogger logger;
-        private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
 
-        public UserService(IServiceProvider serviceProvider, ILogger<UserService> logger)
+        public UserService(ILogger<UserService> logger, IConfiguration configuration)
         {
-            this.serviceProvider = serviceProvider;
-
-            var scope = serviceProvider.CreateScope();
-
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.logger = logger;
+            this.configuration = configuration;
         }
 
         public async Task<Guid> GetSystemUserId(string domainName, string basicUrl){

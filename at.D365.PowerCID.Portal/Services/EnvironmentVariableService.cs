@@ -17,19 +17,15 @@ namespace at.D365.PowerCID.Portal.Services
 {
     public class EnvironmentVariableService
     {
-        private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
-        private readonly IDownstreamWebApi downstreamWebApi;
         private readonly IConfiguration configuration;
         private readonly ILogger logger;
 
-        public EnvironmentVariableService(IServiceProvider serviceProvider, ILogger<EnvironmentVariableService> logger){
-            this.serviceProvider = serviceProvider;
-            var scope = serviceProvider.CreateScope();
-            this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
-            this.downstreamWebApi = scope.ServiceProvider.GetRequiredService<IDownstreamWebApi>();
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        public EnvironmentVariableService(ILogger<EnvironmentVariableService> logger, atPowerCIDContext dbContext, IConfiguration configuration){
+
             this.logger = logger;
+            this.dbContext = dbContext;
+            this.configuration = configuration;
         }
 
         public async Task CleanEnvironmentVariables(int applicationId){
