@@ -21,12 +21,11 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly IConfiguration configuration;
         private readonly atPowerCIDContext dbContext;
 
-        public AzureService(IServiceProvider serviceProvider, atPowerCIDContext dbContext, ILogger<AzureService> logger)
+        public AzureService(atPowerCIDContext dbContext, ILogger<AzureService> logger, IConfiguration configuration)
         {
-            var scope = serviceProvider.CreateScope();
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.dbContext  = dbContext;
             this.logger = logger;
+            this.configuration = configuration;
         }
 
         public async Task AdminRoleSync(IDownstreamWebApi webApi, Guid tenantMsId){

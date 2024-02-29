@@ -13,17 +13,12 @@ namespace at.D365.PowerCID.Portal.Services
 {
     public class SolutionHistoryService
     {
-        private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
         private readonly ILogger logger;
 
-        public SolutionHistoryService(IServiceProvider serviceProvider, ILogger<SolutionHistoryService> logger)
+        public SolutionHistoryService(ILogger<SolutionHistoryService> logger, IConfiguration configuration)
         {
-            this.serviceProvider = serviceProvider;
-
-            var scope = serviceProvider.CreateScope();
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-
+            this.configuration = configuration;
             this.logger = logger;
         }
 
