@@ -18,21 +18,16 @@ namespace at.D365.PowerCID.Portal.Services
 {
     public class ConnectionReferenceService
     {
-        private readonly IServiceProvider serviceProvider;
         private readonly atPowerCIDContext dbContext;
-        private readonly IDownstreamWebApi downstreamWebApi;
         private readonly IConfiguration configuration;
         private readonly ILogger logger;
-        public ConnectionReferenceService(IServiceProvider serviceProvider, ILogger<ConnectionReferenceService> logger)
+        public ConnectionReferenceService(ILogger<ConnectionReferenceService> logger, atPowerCIDContext dbContext, IConfiguration configuration)
         {
-            this.serviceProvider = serviceProvider;
-            var scope = serviceProvider.CreateScope();
-            this.dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
-            this.downstreamWebApi = scope.ServiceProvider.GetRequiredService<IDownstreamWebApi>();
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+            this.dbContext = dbContext;
+            this.configuration = configuration;
             this.logger = logger;
         }
-
+        
         public async Task<IEnumerable<ConnectionReference>> GetExistsingConnectionReferencesFromDataverse(int applicationId)
         {
 
