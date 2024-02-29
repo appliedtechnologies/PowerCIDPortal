@@ -39,6 +39,9 @@ export class ODataService {
         Environments: {
           key: "Id",
           keyType: "Int32",
+          fieldTypes: {
+            MsId: "Guid"
+          }
         },
         Patches: {
           key: "Id",
