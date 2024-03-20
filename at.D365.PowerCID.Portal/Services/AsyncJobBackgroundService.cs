@@ -232,10 +232,13 @@ namespace at.D365.PowerCID.Portal.Services
 
                                                 Entity solutionHistoryEntry = await solutionHistoryService.GetEntryById((Guid)asyncJob.JobId, environment.BasicUrl);
 
-                                                if (solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
+                                                if (solutionHistoryEntry.Contains("msdyn_endtime") &&  solutionHistoryEntry["msdyn_endtime"] != null && ((OptionSetValue)solutionHistoryEntry["msdyn_status"]).Value == 1)
                                                 {
-                                                    if ((bool)solutionHistoryEntry["msdyn_result"] == false)
+                                                    if ((bool)solutionHistoryEntry["msdyn_result"] == false){
+                                                        if((string)solutionHistoryEntry["msdyn_errorcode"] == "80072031")
+                                                            continue;
                                                         await actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
+                                                    }
                                                     else
                                                         await actionService.FinishSuccessfulApplyUpgradeAction(asyncJob.ActionNavigation);
                                                     
