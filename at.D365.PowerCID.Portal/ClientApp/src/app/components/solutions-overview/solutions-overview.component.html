@@ -226,6 +226,7 @@
         </div>
         <div
           *ngIf="(lastAction.Result != 1 && lastAction.Status == 3)"
+          [class.card-error-applying-upgrade] = "lastAction.Type === 3"
           class="card dx-card dx-theme-text-color card-error"
         >
           <i
