@@ -48,7 +48,6 @@ import {
   MSALInstanceFactory,
   MSALInterceptorConfigFactory,
 } from "./shared/config/auth-config";
-import { AppRoutingModule } from "./app-routing.module";
 import { UserService } from "./shared/services/user.service";
 import { LogService } from "./shared/services/log.service";
 import { ActionService } from "./shared/services/action.service";
@@ -79,7 +78,7 @@ import { HistoryComponent } from "./components/history/history.component";
 import { UserComponent } from "./components/user/user.component";
 import { ApplicationdeploymentpathService } from "./shared/services/applicationdeploymentpath.service";
 import { RoleGuard } from "./shared/guards/role.guard";
-import { Router } from "@angular/router";
+import { Router, provideRouter } from "@angular/router";
 import { LogPipe } from "./shared/pipes/log.pipe";
 import { ConfigureDeploymentComponent } from "./components/configure-deployment/configure-deployment.component";
 import { ConnectionReferenceEnvironmentService } from "./shared/services/connectionreferenceenvironment.service";
@@ -90,6 +89,7 @@ import { FullNamePipe } from "./shared/pipes/full-name.pipe";
 import { IsPatchPipe } from "./shared/pipes/is-patch.pipe";
 import { IsPatchDeletablePipe } from "./shared/pipes/is-patch-deletable.pipe";
 import { HasUserRole as HasUserRolePipe } from "./shared/pipes/has-user-role.pipe";
+import { routes } from "./app-routing.module";
 
 export function initializeAppConfig(appConfig: AppConfig, router: Router) {
   return () => appConfig.load();
@@ -121,7 +121,6 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     BrowserModule.withServerTransition({ appId: "ng-cli-universal" }),
     HttpClientModule,
     FormsModule,
-    AppRoutingModule,
     MsalModule,
     DxDataGridModule,
     DxDrawerModule,
@@ -149,6 +148,7 @@ export function initializeAppConfig(appConfig: AppConfig, router: Router) {
     DxSwitchModule 
   ],
   providers: [
+    provideRouter(routes),
     AppConfig,
     LogService,
     {
