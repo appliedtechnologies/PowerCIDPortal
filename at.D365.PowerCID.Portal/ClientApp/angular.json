@@ -70,18 +70,18 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "browserTarget": "at.D365.PowerCID.Portal:build"
+            "buildTarget": "at.D365.PowerCID.Portal:build"
           },
           "configurations": {
             "production": {
-              "browserTarget": "at.D365.PowerCID.Portal:build:production"
+              "buildTarget": "at.D365.PowerCID.Portal:build:production"
             }
           }
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "at.D365.PowerCID.Portal:build"
+            "buildTarget": "at.D365.PowerCID.Portal:build"
           }
         },
         "test": {
