@@ -23,7 +23,7 @@
               "src/assets"
             ],
             "styles": [
-              "src/assets/theme/dx.generic.at-powercid.css",
+              "src/assets/theme/dx.generic.at-general.css",
               "src/assets/fonts/powercid-icons/css/styles.min.css",
               "src/styles.css"
             ],
@@ -33,7 +33,13 @@
             "buildOptimizer": false,
             "sourceMap": true,
             "optimization": false,
-            "namedChunks": true
+            "namedChunks": true,
+            "allowedCommonJsDependencies": [
+              "devexpress-diagram",
+              "devexpress-gantt",
+              "devextreme-quill",
+              "jszip"
+            ]
           },
           "configurations": {
             "production": {
