@@ -8,7 +8,8 @@
     "build:ssr": "ng run at.D365.PowerCID.Portal:server:dev",
     "test": "ng test",
     "lint": "ng lint",
-    "e2e": "ng e2e"
+    "e2e": "ng e2e",
+    "postinstall": "node add-devextreme-license"
   },
   "private": true,
   "dependencies": {

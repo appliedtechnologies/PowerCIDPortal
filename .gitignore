@@ -232,3 +232,4 @@ _Pvt_Extensions
 .fake/
 at.D365.PowerCID.Portal/Properties/ServiceDependencies/
 at.D365.PowerCID.Portal/appsettings.Development.json
+at.D365.PowerCID.Portal/ClientApp/src/devextreme-license.ts

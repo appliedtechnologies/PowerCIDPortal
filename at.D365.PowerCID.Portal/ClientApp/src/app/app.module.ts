@@ -90,10 +90,14 @@ import { IsPatchPipe } from "./shared/pipes/is-patch.pipe";
 import { IsPatchDeletablePipe } from "./shared/pipes/is-patch-deletable.pipe";
 import { HasUserRole as HasUserRolePipe } from "./shared/pipes/has-user-role.pipe";
 import { routes } from "./app-routing.module";
+import config from "devextreme/core/config";
+import { licenseKey } from "src/devextreme-license";
 
 export function initializeAppConfig(appConfig: AppConfig, router: Router) {
   return () => appConfig.load();
 }
+
+config({ licenseKey });  
 
 @NgModule({
   declarations: [
