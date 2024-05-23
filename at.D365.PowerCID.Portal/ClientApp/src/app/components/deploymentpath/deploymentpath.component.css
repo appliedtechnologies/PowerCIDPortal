@@ -19,8 +19,8 @@
   padding: 4px !important;
 }
 
-:host ::ng-deep .form .dx-treeview-toggle-item-visibility {
-  height: 38px;
+:host ::ng-deep .drive-panel dx-button{
+  min-height: unset !important;
 }
 
 .form {
