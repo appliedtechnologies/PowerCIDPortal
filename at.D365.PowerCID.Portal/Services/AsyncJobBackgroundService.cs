@@ -191,7 +191,7 @@ namespace at.D365.PowerCID.Portal.Services
                                                     {
                                                         Upgrade upgrade = (Upgrade)asyncJob.ActionNavigation.SolutionNavigation;
                                                         bool existsSolutionInTargetEnvironment = await solutionService.ExistsSolutionInTargetEnvironment(upgrade.UniqueName, asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl, upgrade.Version);
-                                                        if (existsSolutionInTargetEnvironment == true && upgrade.ApplyManually == false)
+                                                        if (asyncJob.ActionNavigation.TargetEnvironmentNavigation.DeployUnmanaged == false && existsSolutionInTargetEnvironment == true && upgrade.ApplyManually == false)
                                                         {
                                                             try
                                                             {
