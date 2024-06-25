@@ -184,38 +184,6 @@ namespace at.D365.PowerCID.Portal.Services
                                                 if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 30)
                                                 { // Completed Success
                                                     actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
-
-                                                    // Upgrade Solution without manuelly upgrade apply --> Start Apply Upgrade
-                                                    bool isPatch = asyncJob.ActionNavigation.SolutionNavigation.GetType().Name.Contains("Patch");
-                                                    if (!isPatch)
-                                                    {
-                                                        Upgrade upgrade = (Upgrade)asyncJob.ActionNavigation.SolutionNavigation;
-                                                        bool existsSolutionInTargetEnvironment = await solutionService.ExistsSolutionInTargetEnvironment(upgrade.UniqueName, asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl, upgrade.Version);
-                                                        if (asyncJob.ActionNavigation.TargetEnvironmentNavigation.DeployUnmanaged == false && existsSolutionInTargetEnvironment == true && upgrade.ApplyManually == false)
-                                                        {
-                                                            try
-                                                            {
-                                                                await solutionService.AddApplyUpgradeAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.TargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
-                                                            }
-                                                            catch (Exception e)
-                                                            {
-                                                                dbContext.Actions.Add(new Data.Models.Action
-                                                                {
-                                                                    Name = $"{asyncJob.ActionNavigation.SolutionNavigation.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
-                                                                    TargetEnvironment = (int)asyncJob.ActionNavigation.ImportTargetEnvironment,
-                                                                    Type = 3,
-                                                                    Status = 3,
-                                                                    Result = 2,
-                                                                    ErrorMessage = e.Message,
-                                                                    StartTime = DateTime.Now,
-                                                                    Solution = asyncJob.ActionNavigation.Solution,
-                                                                });
-                                                            }
-                                                        }
-                                                        else{ //Publish all Customizations
-                                                            environmentService.PublishAllCustomizations(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl);
-                                                        }
-                                                    }
                                                     dbContext.AsyncJobs.Remove(asyncJob);
                                                 }
                                                 else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
