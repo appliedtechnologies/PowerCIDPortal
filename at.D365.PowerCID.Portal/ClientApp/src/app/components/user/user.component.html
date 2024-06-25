@@ -11,6 +11,7 @@
   [width]="'100%'"
   (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
 >
+  <dxo-sorting mode="multiple"></dxo-sorting>
   <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_Users_GridState"></dxo-state-storing>
   <dxo-header-filter [visible]="true"></dxo-header-filter>
 
@@ -35,7 +36,10 @@
     [sortIndex]="1"
   > </dxi-column>
   <dxi-column dataField="Email"></dxi-column>
-  <dxi-column dataField="MsId" caption="Azure AD Id"></dxi-column>
+  <dxi-column 
+    dataField="MsId" 
+    caption="Azure AD Id"
+  ></dxi-column>
   <dxi-column type="buttons">
     <dxi-button
       hint="Manage roles"

@@ -21,12 +21,11 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly IConfiguration configuration;
         private readonly atPowerCIDContext dbContext;
 
-        public AzureService(IServiceProvider serviceProvider, atPowerCIDContext dbContext, ILogger<AzureService> logger)
+        public AzureService(atPowerCIDContext dbContext, ILogger<AzureService> logger, IConfiguration configuration)
         {
-            var scope = serviceProvider.CreateScope();
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
             this.dbContext  = dbContext;
             this.logger = logger;
+            this.configuration = configuration;
         }
 
         public async Task AdminRoleSync(IDownstreamWebApi webApi, Guid tenantMsId){
@@ -52,7 +51,7 @@ namespace at.D365.PowerCID.Portal.Services
 
             foreach(var ownerMsId in ownerMsIds){
                 var user = this.dbContext.Users.FirstOrDefault(e => e.TenantNavigation.MsId == tenantMsId && e.MsId == ownerMsId);
-                if(!user.IsOwner){
+                if(user != null && !user.IsOwner){
                     if(!(await this.GetAppRoleAssignmentsOfUser(webApi, tenantMsId, ownerMsId)).Any(e => e.AppRoleId == appRoleIdAdmin))
                         await this.AssignAppRoleToUser(webApi, tenantMsId, ownerMsId, appRoleIdAdmin);
                     user.IsOwner = true;

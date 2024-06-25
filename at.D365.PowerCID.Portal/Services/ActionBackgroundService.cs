@@ -17,24 +17,12 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly ILogger logger;
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
-        private readonly SolutionService solutionService;
-        private readonly GitHubService gitHubService;
-        private readonly SolutionHistoryService solutionHistoryService;
-        private readonly ActionService actionService;
-        private readonly FlowService flowService;
         private System.Timers.Timer timer;
 
         public ActionBackgroundService(IServiceProvider serviceProvider, ILogger<ActionBackgroundService> logger)
         {
             this.serviceProvider = serviceProvider;
-            var scope = this.serviceProvider.CreateScope();
-
-            this.configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-            this.solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
-            this.gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
-            this.solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
-            this.actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
-            this.flowService = scope.ServiceProvider.GetRequiredService<FlowService>();
+            this.configuration = serviceProvider.GetRequiredService<IConfiguration>();
             this.logger = logger;
         }
 
@@ -110,7 +98,14 @@ namespace at.D365.PowerCID.Portal.Services
         {
             logger.LogDebug("Begin: ActionBackgroundService DoBackgroundWork()");
 
-            using(var dbContext = this.serviceProvider.CreateScope().ServiceProvider.GetRequiredService<atPowerCIDContext>()){
+            using(var scope = this.serviceProvider.CreateScope()){
+                var dbContext = scope.ServiceProvider.GetRequiredService<atPowerCIDContext>();
+                var solutionService = scope.ServiceProvider.GetRequiredService<SolutionService>();
+                var gitHubService = scope.ServiceProvider.GetRequiredService<GitHubService>();
+                var solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
+                var actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
+                var flowService = scope.ServiceProvider.GetRequiredService<FlowService>();
+
                 foreach (Action queuedAction in dbContext.Actions.Where(e => e.Status == 1).ToList())
                 {
                     logger.LogDebug($"queuedAction Id: {queuedAction.Id}");
@@ -120,8 +115,8 @@ namespace at.D365.PowerCID.Portal.Services
                         {
                             case 1: //export
                             {
-                                var asyncJobManaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
-                                var asyncJobUnmanaged = await this.solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
+                                var asyncJobManaged = await solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, true, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
+                                var asyncJobUnmanaged = await solutionService.StartExportInDataverse(queuedAction.SolutionNavigation.UniqueName, false, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl, queuedAction, queuedAction.CreatedByNavigation.TenantNavigation.MsId, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironment, queuedAction.ImportTargetEnvironment ?? 0);
 
                                 dbContext.Add(asyncJobManaged);
                                 dbContext.Add(asyncJobUnmanaged);
@@ -132,8 +127,18 @@ namespace at.D365.PowerCID.Portal.Services
                             break;
                             case 2: //import 
                             {                          
-                                byte[] exportSolutionFile = await this.gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation, queuedAction.TargetEnvironmentNavigation.DeployUnmanaged);
-                                AsyncJob asyncJob = await this.solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
+                                byte[] exportSolutionFile = await gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation, queuedAction.TargetEnvironmentNavigation.DeployUnmanaged);
+                                AsyncJob asyncJob;
+
+                                Solution solution = dbContext.Solutions.FirstOrDefault(s => s.Id == queuedAction.Solution);
+                                bool isPatch = solution.GetType().Name.Contains("Patch");
+                                bool existsSolutionInTargetEnvironment = await solutionService.ExistsSolutionInTargetEnvironment(queuedAction.SolutionNavigation.UniqueName, queuedAction.TargetEnvironmentNavigation.BasicUrl);
+                                var holdingSolution = !queuedAction.TargetEnvironmentNavigation.DeployUnmanaged && !isPatch && existsSolutionInTargetEnvironment && ((Upgrade)solution).ApplyManually;
+
+                                if (isPatch || holdingSolution) //as patch/holding upgrade
+                                    asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, isPatch);
+                                else //as direct upgrade
+                                    asyncJob = await solutionService.StartImportAndUpgradeInDataverse(exportSolutionFile, queuedAction);                                
 
                                 dbContext.Add(asyncJob);
 
@@ -146,10 +151,10 @@ namespace at.D365.PowerCID.Portal.Services
                                 queuedAction.Status = 2;
                                 await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                                AsyncJob asyncJob = await this.solutionService.DeleteAndPromoteInDataverse(queuedAction);
+                                AsyncJob asyncJob = await solutionService.DeleteAndPromoteInDataverse(queuedAction);
 
                                 if(asyncJob == null)
-                                    await this.actionService.FinishSuccessfulApplyUpgradeAction(queuedAction);
+                                    await actionService.FinishSuccessfulApplyUpgradeAction(queuedAction);
                                 else
                                     dbContext.Add(asyncJob);
                                     
@@ -161,12 +166,12 @@ namespace at.D365.PowerCID.Portal.Services
                                 queuedAction.Status = 2;
                                 await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
-                                string errorLog = await this.flowService.EnableAllCloudFlows(queuedAction.SolutionNavigation.UniqueName, queuedAction.TargetEnvironmentNavigation.ConnectionsOwner, queuedAction.TargetEnvironmentNavigation.BasicUrl, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl);
+                                string errorLog = await flowService.EnableAllCloudFlows(queuedAction.SolutionNavigation.UniqueName, queuedAction.TargetEnvironmentNavigation.ConnectionsOwner, queuedAction.TargetEnvironmentNavigation.BasicUrl, queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.BasicUrl);
 
                                 if(String.IsNullOrEmpty(errorLog))
-                                    this.actionService.UpdateSuccessfulAction(queuedAction);
+                                    actionService.UpdateSuccessfulAction(queuedAction);
                                 else
-                                    await this.actionService.UpdateFailedAction(queuedAction, errorLog);
+                                    await actionService.UpdateFailedAction(queuedAction, errorLog);
                                     
                                 await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
                             }  
@@ -177,7 +182,7 @@ namespace at.D365.PowerCID.Portal.Services
                     }
                     catch (Exception e)
                     {
-                        await this.actionService.UpdateFailedAction(queuedAction, e.Message, queuedAction.AsyncJobs.FirstOrDefault());
+                        await actionService.UpdateFailedAction(queuedAction, e.Message, queuedAction.AsyncJobs.FirstOrDefault());
                         await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 
                         logger.LogError(e, $"Error: ActionBackgroundService DoBackgroundWork() Exception: {e}");

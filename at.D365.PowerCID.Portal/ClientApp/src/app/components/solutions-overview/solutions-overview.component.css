@@ -47,6 +47,10 @@
   background-color: #ef7d59;
 }
 
+.card-error-applying-upgrade {
+  background-color: #b4699e;
+}
+
 .card-in-progress {
   background-color: #edc578;
 }

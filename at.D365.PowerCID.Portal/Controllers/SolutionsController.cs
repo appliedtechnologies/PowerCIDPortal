@@ -197,11 +197,8 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest("Can't enable flows for patch solution");
 
             int targetEnvironmentId = (int)parameters["targetEnvironmentId"];
-            if (ApplyUpgradeExistsOnEnvironment(key, targetEnvironmentId) == false)
-                return BadRequest("Can't skip apply upgrade before enabling flows");
 
             Data.Models.Action createdAction;
-
             try
             {
                 createdAction = await solutionService.AddEnableFlowsAction(key, targetEnvironmentId, this.msIdCurrentUser);
