@@ -187,7 +187,7 @@
             *ngIf="!lastAction.TargetEnvironmentNavigation.DeployUnmanaged && lastAction.Type == 2 && (lastAction.SolutionNavigation | isPatch) == false && $any(lastAction.SolutionNavigation).ApplyManually == true"
             class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, false, true)"
-            title="appl upgrade"
+            title="apply upgrade"
           ></i>
           <i
             *ngIf="lastAction.TargetEnvironmentNavigation.ConnectionsOwner && (lastAction.Type == 3 || (lastAction.Type == 2 && (lastAction.SolutionNavigation | isPatch) == false && $any(lastAction.SolutionNavigation).ApplyManually == false))"
