@@ -547,101 +547,96 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   private generateDataGridColumns(): void {
-    this.environmentService
-      .getStore()
-      .load()
-      .then((environments: Environment[]) => {
-        if (this.selectedApplication == null) {
-          this.setSelectedApplicationId(null);
-          return;
-        }
-        let developmentEnvironment: Environment =
-          this.selectedApplication.DevelopmentEnvironmentNavigation;
+    if (this.selectedApplication == null) {
+      this.setSelectedApplicationId(null);
+      return;
+    }
+    let developmentEnvironment: Environment =
+      this.selectedApplication.DevelopmentEnvironmentNavigation;
 
-        let sortedDeploymentPaths: DeploymentPath[] =
-          this.applicationService.sortAfterHierarchieAndStepNumber(
-            this.selectedApplication,
-            true
-          );
+    let sortedDeploymentPaths: DeploymentPath[] =
+      this.applicationService.sortAfterHierarchieAndStepNumber(
+        this.selectedApplication,
+        true
+      );
 
-        this.dataGridColumns = [
+    this.dataGridColumns = [
+      {
+        caption: "Type",
+        name: "Type",
+        width: 90,
+        allowSorting: true,
+        allowReordering: false,
+        cellTemplate: "typeCellTemplate",
+        calculateCellValue: (rowData: any) => {
+          if (rowData["ApplyManually"] === undefined) return "Patch";
+          else return "Upgrade";
+        },
+        visibleIndex: 0,
+      },
+      {
+        caption: "Version",
+        name: "Version",
+        dataField: "Version",
+        allowSorting: true,
+        allowReordering: false,
+        sortOrder: "desc",
+        sortingMethod: (a, b) =>
+          a
+            .replace(/\d+/g, (n: any) => +n + 100000)
+            .localeCompare(b.replace(/\d+/g, (n: any) => +n + 100000)),
+        cellTemplate: "versionCellTemplate",
+        visibleIndex: 1,
+      },
+      {
+        caption: "Name",
+        name: "Name",
+        dataField: "Name",
+        allowSorting: true,
+        allowReordering: false,
+        cellTemplate: "nameCellTemplate",
+        allowFiltering: true,
+        visibleIndex: 2,
+      },
+      {
+        caption: "Development Environment",
+        name: "devEnvironment",
+        allowReordering: false,
+        columns: [
+          //dev environment
           {
-            caption: "Type",
-            name: "Type",
-            width: 90,
-            allowSorting: true,
+            cellTemplate: "devEnvironmentCellTemplate",
+            caption: developmentEnvironment.Name,
+            name: developmentEnvironment.Id.toString(),
+            allowSorting: false,
             allowReordering: false,
-            cellTemplate: "typeCellTemplate",
-            calculateCellValue: (rowData: any) => {
-              if (rowData["ApplyManually"] === undefined) return "Patch";
-              else return "Upgrade";
-            },
-            visibleIndex: 0,
+            allowFiltering: false,
           },
-          {
-            caption: "Version",
-            name: "Version",
-            dataField: "Version",
-            allowSorting: true,
-            allowReordering: false,
-            sortOrder: "desc",
-            sortingMethod: (a, b) =>
-              a
-                .replace(/\d+/g, (n: any) => +n + 100000)
-                .localeCompare(b.replace(/\d+/g, (n: any) => +n + 100000)),
-            cellTemplate: "versionCellTemplate",
-            visibleIndex: 1,
-          },
-          {
-            caption: "Name",
-            name: "Name",
-            dataField: "Name",
-            allowSorting: true,
-            allowReordering: false,
-            cellTemplate: "nameCellTemplate",
-            allowFiltering: true,
-            visibleIndex: 2,
-          },
-          {
-            caption: "Development Environment",
-            name: "devEnvironment",
-            allowReordering: false,
-            columns: [
-              //dev environment
-              {
-                cellTemplate: "devEnvironmentCellTemplate",
-                caption: developmentEnvironment.Name,
-                name: developmentEnvironment.Id.toString(),
+        ],
+      },
+      //other environments
+      ...sortedDeploymentPaths.map((d) => {
+        return {
+          caption: d.Name,
+          allowReordering: false,
+          name: d.Id.toString() + d.Name,
+
+          columns: [
+            ...d.Environments.map((e) => {
+              return {
+                headerCellTemplate: "environmentHeaderCellTemplate",
+                cellTemplate: "environmentCellTemplate",
+                caption: e.Name,
+                name: d.Id.toString() + "," + e.Id.toString(),
+                environmentData: e,
                 allowSorting: false,
-                allowReordering: false,
                 allowFiltering: false,
-              },
-            ],
-          },
-          //other environments
-          ...sortedDeploymentPaths.map((d) => {
-            return {
-              caption: d.Name,
-              allowReordering: false,
-              name: d.Id.toString() + d.Name,
-
-              columns: [
-                ...d.Environments.map((e) => {
-                  return {
-                    headerCellTemplate: "environmentHeaderCellTemplate",
-                    cellTemplate: "environmentCellTemplate",
-                    caption: e.Name,
-                    name: d.Id.toString() + "," + e.Id.toString(),
-                    environmentData: e,
-                    allowSorting: false,
-                    allowFiltering: false,
-                  };
-                }),
-              ],
-            };
-          }),
-        ];
-      });
+              };
+            }),
+          ],
+        };
+      }),
+    ];
   }
 
   private onClickRefreshSolutionsGrid(): void {
@@ -649,7 +644,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   private setSelectedApplicationId(id: number) {
-    if (id != null) {
+    if (id != null && this.selectedApplication?.Id != id) {
       localStorage.setItem(
         "atPowerCIDPortal_SolutionOverview_SelectedId",
         id.toString()
@@ -680,7 +675,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           ]
         });
       });
-    } else {
+    } else if (id == null){
       localStorage.removeItem("atPowerCIDPortal_SolutionOverview_SelectedId");
       this.addPatchButtonInstance?.option("disabled", true);
       this.addUpgradeButtonInstance?.option("disabled", true);
