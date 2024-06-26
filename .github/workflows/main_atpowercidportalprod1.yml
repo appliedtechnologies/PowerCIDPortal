@@ -12,6 +12,9 @@ jobs:
   build:
     runs-on: windows-latest
 
+    env: 
+        DEVEXTREME_KEY: ${{ secrets.DevExtremeKey }} 
+        
     steps:
       - uses: actions/checkout@v2
 
