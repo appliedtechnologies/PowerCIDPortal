@@ -227,9 +227,6 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public onClickDownloadSolution(cellInfo, lastAction: Action) {
-    var applicationUniqueName =
-      cellInfo.data.ApplicationNavigation.SolutionUniqueName;
-
     var solutionType =
       lastAction.SolutionNavigation["ApplyManually"] === undefined
         ? "Patch"
@@ -237,7 +234,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
 
     var solutionVersion = lastAction.SolutionNavigation.Version;
 
-    let fileName = `${applicationUniqueName}_${solutionType}_${solutionVersion
+    let fileName = `${this.selectedApplication.SolutionUniqueName}_${solutionType}_${solutionVersion
       .split(".")
       .join("-")}.zip`;
 
@@ -673,20 +670,14 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           store: this.solutionService.getStore(),
           filter: [["Application", "=", this.selectedApplication.Id]],
           expand: [
-            "Actions.CreatedByNavigation",
-            "Actions.TargetEnvironmentNavigation",
+            "Actions.TargetEnvironmentNavigation($select=DeployUnmanaged, ConnectionsOwner)",
             "Actions.TypeNavigation",
             "Actions.StatusNavigation",
             "Actions.ResultNavigation",
-            "Actions.SolutionNavigation",
-            "Actions($orderby=StartTime desc)",
-            "ApplicationNavigation",
-            "ApplicationNavigation.DeploymentPaths",
-            "ApplicationNavigation.ApplicationDeploymentPaths",
-            "ApplicationNavigation.Solutions",
-            "CreatedByNavigation",
-            "ModifiedByNavigation",
-          ],
+            "Actions($orderby=StartTime desc;$select=Type, Status, Result, TargetEnvironment)",
+            "CreatedByNavigation($select=Firstname, Lastname)",
+            "ModifiedByNavigation($select=Firstname, Lastname)",
+          ]
         });
       });
     } else {
