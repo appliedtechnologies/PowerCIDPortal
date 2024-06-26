@@ -227,17 +227,13 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public onClickDownloadSolution(cellInfo, lastAction: Action) {
-    var applicationUniqueName =
-      cellInfo.data.ApplicationNavigation.SolutionUniqueName;
-
-    var solutionType =
-      lastAction.SolutionNavigation["ApplyManually"] === undefined
+    var solutionType = cellInfo.data["ApplyManually"] === undefined
         ? "Patch"
         : "Upgrade";
 
-    var solutionVersion = lastAction.SolutionNavigation.Version;
+    var solutionVersion = cellInfo.data.Version;
 
-    let fileName = `${applicationUniqueName}_${solutionType}_${solutionVersion
+    let fileName = `${this.selectedApplication.SolutionUniqueName}_${solutionType}_${solutionVersion
       .split(".")
       .join("-")}.zip`;
 
@@ -550,101 +546,93 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   private generateDataGridColumns(): void {
-    this.environmentService
-      .getStore()
-      .load()
-      .then((environments: Environment[]) => {
-        if (this.selectedApplication == null) {
-          this.setSelectedApplicationId(null);
-          return;
-        }
-        let developmentEnvironment: Environment =
-          this.selectedApplication.DevelopmentEnvironmentNavigation;
+    if (this.selectedApplication == null) {
+      this.setSelectedApplicationId(null);
+      return;
+    }
+    let developmentEnvironment: Environment =
+      this.selectedApplication.DevelopmentEnvironmentNavigation;
 
-        let sortedDeploymentPaths: DeploymentPath[] =
-          this.applicationService.sortAfterHierarchieAndStepNumber(
-            this.selectedApplication,
-            true
-          );
+    let sortedDeploymentPaths: DeploymentPath[] =
+      this.applicationService.sortAfterHierarchieAndStepNumber(
+        this.selectedApplication,
+        true
+      );
 
-        this.dataGridColumns = [
+    this.dataGridColumns = [
+      {
+        caption: "Type",
+        name: "Type",
+        width: 90,
+        allowReordering: false,
+        cellTemplate: "typeCellTemplate",
+        calculateCellValue: (rowData: any) => {
+          if (rowData["ApplyManually"] === undefined) return "Patch";
+          else return "Upgrade";
+        },
+        visibleIndex: 0,
+      },
+      {
+        caption: "Version",
+        name: "Version",
+        dataField: "Version",
+        allowReordering: false,
+        cellTemplate: "versionCellTemplate",
+        visibleIndex: 1,
+      },
+      {
+        caption: "Name",
+        name: "Name",
+        dataField: "Name",
+        allowReordering: false,
+        cellTemplate: "nameCellTemplate",
+        allowFiltering: true,
+        visibleIndex: 2,
+      },
+      {
+        dataField: "CreatedOn",
+        sortOrder: "desc",
+        visible: false,
+      },
+      {
+        caption: "Development Environment",
+        name: "devEnvironment",
+        allowReordering: false,
+        columns: [
+          //dev environment
           {
-            caption: "Type",
-            name: "Type",
-            width: 90,
-            allowSorting: true,
+            cellTemplate: "devEnvironmentCellTemplate",
+            caption: developmentEnvironment.Name,
+            name: developmentEnvironment.Id.toString(),
+            allowSorting: false,
             allowReordering: false,
-            cellTemplate: "typeCellTemplate",
-            calculateCellValue: (rowData: any) => {
-              if (rowData["ApplyManually"] === undefined) return "Patch";
-              else return "Upgrade";
-            },
-            visibleIndex: 0,
+            allowFiltering: false,
           },
-          {
-            caption: "Version",
-            name: "Version",
-            dataField: "Version",
-            allowSorting: true,
-            allowReordering: false,
-            sortOrder: "desc",
-            sortingMethod: (a, b) =>
-              a
-                .replace(/\d+/g, (n: any) => +n + 100000)
-                .localeCompare(b.replace(/\d+/g, (n: any) => +n + 100000)),
-            cellTemplate: "versionCellTemplate",
-            visibleIndex: 1,
-          },
-          {
-            caption: "Name",
-            name: "Name",
-            dataField: "Name",
-            allowSorting: true,
-            allowReordering: false,
-            cellTemplate: "nameCellTemplate",
-            allowFiltering: true,
-            visibleIndex: 2,
-          },
-          {
-            caption: "Development Environment",
-            name: "devEnvironment",
-            allowReordering: false,
-            columns: [
-              //dev environment
-              {
-                cellTemplate: "devEnvironmentCellTemplate",
-                caption: developmentEnvironment.Name,
-                name: developmentEnvironment.Id.toString(),
+        ],
+      },
+      //other environments
+      ...sortedDeploymentPaths.map((d) => {
+        return {
+          caption: d.Name,
+          allowReordering: false,
+          name: d.Id.toString() + d.Name,
+
+          columns: [
+            ...d.Environments.map((e) => {
+              return {
+                headerCellTemplate: "environmentHeaderCellTemplate",
+                cellTemplate: "environmentCellTemplate",
+                caption: e.Name,
+                name: d.Id.toString() + "," + e.Id.toString(),
+                environmentData: e,
                 allowSorting: false,
-                allowReordering: false,
                 allowFiltering: false,
-              },
-            ],
-          },
-          //other environments
-          ...sortedDeploymentPaths.map((d) => {
-            return {
-              caption: d.Name,
-              allowReordering: false,
-              name: d.Id.toString() + d.Name,
-
-              columns: [
-                ...d.Environments.map((e) => {
-                  return {
-                    headerCellTemplate: "environmentHeaderCellTemplate",
-                    cellTemplate: "environmentCellTemplate",
-                    caption: e.Name,
-                    name: d.Id.toString() + "," + e.Id.toString(),
-                    environmentData: e,
-                    allowSorting: false,
-                    allowFiltering: false,
-                  };
-                }),
-              ],
-            };
-          }),
-        ];
-      });
+              };
+            }),
+          ],
+        };
+      }),
+    ];
   }
 
   private onClickRefreshSolutionsGrid(): void {
@@ -652,7 +640,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   private setSelectedApplicationId(id: number) {
-    if (id != null) {
+    if (id != null && this.selectedApplication?.Id != id) {
       localStorage.setItem(
         "atPowerCIDPortal_SolutionOverview_SelectedId",
         id.toString()
@@ -673,23 +661,17 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           store: this.solutionService.getStore(),
           filter: [["Application", "=", this.selectedApplication.Id]],
           expand: [
-            "Actions.CreatedByNavigation",
-            "Actions.TargetEnvironmentNavigation",
+            "Actions.TargetEnvironmentNavigation($select=DeployUnmanaged, ConnectionsOwner)",
             "Actions.TypeNavigation",
             "Actions.StatusNavigation",
             "Actions.ResultNavigation",
-            "Actions.SolutionNavigation",
-            "Actions($orderby=StartTime desc)",
-            "ApplicationNavigation",
-            "ApplicationNavigation.DeploymentPaths",
-            "ApplicationNavigation.ApplicationDeploymentPaths",
-            "ApplicationNavigation.Solutions",
-            "CreatedByNavigation",
-            "ModifiedByNavigation",
+            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution)",
+            "CreatedByNavigation($select=Firstname, Lastname)",
+            "ModifiedByNavigation($select=Firstname, Lastname)",
           ],
         });
       });
-    } else {
+    } else if (id == null){
       localStorage.removeItem("atPowerCIDPortal_SolutionOverview_SelectedId");
       this.addPatchButtonInstance?.option("disabled", true);
       this.addUpgradeButtonInstance?.option("disabled", true);
