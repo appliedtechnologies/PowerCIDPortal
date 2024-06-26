@@ -227,12 +227,11 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public onClickDownloadSolution(cellInfo, lastAction: Action) {
-    var solutionType =
-      lastAction.SolutionNavigation["ApplyManually"] === undefined
+    var solutionType = cellInfo.data["ApplyManually"] === undefined
         ? "Patch"
         : "Upgrade";
 
-    var solutionVersion = lastAction.SolutionNavigation.Version;
+    var solutionVersion = cellInfo.data.Version;
 
     let fileName = `${this.selectedApplication.SolutionUniqueName}_${solutionType}_${solutionVersion
       .split(".")
@@ -669,7 +668,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
             "Actions.TypeNavigation",
             "Actions.StatusNavigation",
             "Actions.ResultNavigation",
-            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment)",
+            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution)",
             "CreatedByNavigation($select=Firstname, Lastname)",
             "ModifiedByNavigation($select=Firstname, Lastname)",
           ]
