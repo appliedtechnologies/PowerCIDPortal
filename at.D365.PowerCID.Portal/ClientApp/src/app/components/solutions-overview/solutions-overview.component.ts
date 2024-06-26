@@ -564,7 +564,6 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
         caption: "Type",
         name: "Type",
         width: 90,
-        allowSorting: true,
         allowReordering: false,
         cellTemplate: "typeCellTemplate",
         calculateCellValue: (rowData: any) => {
@@ -577,13 +576,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
         caption: "Version",
         name: "Version",
         dataField: "Version",
-        allowSorting: true,
         allowReordering: false,
-        sortOrder: "desc",
-        sortingMethod: (a, b) =>
-          a
-            .replace(/\d+/g, (n: any) => +n + 100000)
-            .localeCompare(b.replace(/\d+/g, (n: any) => +n + 100000)),
         cellTemplate: "versionCellTemplate",
         visibleIndex: 1,
       },
@@ -591,11 +584,15 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
         caption: "Name",
         name: "Name",
         dataField: "Name",
-        allowSorting: true,
         allowReordering: false,
         cellTemplate: "nameCellTemplate",
         allowFiltering: true,
         visibleIndex: 2,
+      },
+      {
+        dataField: "CreatedOn",
+        sortOrder: "desc",
+        visible: false,
       },
       {
         caption: "Development Environment",
@@ -671,7 +668,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
             "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution)",
             "CreatedByNavigation($select=Firstname, Lastname)",
             "ModifiedByNavigation($select=Firstname, Lastname)",
-          ]
+          ],
         });
       });
     } else if (id == null){

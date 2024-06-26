@@ -6,19 +6,12 @@
   [columns]="dataGridColumns"
   [showBorders]="true"
   [columnAutoWidth]="true"
-  [sorting]="{ mode: 'multiple' }"
-  [scrolling]="{ mode: 'virtual' }"
+  [sorting]="{ mode: 'none' }"
   [headerFilter]="{ visible: true }"
   class="solutions-grid"
   [loadPanel]="{ enabled: true }"
   [allowColumnReordering]="false"
-  [remoteOperations]="{
-    sorting: false,
-    filtering: true,
-    paging: true,
-    groupPaging: true,
-    grouping: true
-  }"
+  [scrolling]="{ mode: 'infinite' }"
   height="100%"
   (onToolbarPreparing)="onToolbarPreparingSolutionsGrid($event)"
 >
