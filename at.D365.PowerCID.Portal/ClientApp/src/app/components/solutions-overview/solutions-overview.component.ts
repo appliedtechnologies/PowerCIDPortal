@@ -669,7 +669,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
             "Actions.TypeNavigation",
             "Actions.StatusNavigation",
             "Actions.ResultNavigation",
-            "Actions($orderby=StartTime desc;$select=Type, Status, Result, TargetEnvironment)",
+            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment)",
             "CreatedByNavigation($select=Firstname, Lastname)",
             "ModifiedByNavigation($select=Firstname, Lastname)",
           ]
