@@ -128,7 +128,19 @@ namespace at.D365.PowerCID.Portal.Services
                             case 2: //import 
                             {                          
                                 byte[] exportSolutionFile = await gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation, queuedAction.TargetEnvironmentNavigation.DeployUnmanaged);
-                                AsyncJob asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction);
+                                AsyncJob asyncJob;
+
+                                Solution solution = dbContext.Solutions.FirstOrDefault(s => s.Id == queuedAction.Solution);
+                                bool isPatch = solution.GetType().Name.Contains("Patch");
+                                bool existsSolutionInTargetEnvironment = await solutionService.ExistsSolutionInTargetEnvironment(queuedAction.SolutionNavigation.UniqueName, queuedAction.TargetEnvironmentNavigation.BasicUrl);
+                                var holdingSolution = !queuedAction.TargetEnvironmentNavigation.DeployUnmanaged && !isPatch && existsSolutionInTargetEnvironment && ((Upgrade)solution).ApplyManually;
+
+                                if (holdingSolution) //as holding upgrade
+                                    asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, true);
+                                else if (isPatch || !existsSolutionInTargetEnvironment) //as patch/upgrade
+                                    asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, false);
+                                else //as direct upgrade
+                                    asyncJob = await solutionService.StartImportAndUpgradeInDataverse(exportSolutionFile, queuedAction);                                
 
                                 dbContext.Add(asyncJob);
 

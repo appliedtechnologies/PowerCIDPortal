@@ -30,6 +30,10 @@
   color: unset;
 }
 
+:host ::ng-deep .dx-treeview-expander-icon-stub{
+  display: none;
+}
+
 :host ::ng-deep .dx-treeview-node{
   padding: 0;
   border-top: 1px solid hsla(0,0%,87%,.2);
@@ -44,6 +48,7 @@
 }
 
 :host ::ng-deep .dx-treeview-toggle-item-visibility {
+  position: absolute;
   right: 10px;
   left: auto;
   height: 42px;

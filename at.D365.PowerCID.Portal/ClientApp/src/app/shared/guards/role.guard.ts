@@ -1,10 +1,10 @@
 import { Injectable } from "@angular/core";
-import { ActivatedRouteSnapshot, CanActivate, Router } from "@angular/router";
+import { ActivatedRouteSnapshot, Router } from "@angular/router";
 import { MsalService } from "@azure/msal-angular";
 import { LayoutService, NotificationType } from "../services/layout.service";
 import { UserService } from "../services/user.service";
 @Injectable()
-export class RoleGuard implements CanActivate {
+export class RoleGuard  {
 
     constructor(private userService: UserService, private router: Router, private layoutService: LayoutService) {}
     

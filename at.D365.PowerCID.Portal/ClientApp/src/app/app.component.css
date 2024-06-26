@@ -26,8 +26,11 @@
 }
 
 ::ng-deep .dx-toolbar {
-    background-color: rgba(191,191,191,.15);
     padding: 5px 10px;
+}
+
+::ng-deep .dx-toolbar:not(#header-toolbar) {
+    background-color: rgba(191,191,191,.15);
 }
 
 ::ng-deep .dx-drawer-expand.dx-drawer-right .panel-list {
@@ -88,4 +91,8 @@
 
 ::ng-deep .dx-loadpanel-wrapper{
     z-index: 2000 !important;
+}
+
+::ng-deep dx-button{
+    min-height: 36px;
 }

@@ -14,7 +14,7 @@ import { UserComponent } from "./components/user/user.component";
 import { RoleGuard } from "./shared/guards/role.guard";
 import { AppConfig } from "./shared/config/app.config";
 
-const routes: Routes = [
+export const routes: Routes = [
   { path: "", component: HomeComponent, pathMatch: "full" },
   { 
     path: "profile", 
@@ -80,11 +80,4 @@ const routes: Routes = [
       expectedRoles: ["atPowerCID.Admin"],
     },
   },
-  
 ];
-
-@NgModule({
-  imports: [RouterModule.forRoot(routes, { relativeLinkResolution: "legacy" })],
-  exports: [RouterModule],
-})
-export class AppRoutingModule {}

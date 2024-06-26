@@ -118,7 +118,7 @@ export class EnvironmentComponent {
         var loadOptions = this.dataGrid.instance.getDataSource().loadOptions();
         var filterExpression = this.dataGrid.instance.getCombinedFilter(true);
 
-        this.dataGrid.instance.getDataSource().store().load({filter: filterExpression, sort: loadOptions?.sort}).then((rows) => {
+        this.dataGrid.instance.getDataSource().store().load({filter: filterExpression, sort: loadOptions?.sort}).then((rows: any) => {
           var updates = [];
 
           rows.forEach((row, index) => { 

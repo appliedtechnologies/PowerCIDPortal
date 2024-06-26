@@ -208,15 +208,9 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Action action)
+        public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Action action, bool asHolding)
         {
-            logger.LogDebug($"Begin: SolutionService StartImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
-
-            bool isPatch = this.dbContext.Solutions.FirstOrDefault(s => s.Id == action.Solution).GetType().Name.Contains("Patch");
-            Upgrade upgrade;
-            upgrade = isPatch == false ? (Upgrade)action.SolutionNavigation : default;
-            bool existsSolutionInTargetEnvironment = await ExistsSolutionInTargetEnvironment(action.SolutionNavigation.UniqueName, action.TargetEnvironmentNavigation.BasicUrl);
-            var holdingSolution = action.TargetEnvironmentNavigation.DeployUnmanaged ? false : !isPatch && existsSolutionInTargetEnvironment == true;
+            logger.LogDebug($"Begin: SolutionService StartHoldingImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
 
             (EntityCollection solutionComponentParameters, string deploymentDetails) = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
 
@@ -225,13 +219,44 @@ namespace at.D365.PowerCID.Portal.Services
                 CustomizationFile = solutionFileData,
                 OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
                 PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
-                HoldingSolution = holdingSolution,
+                HoldingSolution = asHolding,
                 ComponentParameters = solutionComponentParameters,
             };
 
             using (var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
                 ImportSolutionAsyncResponse response = (ImportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(importSolutionAsyncRequest);
+                action.DeploymentDetails = deploymentDetails;
+
+                AsyncJob asyncJob = new AsyncJob
+                {
+                    AsyncOperationId = response.AsyncOperationId,
+                    JobId = Guid.Parse(response.ImportJobKey),
+                    IsManaged = !action.TargetEnvironmentNavigation.DeployUnmanaged,
+                    Action = action.Id
+                };
+                logger.LogDebug($"End: SolutionService StartHoldingImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
+
+                return asyncJob;
+            }
+        }
+
+        public async Task<AsyncJob> StartImportAndUpgradeInDataverse(byte[] solutionFileData, Action action)
+        {
+            logger.LogDebug($"Begin: SolutionService StartImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
+
+            (EntityCollection solutionComponentParameters, string deploymentDetails) = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
+
+            StageAndUpgradeAsyncRequest stageAndUpgradeRequest = new StageAndUpgradeAsyncRequest{
+                CustomizationFile = solutionFileData,
+                OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
+                PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
+                ComponentParameters = solutionComponentParameters,
+            };
+
+            using (var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
+            {
+                StageAndUpgradeAsyncResponse response = (StageAndUpgradeAsyncResponse)await dataverseClient.ExecuteAsync(stageAndUpgradeRequest);
                 action.DeploymentDetails = deploymentDetails;
 
                 AsyncJob asyncJob = new AsyncJob
