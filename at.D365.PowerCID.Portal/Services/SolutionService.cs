@@ -208,7 +208,7 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Action action, bool isPatch)
+        public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Action action, bool asHolding)
         {
             logger.LogDebug($"Begin: SolutionService StartHoldingImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
 
@@ -219,7 +219,7 @@ namespace at.D365.PowerCID.Portal.Services
                 CustomizationFile = solutionFileData,
                 OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
                 PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
-                HoldingSolution = !isPatch,
+                HoldingSolution = asHolding,
                 ComponentParameters = solutionComponentParameters,
             };
 
