@@ -137,7 +137,7 @@ namespace at.D365.PowerCID.Portal.Services
 
                                 if (holdingSolution) //as holding upgrade
                                     asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, true);
-                                else if (isPatch || !existsSolutionInTargetEnvironment) //as patch/upgrade
+                                else if (isPatch || !existsSolutionInTargetEnvironment || (!isPatch && queuedAction.TargetEnvironmentNavigation.DeployUnmanaged)) //as patch/upgrade(unmanaged or not existing)
                                     asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, false);
                                 else //as direct upgrade
                                     asyncJob = await solutionService.StartImportAndUpgradeInDataverse(exportSolutionFile, queuedAction);                                
