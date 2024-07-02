@@ -35,26 +35,36 @@ namespace at.D365.PowerCID.Portal.Services
             var ownerMsIds = await this.GetApplicationOwnerMsIds(webApi, tenantMsId);
 
             foreach(var user in this.dbContext.Users.Where(e => e.TenantNavigation.MsId == tenantMsId && (e.IsOwner || e.RemoveAdminRole))){
-                if(!ownerMsIds.Contains(user.MsId)){
-                    var existingRoles = await this.GetAppRoleAssignmentsOfUser(webApi, tenantMsId, user.MsId);
+                try{
+                    if(!ownerMsIds.Contains(user.MsId)){
+                        var existingRoles = await this.GetAppRoleAssignmentsOfUser(webApi, tenantMsId, user.MsId);
 
-                    if (existingRoles.Any(e => e.AppRoleId == appRoleIdAdmin)){
-                        await this.RemoveAppRoleFromUser(webApi, tenantMsId, user.MsId, existingRoles.First(e => e.AppRoleId == appRoleIdAdmin).Id);
+                        if (existingRoles.Any(e => e.AppRoleId == appRoleIdAdmin)){
+                            await this.RemoveAppRoleFromUser(webApi, tenantMsId, user.MsId, existingRoles.First(e => e.AppRoleId == appRoleIdAdmin).Id);
+                        }
+                        else
+                            logger.LogInformation($"User with MsId {user.MsId} has Admin no role)");
+
+                        user.IsOwner = false;
+                        user.RemoveAdminRole = false;
                     }
-                    else
-                        logger.LogInformation($"User with MsId {user.MsId} has Admin no role)");
-
-                    user.IsOwner = false;
-                    user.RemoveAdminRole = false;
+                }
+                catch(Exception e){
+                    logger.LogError($"Error while remove Admin role from user with MsId {user.MsId}: {e.Message}");
                 }
             }
 
             foreach(var ownerMsId in ownerMsIds){
-                var user = this.dbContext.Users.FirstOrDefault(e => e.TenantNavigation.MsId == tenantMsId && e.MsId == ownerMsId);
-                if(user != null && !user.IsOwner){
-                    if(!(await this.GetAppRoleAssignmentsOfUser(webApi, tenantMsId, ownerMsId)).Any(e => e.AppRoleId == appRoleIdAdmin))
-                        await this.AssignAppRoleToUser(webApi, tenantMsId, ownerMsId, appRoleIdAdmin);
-                    user.IsOwner = true;
+                try{
+                    var user = this.dbContext.Users.FirstOrDefault(e => e.TenantNavigation.MsId == tenantMsId && e.MsId == ownerMsId);
+                    if(user != null && !user.IsOwner){
+                        if(!(await this.GetAppRoleAssignmentsOfUser(webApi, tenantMsId, ownerMsId)).Any(e => e.AppRoleId == appRoleIdAdmin))
+                            await this.AssignAppRoleToUser(webApi, tenantMsId, ownerMsId, appRoleIdAdmin);
+                        user.IsOwner = true;
+                    }
+                }
+                catch(Exception e){
+                    logger.LogError($"Error while assign Admin role from user with MsId {ownerMsId}: {e.Message}");
                 }
             }
 
