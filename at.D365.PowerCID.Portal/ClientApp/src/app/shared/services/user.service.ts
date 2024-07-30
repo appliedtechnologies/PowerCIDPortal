@@ -162,6 +162,10 @@ export class UserService {
     return this.odataService.context["Users"];
   }
 
+  public delete(id: number): Promise<void>{
+    return this.getStore().remove(id);
+  }
+
   public reloadUser(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.updateUserInformation(true)

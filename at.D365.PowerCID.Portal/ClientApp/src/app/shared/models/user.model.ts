@@ -9,6 +9,7 @@ export interface User {
   Tenant?: number;
   IsOwner?: boolean;
   RemoveAdminRole?: boolean;
+  IsDeactive?: boolean;
   
   TenantNavigation?: Tenant;
 }

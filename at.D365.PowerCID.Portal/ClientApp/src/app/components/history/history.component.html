@@ -25,7 +25,11 @@
   <dxo-paging [pageSize]="20"></dxo-paging>
   <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
 
-  <dxi-column dataField="Name"></dxi-column>
+  <dxi-column 
+    dataField="Name"
+    [allowHeaderFiltering]="false"
+    >
+  </dxi-column>
   <dxi-column
     dataField="Solution"
     caption="Solution"
@@ -36,6 +40,9 @@
       valueExpr="Id" 
       displayExpr="Name">
     </dxo-lookup>
+    <dxo-header-filter
+      [dataSource]="headerFilterDataSolution">
+    </dxo-header-filter>
     <div *dxTemplate="let rowData of 'solutionCellTemplate'">
       <div>
         <i
@@ -56,6 +63,9 @@
       valueExpr="Id" 
       displayExpr="Name">
     </dxo-lookup>
+    <dxo-header-filter
+      [dataSource]="headerFilterDataApplication">
+    </dxo-header-filter>
   </dxi-column>  
   <dxi-column
     dataField="TargetEnvironment"
@@ -66,10 +76,25 @@
         valueExpr="Id" 
         displayExpr="Name">
     </dxo-lookup>
+    <dxo-header-filter
+      [dataSource]="headerFilterDataEnvironment">
+    </dxo-header-filter>
   </dxi-column>
-  <dxi-column dataField="TypeNavigation.Type" caption="Type"></dxi-column>
-  <dxi-column dataField="StatusNavigation.Status" caption="Status"></dxi-column>
-  <dxi-column dataField="ResultNavigation.Result" caption="Result"></dxi-column>
+  <dxi-column dataField="TypeNavigation.Type" caption="Type">
+    <dxo-header-filter
+      [dataSource]="headerFilterDataActionType">
+    </dxo-header-filter>
+  </dxi-column>
+  <dxi-column dataField="StatusNavigation.Status" caption="Status">
+    <dxo-header-filter
+      [dataSource]="headerFilterDataActionStatus">
+    </dxo-header-filter>
+  </dxi-column>
+  <dxi-column dataField="ResultNavigation.Result" caption="Result">
+    <dxo-header-filter
+      [dataSource]="headerFilterDataActionResult">
+    </dxo-header-filter>
+  </dxi-column>
   <dxi-column
     dataField="StartTime"
     caption="Start time"
@@ -97,6 +122,9 @@
       valueExpr="Id" 
       [displayExpr]="createdByFullName">
     </dxo-lookup>
+    <dxo-header-filter
+      [dataSource]="headerFilterDataUser">
+    </dxo-header-filter>
   </dxi-column>
   <dxi-column
     caption="Details"

@@ -13,8 +13,9 @@ import { Environment } from "src/app/shared/models/environment.model";
 import { environment } from "src/environments/environment";
 import { UserEnvironmentService } from "src/app/shared/services/userenvironment.service";
 import { UserEnvironment } from "src/app/shared/models/userenvironment.model";
-import { DxListComponent, DxPopupComponent } from "devextreme-angular";
+import { DxDataGridComponent, DxListComponent, DxPopupComponent } from "devextreme-angular";
 import { AppRoleAssignment } from "src/app/shared/models/approleassignment.model";
+import { confirm } from 'devextreme/ui/dialog';
 
 @Component({
   selector: "app-user",
@@ -23,6 +24,7 @@ import { AppRoleAssignment } from "src/app/shared/models/approleassignment.model
 })
 export class UserComponent {
   @ViewChild(DxPopupComponent, { static: false }) popupPermissionEnvironments: DxPopupComponent;
+  @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;
 
   public appRoleNames: any = AppConfig.settings.azure.appRoleNames;
   public dataSourceUsers: DataSource;
@@ -43,6 +45,7 @@ export class UserComponent {
   ) {
     this.dataSourceUsers = new DataSource({
       store: this.userService.getStore(),
+      filter: ["IsDeactive", "=", false],
       expand: "TenantNavigation",
     });
 
@@ -54,6 +57,7 @@ export class UserComponent {
 
     this.onClickEditRoles = this.onClickEditRoles.bind(this);
     this.onClickEditPermissions = this.onClickEditPermissions.bind(this);
+    this.onClickDeactivateUser = this.onClickDeactivateUser.bind(this);
   }
   
   public onToolbarPreparingDataGrid(e: any): void{
@@ -92,6 +96,32 @@ export class UserComponent {
 
   public onContentReadyPermissionEnvironmentList(e: any): void {
     this.popupPermissionEnvironments?.instance.repaint();
+  }
+
+  public onClickDeactivateUser(e: any){
+    let result = confirm("Are you sure you want to disable this user?<br /> This will NOT delete potential ownership in Azure Entra ID.", "Confirm Deactivation");
+    result.then((dialogResult) => {
+      if (dialogResult) {
+        this.layoutService.change(LayoutParameter.ShowLoading, true);
+        this.userService.delete(e.row.data.Id)
+          .then(() => {
+            this.layoutService.notify({
+              type: NotificationType.Success,
+              message: "User was successfully disabled.",
+            });
+          })
+          .catch(() => {
+            this.layoutService.notify({
+              type: NotificationType.Error,
+              message: "An error occurred while disabling the user.",
+            });
+          })
+          .then(() => {
+            this.layoutService.change(LayoutParameter.ShowLoading, false);
+            this.dataGrid.instance.refresh();
+          });
+      }
+    });
   }
 
   public onSelectionChangedPermissionEnvironments(e: any): void {

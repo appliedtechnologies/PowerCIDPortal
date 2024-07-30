@@ -32,6 +32,10 @@ export class ODataService {
           key: "Id",
           keyType: "Int32",
         },
+        ActionTypes: {
+          key: "Id",
+          keyType: "Int32",
+        },
         Applications: {
           key: "Id",
           keyType: "Int32",
