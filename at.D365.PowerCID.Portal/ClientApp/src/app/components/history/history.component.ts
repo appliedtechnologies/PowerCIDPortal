@@ -66,6 +66,7 @@ export class HistoryComponent implements OnInit {
 
     this.headerFilterDataUser = {
       store: this.userService.getStore(),
+      filter: ["IsDeactive", "=", false],
       map: (item: User) => {
           return {
               text: item.Firstname + " " + item.Lastname,
@@ -88,6 +89,7 @@ export class HistoryComponent implements OnInit {
 
     this.headerFilterDataApplication = {
       store: this.applicationService.getStore(),
+      filter: ["IsDeactive", "=", false],
       map: (item: Application) => {
           return {
               text: item.Name,
