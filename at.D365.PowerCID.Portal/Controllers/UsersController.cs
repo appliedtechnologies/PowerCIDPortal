@@ -109,6 +109,41 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
+        public async Task<IActionResult> Delete([FromODataUri] int key)
+        {
+            logger.LogDebug($"Begin: UsersController Delete(key: {key})");
+
+            var user = await this.dbContext.Users.FindAsync(key);
+            
+            if (user == null)
+                return NotFound();
+
+            if (user.TenantNavigation.MsId != this.msIdTenantCurrentUser)
+                return Forbid();
+
+            if (user == null)
+                return NotFound();
+
+            try{
+                var roles = await this.AzureService.GetAppRoleAssignmentsOfUser(this.downstreamWebApi, this. msIdTenantCurrentUser, user.MsId);
+                foreach (var role in roles.Where(e => e.AppRoleId != Guid.Empty))
+                {
+                    await this.AzureService.RemoveAppRoleFromUser(this.downstreamWebApi, this.msIdTenantCurrentUser, user.MsId, role.Id);
+                }
+            }
+            catch(Exception ex){
+                logger.LogDebug(ex, $"Error during remove user roles on deletion");
+            }
+
+            user.IsDeactive = true;
+            await dbContext.SaveChangesAsync();
+
+            logger.LogDebug($"End: UsersController Delete(key: {key})");
+
+            return Ok();
+        }
+
+        [Authorize(Roles = "atPowerCID.Admin")]
         [HttpPost]
         public async Task<IActionResult> SetupApplicationUsers()
         {
