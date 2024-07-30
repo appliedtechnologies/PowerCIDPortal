@@ -259,6 +259,14 @@ export class DeploymentpathComponent {
 
     const toItems = toTreeView.option("items");
 
+    if(fromNode.itemData.DeploymentPath != toNode.itemData.DeploymentPath){
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "It is not possible to move environments between deployment paths. Please use the environment selection on the right.",
+      });
+      return;
+    }
+
     let environmentId = fromNode.itemData.Environment;
     let deploymentPathId = fromNode.itemData.DeploymentPath;
     let fromIndex = fromNode.itemData.StepNumber;
