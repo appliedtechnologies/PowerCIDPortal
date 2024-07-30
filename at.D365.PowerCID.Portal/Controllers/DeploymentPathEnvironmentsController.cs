@@ -15,6 +15,7 @@ using Newtonsoft.Json.Linq;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.OData;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -81,7 +82,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             sortWhenAdded(deploymentPathEnvironment.DeploymentPath, deploymentPathEnvironment.Environment, deploymentPathEnvironment.StepNumber);
             base.dbContext.DeploymentPathEnvironments.Add(deploymentPathEnvironment);
-            //SortAfterAdded(deploymentPathEnvironment.DeploymentPath);
+
             base.dbContext.DeploymentPathEnvironments.OrderBy(s => s.StepNumber);
             await base.dbContext.SaveChangesAsync();
 
@@ -106,6 +107,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             var parametersAsJObject = JsonConvert.DeserializeObject<JObject>(parameters.ToString());
             int fromIndex = (int)parametersAsJObject["FromIndex"];
             int toIndex = (int)parametersAsJObject["ToIndex"];
+
+            if(toIndex > dbContext.DeploymentPathEnvironments.Count(e => e.DeploymentPath == keyDeploymentPath))
+                return BadRequest(new ODataError { ErrorCode =  "400", Message = "ToIndex is out of range." });
 
             sortWhenUpdated(keyDeploymentPath, fromIndex, toIndex);
 
@@ -161,23 +165,6 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
             logger.LogDebug($"End: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, enviromentId: {enviromentId}, Stepnumber:{Stepnumber})");
         }
-
-        /* private async Task<IActionResult> SortAfterAdded(int deploymentPathId)
-        {
-
-            var deploymentPathEnvironments = this.dbContext.DeploymentPathEnvironments.Where(d => d.DeploymentPath == deploymentPathId);
-
-
-
-            IEnumerable<DeploymentPathEnvironment> query = from d in deploymentPathEnvironments
-                                                           orderby d.StepNumber
-                                                           select d;
-
-
-
-
-        }
- */
 
         private void sortWhenDeleted(int deploymentPathId, int enviromentId, int Stepnumber)
         {

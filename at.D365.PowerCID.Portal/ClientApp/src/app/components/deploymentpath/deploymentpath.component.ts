@@ -264,7 +264,14 @@ export class DeploymentpathComponent {
     let fromIndex = fromNode.itemData.StepNumber;
     let toIndex = toNode.itemData.StepNumber;
 
-    this.deploymentPathEnvironmentService
+    if(fromIndex == undefined || toIndex == undefined){
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The environment was placed outside a deployment path.",
+      });
+    }
+    else {
+      this.deploymentPathEnvironmentService
       .getStore()
       .update(
         {
@@ -282,7 +289,14 @@ export class DeploymentpathComponent {
             displayTime: 1000,
           });
         });
+      })
+      .catch((e: Error) => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: e.message,
+        });
       });
+    }
   }
 
   public onDragEnd(e: any): void{
