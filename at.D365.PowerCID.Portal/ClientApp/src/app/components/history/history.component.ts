@@ -2,14 +2,20 @@ import { Component, Input, OnInit, ViewChild } from "@angular/core";
 import { DxDataGridComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import ODataStore from "devextreme/data/odata/store";
+import { filter } from "rxjs";
 import { TimeHelper } from "src/app/shared/helper/time.helper";
 import { Action } from "src/app/shared/models/action.model";
+import { ActionResult } from "src/app/shared/models/actionresult.model";
+import { ActionStatus } from "src/app/shared/models/actionstatus.model";
+import { ActionType } from "src/app/shared/models/actiontype.model";
 import { Application } from "src/app/shared/models/application.model";
+import { Environment } from "src/app/shared/models/environment.model";
 import { Solution } from "src/app/shared/models/solution.model";
 import { User } from "src/app/shared/models/user.model";
 import { ActionService } from "src/app/shared/services/action.service";
 import { ApplicationService } from "src/app/shared/services/application.service";
 import { EnvironmentService } from "src/app/shared/services/environment.service";
+import { ODataService } from "src/app/shared/services/odata.service";
 import { SolutionService } from "src/app/shared/services/solution.service";
 import { UserService } from "src/app/shared/services/user.service";
 
@@ -31,6 +37,14 @@ export class HistoryComponent implements OnInit {
   public isActionDetailPopupVisible: boolean;
   public isSolutionDetailPopupVisible: boolean;
 
+  public headerFilterDataUser: any;
+  public headerFilterDataSolution: any;
+  public headerFilterDataApplication: any;
+  public headerFilterDataEnvironment: any;
+  public headerFilterDataActionResult: any;
+  public headerFilterDataActionStatus: any;
+  public headerFilterDataActionType: any;
+
   @Input() userId: number;
 
   constructor(
@@ -38,7 +52,8 @@ export class HistoryComponent implements OnInit {
     private solutionService: SolutionService,
     private applicationService: ApplicationService,
     private environmentService: EnvironmentService,
-    private userService: UserService
+    private userService: UserService,
+    private odataService: ODataService
   ) {
     this.calculateDuration = this.calculateDuration.bind(this);
   }
@@ -48,6 +63,83 @@ export class HistoryComponent implements OnInit {
     this.dataStoreEnvironments = this.environmentService.getStore();
     this.dataStoreSolutions = this.solutionService.getStore();
     this.dataStoreUsers = this.userService.getStore();
+
+    this.headerFilterDataUser = {
+      store: this.userService.getStore(),
+      map: (item: User) => {
+          return {
+              text: item.Firstname + " " + item.Lastname,
+              value: item.Id,
+              Id: item.Id
+          }
+      }
+    };
+
+    this.headerFilterDataSolution = {
+      store: this.solutionService.getStore(),
+      map: (item: Solution) => {
+          return {
+              text: item.Name,
+              value: item.Id,
+              Id: item.Id
+          }
+      }
+    };
+
+    this.headerFilterDataApplication = {
+      store: this.applicationService.getStore(),
+      map: (item: Application) => {
+          return {
+              text: item.Name,
+              value: item.Id,
+              Id: item.Id
+          }
+      }
+    };
+
+    this.headerFilterDataEnvironment = {
+      store: this.environmentService.getStore(),
+      map: (item: Environment) => {
+          return {
+              text: item.Name,
+              value: item.Id,
+              Id: item.Id
+          }
+      }
+    };
+
+    this.headerFilterDataActionResult = {
+      store: this.odataService.context["ActionResults"],
+      map: (item: ActionResult) => {
+          return {
+              text: item.Result,
+              value: item.Result,
+              Id: item.Id
+          }
+      }
+    };
+
+    this.headerFilterDataActionStatus = {
+      store: this.odataService.context["ActionStatus"],
+      map: (item: ActionStatus) => {
+          return {
+              text: item.Status,
+              value: item.Status,
+              Id: item.Id
+          }
+      }
+    };
+
+    this.headerFilterDataActionType = {
+      store: this.odataService.context["ActionTypes"],
+      map: (item: ActionType) => {
+          return {
+              text: item.Type,
+              value: item.Type,
+              Id: item.Id
+          }
+      }
+    };
 
     if(this.userId == undefined){
       this.dataSourceActions = new DataSource({
