@@ -118,7 +118,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == key && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { nameof(Application.OrdinalNumber), nameof(Application.Name), nameof(Application.MsId), nameof(Application.InternalDescription) };
+            string[] propertyNamesAllowedToChange = { nameof(Application.OrdinalNumber), nameof(Application.Name), nameof(Application.MsId), nameof(Application.InternalDescription), nameof(Application.ForceManagedDeployment) };
             if (application.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() != 0)
             {
                 return BadRequest();
