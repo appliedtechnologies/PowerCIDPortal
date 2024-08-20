@@ -110,11 +110,11 @@ namespace at.D365.PowerCID.Portal.Services
             return Convert.FromBase64String(solutionZipFileBase64);
         }
 
-        public async Task<string> GetSolutionFileAsBase64String(Tenant tenant, Solution solution)
+        public async Task<string> GetSolutionFileAsBase64String(Tenant tenant, Solution solution, bool unmanaged)
         {
             logger.LogDebug($"Begin: GitHubService  GetSolutionFileAsBase64String()");
 
-            var solutionZipFile = await this.GetSolutionFileAsByteArray(tenant, solution);
+            var solutionZipFile = await this.GetSolutionFileAsByteArray(tenant, solution, unmanaged);
 
             logger.LogDebug($"End: GitHubService  GetSolutionFileAsBase64String()");
 

@@ -82,17 +82,19 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> GetSolutionAsBase64String([FromODataUri] int key, [FromServices] GitHubService gitHubService)
+        public async Task<IActionResult> GetSolutionAsBase64String([FromODataUri] int key, ODataActionParameters parameters, [FromServices] GitHubService gitHubService)
         {
-            logger.LogDebug($"Begin: SolutionsController GetSolutionAsBase64String(key: {key})");
+            logger.LogDebug($"Begin: SolutionsController GetSolutionAsBase64String(key: {key}, unmanaged: {(bool)parameters["unmanaged"]})");
 
             if ((await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
+            bool unmanaged = (bool)parameters["unmanaged"];
+
             Solution solution = dbContext.Solutions.FirstOrDefault(x => x.Id == key);
             Tenant tenant = dbContext.Solutions.FirstOrDefault(x => x.Id == key).ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation;
 
-            var solutionAsBase64String = await gitHubService.GetSolutionFileAsBase64String(tenant, solution);
+            var solutionAsBase64String = await gitHubService.GetSolutionFileAsBase64String(tenant, solution, unmanaged);
 
             logger.LogDebug($"End: SolutionsController GetSolutionAsBase64String(key: {key})");
 

@@ -73,12 +73,12 @@ export class SolutionService {
     });
   }
 
-  public getSolutionAsBase64String(solutionId: number): Promise<string> {
+  public getSolutionAsBase64String(solutionId: number, unmanaged: boolean): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       this.http
         .post(
           `${AppConfig.settings.api.url}/Solutions(${solutionId})/GetSolutionAsBase64String`,
-          {}
+          { unmanaged: unmanaged }
         )
         .subscribe({
           next: (data) => resolve(data as string),

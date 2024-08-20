@@ -185,6 +185,9 @@ namespace at.D365.PowerCID.Portal.Services
                                                 { // Completed Success
                                                     actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
                                                     dbContext.AsyncJobs.Remove(asyncJob);
+                                                    
+                                                    if(asyncJob.IsManaged == false)
+                                                        environmentService.PublishAllCustomizations(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl);
                                                 }
                                                 else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
                                                 {

@@ -126,21 +126,25 @@ namespace at.D365.PowerCID.Portal.Services
                             }
                             break;
                             case 2: //import 
-                            {                          
-                                byte[] exportSolutionFile = await gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation, queuedAction.TargetEnvironmentNavigation.DeployUnmanaged);
+                            {
+                                bool unmanaged = queuedAction.TargetEnvironmentNavigation.DeployUnmanaged;
+                                if(queuedAction.SolutionNavigation.ApplicationNavigation.ForceManagedDeployment)
+                                    unmanaged = false;
+
+                                byte[] exportSolutionFile = await gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation, unmanaged);
                                 AsyncJob asyncJob;
 
                                 Solution solution = dbContext.Solutions.FirstOrDefault(s => s.Id == queuedAction.Solution);
                                 bool isPatch = solution.GetType().Name.Contains("Patch");
                                 bool existsSolutionInTargetEnvironment = await solutionService.ExistsSolutionInTargetEnvironment(queuedAction.SolutionNavigation.UniqueName, queuedAction.TargetEnvironmentNavigation.BasicUrl);
-                                var holdingSolution = !queuedAction.TargetEnvironmentNavigation.DeployUnmanaged && !isPatch && existsSolutionInTargetEnvironment && ((Upgrade)solution).ApplyManually;
+                                var holdingSolution = !unmanaged && !isPatch && existsSolutionInTargetEnvironment && ((Upgrade)solution).ApplyManually;
 
                                 if (holdingSolution) //as holding upgrade
-                                    asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, true);
-                                else if (isPatch || !existsSolutionInTargetEnvironment || (!isPatch && queuedAction.TargetEnvironmentNavigation.DeployUnmanaged)) //as patch/upgrade(unmanaged or not existing)
-                                    asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, false);
+                                    asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, true, unmanaged);
+                                else if (isPatch || !existsSolutionInTargetEnvironment || (!isPatch && unmanaged)) //as patch/upgrade(unmanaged or not existing)
+                                    asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, false, unmanaged);
                                 else //as direct upgrade
-                                    asyncJob = await solutionService.StartImportAndUpgradeInDataverse(exportSolutionFile, queuedAction);                                
+                                    asyncJob = await solutionService.StartImportAndUpgradeInDataverse(exportSolutionFile, queuedAction, unmanaged);                                
 
                                 dbContext.Add(asyncJob);
 

@@ -102,7 +102,9 @@ namespace at.D365.PowerCID.Portal
             var enableFlows = builder.EntityType<Solution>().Action("EnableFlows").ReturnsFromEntitySet<Action>("Actions");
             enableFlows.Parameter<int>("targetEnvironmentId");
 
-            builder.EntityType<Solution>().Action("GetSolutionAsBase64String");
+            var solutionDownload = builder.EntityType<Solution>().Action("GetSolutionAsBase64String");
+            solutionDownload.Parameter<bool>("unmanaged");
+
             builder.EntityType<Action>().Action("CancelImport");
 
             builder.EntityType<Tenant>().Action("GetGitHubRepositories");
