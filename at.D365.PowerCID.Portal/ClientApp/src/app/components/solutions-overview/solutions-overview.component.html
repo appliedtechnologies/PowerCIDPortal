@@ -55,7 +55,7 @@
       (click)="onClickConfigureDeployment(cellInfo.column.environmentData)"
     ></i>
     <i
-      *ngIf="cellInfo.column.environmentData.DeployUnmanaged == true"
+      *ngIf="cellInfo.column.environmentData.DeployUnmanaged == true && selectedApplication?.ForceManagedDeployment == false"
       class="at-icon dx-icon-warning red-icon"
       title="WARNING: deployments to this environment are unmanged"
     ></i>

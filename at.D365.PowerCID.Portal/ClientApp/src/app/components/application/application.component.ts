@@ -298,6 +298,7 @@ export class ApplicationComponent {
   onInitNewRowApplication(e) {
     this.publisherSelectionDisabled = true;
     this.filteredPublishers = [];
+    e.data.ForceManagedDeployment = false;
   }
 
   onValueChangedEnvironment(event, cellInfo) {
