@@ -84,8 +84,8 @@
         <i
           *ngIf="cellInfo.data.WasDeleted != true"
           class="dx-icon-download clickable-icon at-icon"
-          title="download managed solution"
-          (click)="onClickDownloadSolution(cellInfo, lastAction)"
+          title="download managed solution (hold ctrl-key while clicking for unmanaged solution)"
+          (click)="onClickDownloadSolution($event, cellInfo, lastAction)"
         ></i>
         <i
           *ngIf="cellInfo.data.WasDeleted != true"

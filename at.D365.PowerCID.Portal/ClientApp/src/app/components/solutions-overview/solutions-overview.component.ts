@@ -226,7 +226,11 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     this.isActionDetailPopupVisible = true;
   }
 
-  public onClickDownloadSolution(cellInfo, lastAction: Action) {
+  public onClickDownloadSolution(e: any, cellInfo, lastAction: Action) {
+    let unmanaged = e.ctrlKey;
+
+    this.layoutService.notify({ message: "Downloading solution...", type: NotificationType.Info });
+
     var solutionType = cellInfo.data["ApplyManually"] === undefined
         ? "Patch"
         : "Upgrade";
@@ -235,10 +239,10 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
 
     let fileName = `${this.selectedApplication.SolutionUniqueName}_${solutionType}_${solutionVersion
       .split(".")
-      .join("-")}.zip`;
+      .join("-")}${unmanaged ? "_unmanaged" : "_managed"}.zip`;
 
     this.solutionService
-      .getSolutionAsBase64String(lastAction.Solution)
+      .getSolutionAsBase64String(lastAction.Solution, unmanaged)
       .then((base64String) =>
         this.downloadBase64File("text/plain", base64String["value"], fileName)
       );
