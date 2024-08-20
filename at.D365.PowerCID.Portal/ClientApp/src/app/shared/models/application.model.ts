@@ -26,4 +26,5 @@ export interface Application {
   ApplicationDeploymentPaths?: ApplicationDeploymentPath[];
   Solutions? : Solution[];
   IsDeactive?: boolean;
+  ForceManagedDeployment? : boolean;
 }

@@ -208,11 +208,16 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Action action, bool asHolding)
+        public async Task<AsyncJob> StartImportInDataverse(byte[] solutionFileData, Action action, bool asHolding, bool unmanaged)
         {
             logger.LogDebug($"Begin: SolutionService StartHoldingImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
 
             (EntityCollection solutionComponentParameters, string deploymentDetails) = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
+
+            if(unmanaged)
+                deploymentDetails = "unmanaged deployment \n\n" + deploymentDetails;
+            else
+                deploymentDetails = "managed deployment \n\n" + deploymentDetails;
 
             ImportSolutionAsyncRequest importSolutionAsyncRequest = new ImportSolutionAsyncRequest
             {
@@ -232,7 +237,7 @@ namespace at.D365.PowerCID.Portal.Services
                 {
                     AsyncOperationId = response.AsyncOperationId,
                     JobId = Guid.Parse(response.ImportJobKey),
-                    IsManaged = !action.TargetEnvironmentNavigation.DeployUnmanaged,
+                    IsManaged = !unmanaged,
                     Action = action.Id
                 };
                 logger.LogDebug($"End: SolutionService StartHoldingImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
@@ -241,11 +246,16 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public async Task<AsyncJob> StartImportAndUpgradeInDataverse(byte[] solutionFileData, Action action)
+        public async Task<AsyncJob> StartImportAndUpgradeInDataverse(byte[] solutionFileData, Action action, bool unmanaged)
         {
             logger.LogDebug($"Begin: SolutionService StartImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
 
             (EntityCollection solutionComponentParameters, string deploymentDetails) = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
+
+            if(unmanaged)
+                deploymentDetails = "unmanaged deployment \n\n" + deploymentDetails;
+            else
+                deploymentDetails = "managed deployment \n\n" + deploymentDetails;
 
             StageAndUpgradeAsyncRequest stageAndUpgradeRequest = new StageAndUpgradeAsyncRequest{
                 CustomizationFile = solutionFileData,
@@ -263,7 +273,7 @@ namespace at.D365.PowerCID.Portal.Services
                 {
                     AsyncOperationId = response.AsyncOperationId,
                     JobId = Guid.Parse(response.ImportJobKey),
-                    IsManaged = !action.TargetEnvironmentNavigation.DeployUnmanaged,
+                    IsManaged = !unmanaged,
                     Action = action.Id
                 };
                 logger.LogDebug($"End: SolutionService StartImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
