@@ -78,7 +78,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Patches.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { "Name" };
+            string[] propertyNamesAllowedToChange = { nameof(Solution.Name), nameof(Solution.Description) };
             if (patch.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() == 0)
             {
                 if (!ModelState.IsValid)
@@ -91,7 +91,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                     return NotFound();
                 }
 
-                if(entity.Actions.Any(e => e.Result == 1 || e.Status == 2 || e.Status == 1))
+                if(patch.GetChangedPropertyNames().Contains(nameof(Solution.Name)) && entity.Actions.Any(e => e.Result == 1 || e.Status == 2 || e.Status == 1))
                     return BadRequest(new ODataError { ErrorCode =  "400", Message = "Can not rename Patch with existing Actions in progress or successfully completed." });
 
                 patch.Patch(entity);
