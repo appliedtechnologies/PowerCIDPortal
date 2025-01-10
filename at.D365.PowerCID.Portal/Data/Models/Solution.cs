@@ -16,6 +16,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public int Id { get; set; }
         public Guid MsId { get; set; }
         public string Name { get; set; }
+        public string Description { get; set; }
         public int Application { get; set; }
         public string Version { get; set; }
         public string UrlMakerportal { get; set; }
