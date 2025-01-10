@@ -479,6 +479,10 @@ namespace at.D365.PowerCID.Portal.Data.Models
                     .HasMaxLength(100)
                     .IsUnicode(false);
 
+                entity.Property(e => e.Description)
+                    .HasMaxLength(5000)
+                    .IsUnicode(true);
+
                 entity.Property(e => e.UniqueName)
                     .IsRequired()
                     .HasMaxLength(200)

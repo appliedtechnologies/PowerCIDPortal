@@ -32,6 +32,7 @@ export class SolutionDetailComponent implements OnChanges {
   @Output() onRenamed = new EventEmitter<void>();
 
   @ViewChild("textBoxName") public textBoxName: DxTextBoxComponent;
+  @ViewChild("textAreaDescription") public textAreaDescription: DxTextBoxComponent;
 
   public isUpgrade: boolean;
   public isAdd: boolean;
@@ -57,6 +58,7 @@ export class SolutionDetailComponent implements OnChanges {
       this.layoutService.change(LayoutParameter.ShowLoading, true);
       this.solution.Application = this.application.Id;
       this.solution.Name = this.textBoxName.value;
+      this.solution.Description = this.textAreaDescription.value;
       if (this.isAddUpgrade) {
         this.upgradeService
           .add(this.solution)
@@ -109,6 +111,21 @@ export class SolutionDetailComponent implements OnChanges {
           this.renameUpgrade(this.solution.Id, e.component.option("value"));
         } else {
           this.renamePatch(this.solution.Id, e.component.option("value"));
+        }
+      }
+    }
+  }
+
+  public onFocusOutSolutionDescription(e: any): void {
+    if(!this.isAdd)
+    {
+      let newValue: string = this.textAreaDescription.value;
+      let validation = (Validator.getInstance(e.element) as Validator).validate();
+      if(validation.isValid && newValue && newValue != this.solution.Description){
+        if (this.isUpgrade) {
+          this.changeDescriptionUpgrade(this.solution.Id, e.component.option("value"));
+        } else {
+          this.changeDescriptionPatch(this.solution.Id, e.component.option("value"));
         }
       }
     }
@@ -178,6 +195,60 @@ export class SolutionDetailComponent implements OnChanges {
         this.layoutService.notify({
           type: NotificationType.Error,
           message: "An error occurred while renaming the Upgrade.",
+        });
+    })
+    .then(() => {
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
+    });
+  }
+
+  private changeDescriptionPatch(id: number, newDescirption: string): void{
+    this.patchService
+    .update(id, { Description: newDescirption })
+    .then(() => {
+      this.layoutService.notify({
+        type: NotificationType.Success,
+        message: "Description was successfully changed.",
+      });
+      this.onRenamed.emit();
+    })
+    .catch((error) => {
+      if(error != null)
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: `An error occurred while renaming the description: ${error.message}`,
+        });
+      else
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred while renaming the description.",
+        });
+      })
+    .then(() => {
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
+    });
+  }
+
+  private changeDescriptionUpgrade(id: number, newDescription: string): void{
+    this.upgradeService
+    .update(id, { Description: newDescription })
+    .then(() => {
+      this.layoutService.notify({
+        type: NotificationType.Success,
+        message: "Description was successfully renamed.",
+      });
+      this.onRenamed.emit();
+    })
+    .catch((error) => {
+      if(error != null)
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: `An error occurred while renaming the description: ${error.message}`,
+        });
+      else
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred while renaming the description.",
         });
     })
     .then(() => {
