@@ -27,4 +27,5 @@ export interface Application {
   Solutions? : Solution[];
   IsDeactive?: boolean;
   ForceManagedDeployment? : boolean;
+  AfterDeploymentInformation?: string;
 }
