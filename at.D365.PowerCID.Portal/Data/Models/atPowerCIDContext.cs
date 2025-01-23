@@ -357,6 +357,11 @@ namespace at.D365.PowerCID.Portal.Data.Models
 
                 entity.Property(e => e.ModifiedOn).HasColumnName("Modified On");
 
+                entity.Property(e => e.AfterDeploymentInformation)
+                    .HasColumnName("After Deployment Information")
+                    .IsUnicode(true)
+                    .HasMaxLength(5000);
+
                 entity.Property(e => e.MsId)
                     .HasMaxLength(100)
                     .IsUnicode(false)

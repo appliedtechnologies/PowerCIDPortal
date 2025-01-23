@@ -29,7 +29,7 @@ import {
   NotificationType,
 } from "src/app/shared/services/layout.service";
 import { DeploymentPath } from "src/app/shared/models/deploymentpath.model";
-import { confirm } from 'devextreme/ui/dialog';
+import { alert, confirm } from 'devextreme/ui/dialog';
 
 @Component({
   selector: "app-solutions-overview",
@@ -530,6 +530,8 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
 
         if (refreshedLastAction.Status == 3) buffer--;
         if (refreshedLastAction.Status == 3 && buffer <= 0) {
+          if(refreshedLastAction.Type == 2 && refreshedLastAction.Result == 1 && this.selectedApplication.AfterDeploymentInformation)
+            alert(this.selectedApplication.AfterDeploymentInformation, "After Deployment Information");
           this.cancelAutoRefresh();
         }
       });

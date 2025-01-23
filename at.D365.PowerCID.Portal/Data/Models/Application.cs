@@ -26,6 +26,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public DateTime ModifiedOn { get; set; }
         public bool IsDeactive { get; set; }
         public bool ForceManagedDeployment { get; set; }
+        public string AfterDeploymentInformation { get; set; }
 
         public virtual Environment DevelopmentEnvironmentNavigation { get; set; }
 

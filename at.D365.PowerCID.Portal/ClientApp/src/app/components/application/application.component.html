@@ -93,21 +93,12 @@
   </dxi-column>
 
   <dxi-column
-    dataField="ModifiedBy"
-    caption="Modified By"
-    [calculateCellValue]="modifiedByFullName"
-    [allowEditing]="false"
+    dataField="AfterDeploymentInformation"
+    caption="After Deployment Information"
     [allowSearch]="false"
+    min-width="300px"
   >  
-  </dxi-column>
-  <dxi-column
-    dataField="ModifiedOn"
-    caption="Modified On"
-    dataType="datetime"
-    format="dd.MM.yyyy HH:mm:ss"
-    [allowEditing]="false"
-    [allowSearch]="false"
-    >
+    <dxi-validation-rule type="stringLength" [max]="5000" message="Must not be longer than 5,000 characters"> </dxi-validation-rule>
   </dxi-column>
 
   <dxi-column [width]="150" type="buttons">
