@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Deltas;
 using Microsoft.OData;
+using System;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
@@ -34,24 +35,32 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         public async Task<IActionResult> Post([FromBody] Upgrade upgrade, [FromServices] SolutionService solutionService)
         {
-            logger.LogDebug($"Begin: UpgradesController Post(upgrade Application: {upgrade.Application})");
+            try {
+                logger.LogDebug($"Begin: UpgradesController Post(upgrade Application: {upgrade.Application})");
 
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == upgrade.Application && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+                    return Forbid();
+
+                await solutionService.CreateUpgrade(upgrade, version: null);
+
+                this.dbContext.Upgrades.Add(upgrade);
+                await this.dbContext.SaveChangesAsync();
+
+                logger.LogDebug($"Begin: UpgradesController Post(upgrade Application: {upgrade.Application})");
+
+                return Created(upgrade);
             }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Error: UpgradesController Post(upgrade Application: {upgrade.Application})");
 
-            if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == upgrade.Application && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
-                return Forbid();
-
-            await solutionService.CreateUpgrade(upgrade, version: null);
-
-            this.dbContext.Upgrades.Add(upgrade);
-            await this.dbContext.SaveChangesAsync();
-
-            logger.LogDebug($"Begin: UpgradesController Post(upgrade Application: {upgrade.Application})");
-
-            return Created(upgrade);
+                return BadRequest(new ODataError { ErrorCode = "400", Message = ex.Message });
+            }
         }
 
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Upgrade> upgrade)

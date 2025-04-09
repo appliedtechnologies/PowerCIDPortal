@@ -41,34 +41,43 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         public async Task<IActionResult> Post([FromBody] Patch patch)
         {
-            logger.LogDebug($"Begin: PatchesController Post(patch Version: {patch.Version})");
-
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
+                logger.LogDebug($"Begin: PatchesController Post(patch Version: {patch.Version})");
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == patch.Application && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+                    return Forbid();
+
+                if((await this.dbContext.Tenants.FirstAsync(e => e.MsId == this.msIdTenantCurrentUser)).DisablePatchCreation)
+                    return BadRequest(new ODataError { ErrorCode =  "400", Message = "Creation of patches is disabled." });
+
+                Application application = this.dbContext.Applications.First(e => e.Id == patch.Application);
+                string displayNameDataversePatch = $"{application.Name}_{patch.Name}";
+                Solution lastSolution = application.Solutions.OrderByDescending(e => e.CreatedOn).FirstOrDefault();
+                if (patch.Version == null)
+                    patch.Version = lastSolution == null ? VersionHelper.GetNextBuildVersion("1.0.0.0") : VersionHelper.GetNextBuildVersion(lastSolution.Version);
+
+                await this.CreatePatchInDataverse(application.SolutionUniqueName, displayNameDataversePatch, application.DevelopmentEnvironmentNavigation.BasicUrl, patch);
+                patch.UrlMakerportal = $"https://make.powerapps.com/environments/{application.DevelopmentEnvironmentNavigation.MsId}/solutions/{patch.MsId}";
+
+                this.dbContext.Patches.Add(patch);
+                await this.dbContext.SaveChangesAsync();
+
+                logger.LogDebug($"End: PatchesController Post(patch Version: {patch.Version})");
+
+                return Created(patch);
             }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Error: PatchesController Post(patch Version: {patch.Version})");
 
-            if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == patch.Application && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
-                return Forbid();
-
-            if((await this.dbContext.Tenants.FirstAsync(e => e.MsId == this.msIdTenantCurrentUser)).DisablePatchCreation)
-                return BadRequest(new ODataError { ErrorCode =  "400", Message = "Creation of patches is disabled." });
-
-            Application application = this.dbContext.Applications.First(e => e.Id == patch.Application);
-            string displayNameDataversePatch = $"{application.Name}_{patch.Name}";
-            Solution lastSolution = application.Solutions.OrderByDescending(e => e.CreatedOn).FirstOrDefault();
-            if (patch.Version == null)
-                patch.Version = lastSolution == null ? VersionHelper.GetNextBuildVersion("1.0.0.0") : VersionHelper.GetNextBuildVersion(lastSolution.Version);
-
-            await this.CreatePatchInDataverse(application.SolutionUniqueName, displayNameDataversePatch, application.DevelopmentEnvironmentNavigation.BasicUrl, patch);
-            patch.UrlMakerportal = $"https://make.powerapps.com/environments/{application.DevelopmentEnvironmentNavigation.MsId}/solutions/{patch.MsId}";
-
-            this.dbContext.Patches.Add(patch);
-            await this.dbContext.SaveChangesAsync();
-
-            logger.LogDebug($"End: PatchesController Post(patch Version: {patch.Version})");
-
-            return Created(patch);
+                return BadRequest(new ODataError { ErrorCode = "400", Message = ex.Message });
+            }
         }
 
         public async Task<IActionResult> Patch([FromODataUri] int key, Delta<Patch> patch)
@@ -193,7 +202,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception("Could not create Patch in Dataverse");
+                throw new Exception($"Could not create Patch in Dataverse");
             }
             else
             {
