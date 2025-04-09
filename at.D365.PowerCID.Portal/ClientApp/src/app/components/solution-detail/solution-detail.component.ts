@@ -68,10 +68,10 @@ export class SolutionDetailComponent implements OnChanges {
               message: "Upgrade was successfully created.",
             });
           })
-          .catch(() => {
+          .catch((error) => {
             this.layoutService.notify({
               type: NotificationType.Error,
-              message: "An error occurred while creating the upgrade.",
+              message: error.message ? `An error occurred while creating the Upgrade: ${error.message}` : "An error occurred while creating the Upgrade."
             });
           })
           .then(() => {
@@ -90,7 +90,7 @@ export class SolutionDetailComponent implements OnChanges {
           .catch((error: Error) => {
             this.layoutService.notify({
               type: NotificationType.Error,
-              message: error.message ? `An error occurred while creating the patch: ${error.message}` : "An error occurred while creating the patch."
+              message: error.message ? `An error occurred while creating the Patch: ${error.message}` : "An error occurred while creating the Patch."
             });
           })
           .then(() => {
@@ -136,13 +136,13 @@ export class SolutionDetailComponent implements OnChanges {
       this.isUpgrade = "ApplyManually" in this.solution;
       this.isAdd = false;
       if(this.solution.OverwriteUnmanagedCustomizations === null)
-        this.solution.OverwriteUnmanagedCustomizations = true;
+        this.solution.OverwriteUnmanagedCustomizations = false;
       if(this.solution.EnableWorkflows === null)
         this.solution.EnableWorkflows = true;
     } else {
       this.isAdd = true;
       this.solution = {
-        OverwriteUnmanagedCustomizations: true,
+        OverwriteUnmanagedCustomizations: false,
         EnableWorkflows: true
       };
     }
