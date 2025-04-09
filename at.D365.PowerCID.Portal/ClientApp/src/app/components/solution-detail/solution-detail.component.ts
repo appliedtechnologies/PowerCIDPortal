@@ -136,13 +136,13 @@ export class SolutionDetailComponent implements OnChanges {
       this.isUpgrade = "ApplyManually" in this.solution;
       this.isAdd = false;
       if(this.solution.OverwriteUnmanagedCustomizations === null)
-        this.solution.OverwriteUnmanagedCustomizations = true;
+        this.solution.OverwriteUnmanagedCustomizations = false;
       if(this.solution.EnableWorkflows === null)
         this.solution.EnableWorkflows = true;
     } else {
       this.isAdd = true;
       this.solution = {
-        OverwriteUnmanagedCustomizations: true,
+        OverwriteUnmanagedCustomizations: false,
         EnableWorkflows: true
       };
     }
