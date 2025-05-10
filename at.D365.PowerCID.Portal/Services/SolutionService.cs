@@ -162,10 +162,24 @@ namespace at.D365.PowerCID.Portal.Services
         {
             logger.LogDebug($"Begin: SolutionService CreateUpgrade(upgrade Version: {upgrade.Version}, version: {version})");
 
-            Application application = this.dbContext.Applications.FirstOrDefault(e => e.Id == upgrade.Application);
-            string lastSolution = version == null ? application.Solutions.OrderByDescending(e => e.CreatedOn).FirstOrDefault()?.Version : version;
+            Application application = this.dbContext.Applications.First(e => e.Id == upgrade.Application);
+
             if (upgrade.Version == null)
-                upgrade.Version = lastSolution == null ? VersionHelper.GetNextMinorVersion("1.0.0.0") : VersionHelper.GetNextMinorVersion(lastSolution);
+            {
+                if (!String.IsNullOrEmpty(version))
+                    upgrade.Version = version;
+                else
+                {
+                    string lastVersionFromDataverse = await GetCurrentSolutionVersion(application.SolutionUniqueName, application.DevelopmentEnvironmentNavigation.BasicUrl);
+                    if (!String.IsNullOrEmpty(lastVersionFromDataverse))
+                        upgrade.Version = VersionHelper.GetNextMinorVersion(lastVersionFromDataverse);
+                    else
+                    {
+                        string lastSolution = application.Solutions.OrderByDescending(e => e.CreatedOn).FirstOrDefault()?.Version;
+                        upgrade.Version = lastSolution == null ? VersionHelper.GetNextMinorVersion("1.0.0.0") : VersionHelper.GetNextMinorVersion(lastSolution);
+                    }
+                }
+            }
 
             await this.CreateUpgradeInDataverse(application.SolutionUniqueName, application.Name, application.DevelopmentEnvironmentNavigation.BasicUrl, application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId, upgrade);
             upgrade.UrlMakerportal = $"https://make.powerapps.com/environments/{application.DevelopmentEnvironmentNavigation.MsId}/solutions/{upgrade.MsId}";
@@ -214,7 +228,7 @@ namespace at.D365.PowerCID.Portal.Services
 
             (EntityCollection solutionComponentParameters, string deploymentDetails) = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
 
-            if(unmanaged)
+            if (unmanaged)
                 deploymentDetails = "unmanaged deployment \n\n" + deploymentDetails;
             else
                 deploymentDetails = "managed deployment \n\n" + deploymentDetails;
@@ -252,12 +266,13 @@ namespace at.D365.PowerCID.Portal.Services
 
             (EntityCollection solutionComponentParameters, string deploymentDetails) = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
 
-            if(unmanaged)
+            if (unmanaged)
                 deploymentDetails = "unmanaged deployment \n\n" + deploymentDetails;
             else
                 deploymentDetails = "managed deployment \n\n" + deploymentDetails;
 
-            StageAndUpgradeAsyncRequest stageAndUpgradeRequest = new StageAndUpgradeAsyncRequest{
+            StageAndUpgradeAsyncRequest stageAndUpgradeRequest = new StageAndUpgradeAsyncRequest
+            {
                 CustomizationFile = solutionFileData,
                 OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
                 PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
@@ -337,13 +352,15 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<bool> ExistsSolutionInTargetEnvironment(string solutionUniqueName, string basicUrl, string excludeVersion = "")
         {
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                var query = new QueryExpression("solution"){
+            using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
+            {
+                var query = new QueryExpression("solution")
+                {
                     ColumnSet = new ColumnSet("uniquename", "version"),
                 };
                 query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
 
-                if(!String.IsNullOrEmpty(excludeVersion))
+                if (!String.IsNullOrEmpty(excludeVersion))
                     query.Criteria.AddCondition("version", ConditionOperator.NotEqual, excludeVersion);
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
@@ -352,20 +369,24 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public  async Task<Guid> GetSolutionIdByUniqueName(string solutionUniqueName, string basicUrl){
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                var query = new QueryExpression("solution"){
+        public async Task<Guid> GetSolutionIdByUniqueName(string solutionUniqueName, string basicUrl)
+        {
+            using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
+            {
+                var query = new QueryExpression("solution")
+                {
                     ColumnSet = new ColumnSet("solutionid"),
-                    PageInfo = new PagingInfo(){
+                    PageInfo = new PagingInfo()
+                    {
                         Count = 1,
-                        PageNumber = 1 
+                        PageNumber = 1
                     }
                 };
                 query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
 
-                if(response.Entities.Count == 0)
+                if (response.Entities.Count == 0)
                     return Guid.Empty;
 
                 var solutionId = (Guid)response.Entities.First()["solutionid"];
@@ -389,6 +410,33 @@ namespace at.D365.PowerCID.Portal.Services
             Data.Models.Environment environment = await this.dbContext.Environments.FindAsync(environmentId);
             if (String.IsNullOrEmpty(environment.ConnectionsOwner))
                 throw new Exception("Connection Owner is not set for target environment.");
+        }
+
+        private async Task<string> GetCurrentSolutionVersion(string solutionUniqueName, string basicUrl)
+        {
+            logger.LogDebug($"Begin: SolutionService GetCurrentSolutionVersion(solutionUniqueName: {solutionUniqueName}, basicUrl: {basicUrl})");
+
+            using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
+            {
+                var query = new QueryExpression("solution")
+                {
+                    ColumnSet = new ColumnSet("uniquename", "version"),
+                    PageInfo = new PagingInfo()
+                    {
+                        Count = 1,
+                        PageNumber = 1
+                    }
+                };
+                query.Criteria.AddCondition("uniquename", ConditionOperator.Equal, solutionUniqueName);
+
+                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+
+                if (response.Entities.Count == 0)
+                    return null;
+
+                var version = (string)response.Entities.First()["version"];
+                return version;
+            }
         }
 
         private async Task CreateUpgradeInDataverse(string solutionUniqueName, string solutionDisplayName, string basicUrl, Guid tenantMsId, Upgrade upgrade)
@@ -452,7 +500,7 @@ namespace at.D365.PowerCID.Portal.Services
 
             var environmentVariableEnvironments = this.dbContext.EnvironmentVariableEnvironments.Where(e => e.Environment == environmentId && e.EnvironmentVariableNavigation.Application == applicationId).ToList();
 
-            if(environmentVariableEnvironments.Count > 0)
+            if (environmentVariableEnvironments.Count > 0)
                 deploymentDetails += "Used Environment Variables:\n";
 
             foreach (EnvironmentVariableEnvironment environmentVariableEnvironment in environmentVariableEnvironments)
@@ -480,7 +528,7 @@ namespace at.D365.PowerCID.Portal.Services
 
             var connectionReferenceEnvironments = this.dbContext.ConnectionReferenceEnvironments.Where(e => e.Environment == environmentId && e.ConnectionReferenceNavigation.Application == applicationId).ToList();
 
-            if(connectionReferenceEnvironments.Count > 0)
+            if (connectionReferenceEnvironments.Count > 0)
                 deploymentDetails += "Used Connection References:\n";
 
             foreach (ConnectionReferenceEnvironment connectionReferenceEnvironment in connectionReferenceEnvironments)
