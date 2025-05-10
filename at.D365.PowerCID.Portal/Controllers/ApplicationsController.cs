@@ -307,8 +307,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             await dbContext.SaveChangesAsync();
 
             // Create Upgrade
-            string version = (string)solution[0]["version"];
-            await CreateNewUpgrade(application, version, solutionService);
+            await CreateNewUpgrade(application, null, solutionService);
 
             logger.LogDebug($"End: ApplicationsController SaveApplication()");
 
