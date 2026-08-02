@@ -74,7 +74,7 @@ export class ApplicationComponent {
     });
     this.dataSourceEnvironments = new DataSource({
       store: this.environmentService.getStore(),
-      filter: "IsDevelopmentEnvironment eq true",
+      filter: [["IsDevelopmentEnvironment", "=", true], "and", ["IsDeactive", "=", false]],
     });
   }
 

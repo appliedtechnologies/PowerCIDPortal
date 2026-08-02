@@ -422,6 +422,8 @@ namespace at.D365.PowerCID.Portal.Data.Models
 
                 entity.Property(e => e.IsDevelopmentEnvironment).HasColumnName("Is Development Environment");
 
+                entity.Property(e => e.IsDeactive);
+
                 entity.Property(e => e.ModifiedBy).HasColumnName("Modified By");
 
                 entity.Property(e => e.ModifiedOn).HasColumnName("Modified On");

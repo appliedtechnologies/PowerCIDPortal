@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
+using Microsoft.OData;
 using Newtonsoft.Json.Linq;
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -44,7 +45,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { "OrdinalNumber", "IsDevelopmentEnvironment", "ConnectionsOwner", "DeployUnmanaged", "BasicUrl" };
+            string[] propertyNamesAllowedToChange = { "OrdinalNumber", "IsDevelopmentEnvironment", "ConnectionsOwner", "DeployUnmanaged", "BasicUrl", "IsDeactive" };
             if (environment.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() == 0)
             {
                 if (!ModelState.IsValid)
@@ -56,7 +57,16 @@ namespace at.D365.PowerCID.Portal.Controllers
                 {
                     return NotFound();
                 }
+                var wasDeactive = entity.IsDeactive;
                 environment.Patch(entity);
+                if (!wasDeactive && entity.IsDeactive && this.dbContext.DeploymentPathEnvironments.Any(e => e.Environment == key))
+                {
+                    return BadRequest(new ODataError
+                    {
+                        Code = "400",
+                        Message = $"The environment is used in deployment path '{this.dbContext.DeploymentPathEnvironments.Where(e => e.Environment == key).Select(e => e.DeploymentPathNavigation.Name).First()}'."
+                    });
+                }
                 try
                 {
                     await base.dbContext.SaveChangesAsync();
@@ -93,12 +103,17 @@ namespace at.D365.PowerCID.Portal.Controllers
                 IEnumerable<Environment> pulledEnvironments = await this.GetExistingEnvironments();
 
                 //update existing environments
-                var pulledAlreadyExistingEnvironments = pulledEnvironments.Where(e => this.dbContext.Environments.Select(t => t.MsId).Contains(e.MsId));
-                foreach (Environment pulledEnvironment in pulledAlreadyExistingEnvironments)
+                Tenant currentUsersTenant = this.dbContext.Tenants.First(e => e.MsId == this.msIdTenantCurrentUser);
+                var existingEnvironmentIds = this.dbContext.Environments
+                    .Where(e => e.Tenant == currentUsersTenant.Id)
+                    .Select(e => e.MsId)
+                    .ToHashSet();
+
+                foreach (Environment pulledEnvironment in pulledEnvironments.Where(e => existingEnvironmentIds.Contains(e.MsId)))
                     this.UpdateEnvironmentIfNeeded(pulledEnvironment);
 
                 //add NOT existing environments
-                var pulledNotExisting = pulledEnvironments.Except(pulledAlreadyExistingEnvironments);
+                var pulledNotExisting = pulledEnvironments.Where(e => !existingEnvironmentIds.Contains(e.MsId));
                 await this.dbContext.Environments.AddRangeAsync(pulledNotExisting);
 
                 await this.dbContext.SaveChangesAsync();
@@ -163,7 +178,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: EnvironmentsController UpdateEnvironmentIfNeeded(pulledEnvironment Name: {pulledEnvironment.Name})");
 
-            Environment currentDbEnvironment = this.dbContext.Environments.First(e => e.MsId == pulledEnvironment.MsId);
+            Environment currentDbEnvironment = this.dbContext.Environments.First(e => e.MsId == pulledEnvironment.MsId && e.TenantNavigation.MsId == this.msIdTenantCurrentUser);
 
             if (currentDbEnvironment.Name != pulledEnvironment.Name)
                 currentDbEnvironment.Name = pulledEnvironment.Name;

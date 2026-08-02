@@ -75,4 +75,18 @@
     [allowEditing]="false"
     [allowSearch]="false"
   ></dxi-column>
+  <dxi-column type="buttons">
+    <dxi-button
+      hint="Deactivate environment"
+      icon="trash"
+      [visible]="isActiveEnvironment"
+      [onClick]="onClickDeactivateEnvironment"
+    ></dxi-button>
+    <dxi-button
+      hint="Activate environment"
+      icon="undo"
+      [visible]="isDeactivatedEnvironment"
+      [onClick]="onClickActivateEnvironment"
+    ></dxi-button>
+  </dxi-column>
 </dx-data-grid>

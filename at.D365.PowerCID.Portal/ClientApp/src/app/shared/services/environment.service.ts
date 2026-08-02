@@ -62,4 +62,8 @@ export class EnvironmentService {
   public update(id: number, environment: Environment){
     return this.getStore().update(id, environment);
   }
+
+  public setDeactivated(id: number, isDeactive: boolean): Promise<void> {
+    return this.getStore().update(id, { IsDeactive: isDeactive }).then(() => undefined);
+  }
 }
