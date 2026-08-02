@@ -1,7 +1,7 @@
 import { BrowserModule } from "@angular/platform-browser";
 import { APP_INITIALIZER, NgModule } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { HttpClient, HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from "@angular/common/http";
+import { HttpClient, HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi, withXhr } from "@angular/common/http";
 import {
   DxDataGridModule,
   DxDrawerModule,
@@ -196,7 +196,7 @@ config({ licenseKey });
         ConnectionReferenceService,
         EnvironmentVariableService,
         IsPatchPipe,
-        provideHttpClient(withInterceptorsFromDi())
+        provideHttpClient(withXhr(), withInterceptorsFromDi())
     ] })
 export class AppModule {
   constructor(httpClient: HttpClient) {

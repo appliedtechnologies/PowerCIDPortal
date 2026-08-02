@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from "@angular/core";
+import { Component, OnInit, ViewChild, ChangeDetectionStrategy } from "@angular/core";
 import DataSource from "devextreme/data/data_source";
 import { UserService } from "src/app/shared/services/user.service";
 import {
@@ -21,6 +21,7 @@ import { confirm } from 'devextreme/ui/dialog';
     selector: "app-user",
     templateUrl: "./user.component.html",
     styleUrls: ["./user.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class UserComponent {
@@ -62,7 +63,7 @@ export class UserComponent {
   }
   
   public onToolbarPreparingDataGrid(e: any): void{
-    let toolbarItems = e.toolbarOptions.items;
+    const toolbarItems = e.toolbarOptions.items;
 
     toolbarItems.unshift({
       widget: "dxButton",
@@ -100,7 +101,7 @@ export class UserComponent {
   }
 
   public onClickDeactivateUser(e: any){
-    let result = confirm("Are you sure you want to disable this user?<br /> This will NOT delete potential ownership in Azure Entra ID.", "Confirm Deactivation");
+    const result = confirm("Are you sure you want to disable this user?<br /> This will NOT delete potential ownership in Azure Entra ID.", "Confirm Deactivation");
     result.then((dialogResult) => {
       if (dialogResult) {
         this.layoutService.change(LayoutParameter.ShowLoading, true);
@@ -127,12 +128,12 @@ export class UserComponent {
 
   public onSelectionChangedPermissionEnvironments(e: any): void {
     if (!this.isInitPermissionEnvironmentSelection) {
-      (e.addedItems as Array<Environment>).forEach((environment) => {
+      (e.addedItems as Environment[]).forEach((environment) => {
         this.userEnvironmentService
           .addEnvironmentPermission(this.currentSelectedUser.Id, environment.Id)
           .then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
       });
-      (e.removedItems as Array<Environment>).forEach((environment) => {
+      (e.removedItems as Environment[]).forEach((environment) => {
         this.userEnvironmentService
           .removeEnvironmentPermission(
             this.currentSelectedUser.Id,
@@ -207,7 +208,7 @@ export class UserComponent {
 
   public onValueChangedRoleAssignment(e: any, roleNameKey: any): void {
     this.layoutService.change(LayoutParameter.ShowLoading, true);
-    let appRoleId: string = AppConfig.settings.azure.appRoleIds[roleNameKey];
+    const appRoleId: string = AppConfig.settings.azure.appRoleIds[roleNameKey];
     if (e.value) {
       this.userService
         .assignRole(this.currentSelectedUser.Id, appRoleId)

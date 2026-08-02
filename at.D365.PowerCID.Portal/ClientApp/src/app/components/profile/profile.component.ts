@@ -1,5 +1,5 @@
 import { HttpClient } from "@angular/common/http";
-import { Component, OnInit } from "@angular/core";
+import { Component, OnInit, ChangeDetectionStrategy } from "@angular/core";
 import { MsalService, MsalBroadcastService } from "@azure/msal-angular";
 import {
   EventMessage,
@@ -20,6 +20,7 @@ import { LayoutService, NotificationType } from "src/app/shared/services/layout.
     selector: "app-profile",
     templateUrl: "./profile.component.html",
     styleUrls: ["./profile.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class ProfileComponent implements OnInit {

@@ -1,6 +1,5 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnInit, ChangeDetectionStrategy } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
-import { Key } from "selenium-webdriver";
 import { AppConfig } from "src/app/shared/config/app.config";
 import {
   LayoutParameter,
@@ -14,6 +13,7 @@ import { UserService } from "src/app/shared/services/user.service";
     selector: "app-settings",
     templateUrl: "./settings.component.html",
     styleUrls: ["./settings.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class SettingsComponent implements OnInit {
@@ -21,7 +21,7 @@ export class SettingsComponent implements OnInit {
   public dataSourceGitHubRepositories;
   public valueSelectBoxRepositoryName: string;
   public valueDisablePatchCreation: boolean;
-  public isSetupApplicationUser: boolean = false;
+  public isSetupApplicationUser = false;
   public environmentMessages;
   public appId: string;
 

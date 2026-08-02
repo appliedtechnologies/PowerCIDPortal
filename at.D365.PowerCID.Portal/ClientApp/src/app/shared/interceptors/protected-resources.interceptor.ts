@@ -20,7 +20,7 @@ export class ProtectedResourcesInterceptor implements HttpInterceptor {
   ): Observable<HttpEvent<any>> {
       try{
         if(req.url.includes("dynamics.com")){
-          let url = new URL(req.url);
+          const url = new URL(req.url);
           if (url.origin.includes("dynamics.com"))
             this.addDataverseResource(url.origin);
         }
@@ -31,7 +31,7 @@ export class ProtectedResourcesInterceptor implements HttpInterceptor {
   }
 
   private addDataverseResource(url: string) {
-    let resource: string = `${url}/api/data/v9.2/*`;
+    const resource = `${url}/api/data/v9.2/*`;
 
     if (!this.msalInterceptorConfig.protectedResourceMap.has(resource))
       this.msalInterceptorConfig.protectedResourceMap.set(resource, [

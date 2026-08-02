@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChild } from "@angular/core";
+import { Component, Input, OnInit, ViewChild, ChangeDetectionStrategy } from "@angular/core";
 import { DxDataGridComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import ODataStore from "devextreme/data/odata/store";
@@ -23,6 +23,7 @@ import { UserService } from "src/app/shared/services/user.service";
     selector: "app-history",
     templateUrl: "./history.component.html",
     styleUrls: ["./history.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class HistoryComponent implements OnInit {
@@ -193,7 +194,7 @@ export class HistoryComponent implements OnInit {
   }
 
   public onToolbarPreparingDataGrid(e: any): void{
-    let toolbarItems = e.toolbarOptions.items;
+    const toolbarItems = e.toolbarOptions.items;
 
     toolbarItems.unshift({
       widget: "dxButton",

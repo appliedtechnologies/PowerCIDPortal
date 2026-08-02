@@ -10,7 +10,7 @@ export class IsPatchPipe implements PipeTransform {
     constructor() {}
 
     transform(solution: Solution, args?: any): boolean {
-        let isUpgrade: boolean = "ApplyManually" in solution;
+        const isUpgrade: boolean = "ApplyManually" in solution;
         return !isUpgrade;
     }
 }

@@ -51,7 +51,7 @@ export class TenantService {
 
   public getGitHubRepositories(): Promise<string[]> {
     return new Promise<string[]>((resolve, reject) => {
-      let request = this.http
+      const request = this.http
         .post(`${AppConfig.settings.api.url}/Tenants(${this.userService.currentDbUserWithTenant.Tenant})/GetGitHubRepositories`, {})
         .subscribe({
           next: (data) => resolve(data["value"]),

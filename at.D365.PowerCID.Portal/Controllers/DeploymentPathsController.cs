@@ -22,7 +22,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class DeploymentPathsController : BaseController
     {
         private readonly ILogger logger;
-        public DeploymentPathsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<DeploymentPathsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public DeploymentPathsController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<DeploymentPathsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }

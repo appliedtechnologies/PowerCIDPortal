@@ -11,8 +11,8 @@ export class HasUserRole implements PipeTransform {
     constructor(private logService: LogService) {}
 
     transform(appRoleAssignments: AppRoleAssignment[], roleNameKey: any): any {
-        let appRoleId: string = AppConfig.settings.azure.appRoleIds[roleNameKey];
-        let hasUserRole: boolean = appRoleAssignments.some(e => e.AppRoleId == appRoleId);
+        const appRoleId: string = AppConfig.settings.azure.appRoleIds[roleNameKey];
+        const hasUserRole: boolean = appRoleAssignments.some(e => e.AppRoleId == appRoleId);
         return hasUserRole;
     }
 }

@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, OnInit, SimpleChanges } from "@angular/core";
+import { Component, Input, OnChanges, OnInit, SimpleChanges, ChangeDetectionStrategy } from "@angular/core";
 import { Action } from "src/app/shared/models/action.model";
 import { ActionService } from "src/app/shared/services/action.service";
 
@@ -6,6 +6,7 @@ import { ActionService } from "src/app/shared/services/action.service";
     selector: "app-action-detail",
     templateUrl: "./action-detail.component.html",
     styleUrls: ["./action-detail.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class ActionDetailComponent implements OnChanges {

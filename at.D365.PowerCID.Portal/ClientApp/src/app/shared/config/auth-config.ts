@@ -43,7 +43,7 @@ export function MSALInstanceFactory(): IPublicClientApplication {
 }
 
 export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
-  const protectedResourceMap = new Map<string, Array<string | ProtectedResourceScopes>>([
+  const protectedResourceMap = new Map<string, (string | ProtectedResourceScopes)[]>([
     ["https://graph.microsoft.com/v1.0/*", ["user.read"]],
     [location.origin + "/odata/*", [`api://${AppConfig.settings.azure.applicationId}/access_as_user`]],
   ]);

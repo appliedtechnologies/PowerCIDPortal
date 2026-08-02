@@ -121,12 +121,12 @@
               <div class="dx-field-label">{{roleName.value}}</div>
               <div class="dx-field-value">
                 <dx-check-box
-                  [disabled]="roleName.key == 'admin'"
+                  [disabled]="roleName.key === 'admin'"
                   [value]="this.currentSelectedUserRoles | hasUserRole: roleName.key"
                   (onValueChanged)="onValueChangedRoleAssignment($event, roleName.key)"
                 ></dx-check-box>
               </div>
-              @if (roleName.key == 'admin') {
+              @if (roleName.key === 'admin') {
                 <div class="hint-role-sync">
                   This role is in sync with the app ownership - <a href="https://github.com/appliedtechnologies/PowerCIDPortal/wiki/Setup-and-maintenance-of-a-tenant#unilateral-synchronization-of-ownership-and-administrator-role" target="_blank">more info.</a>
                 </div>

@@ -26,7 +26,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class ApplicationsController : BaseController
     {
         private readonly ILogger logger;
-        public ApplicationsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ApplicationsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public ApplicationsController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ApplicationsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }
@@ -199,13 +199,13 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return Forbid();
 
             // Request solutions that are not patches
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{user.TenantNavigation.MsId}";
+                options.AcquireTokenOptions.Tenant = $"{user.TenantNavigation.MsId}";
                 options.BaseUrl = environment.BasicUrl + options.BaseUrl;
                 options.RelativePath = "/solutions?$filter=ismanaged%20eq%20false%20and%20_parentsolutionid_value%20eq%20null&$select=uniquename&$orderby=uniquename%20asc";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{environment.BasicUrl}/.default";
+                options.HttpMethod = HttpMethod.Get.Method;
+                options.Scopes = new[] { $"{environment.BasicUrl}/.default" };
             });
 
             if (!response.IsSuccessStatusCode)
@@ -259,13 +259,13 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
 
             // Request solution where uniquename = selected uniquename
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{user.TenantNavigation.MsId}";
+                options.AcquireTokenOptions.Tenant = $"{user.TenantNavigation.MsId}";
                 options.BaseUrl = environment.BasicUrl + options.BaseUrl;
                 options.RelativePath = $"/solutions?$filter=uniquename%20eq%20%27{applicationUniqueName}%27";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{environment.BasicUrl}/.default";
+                options.HttpMethod = HttpMethod.Get.Method;
+                options.Scopes = new[] { $"{environment.BasicUrl}/.default" };
             });
 
             if (!response.IsSuccessStatusCode)
@@ -356,13 +356,13 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             StringContent solutionContent = new StringContent(JsonConvert.SerializeObject(newSolution), Encoding.UTF8, mediaType: "application/json");
 
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{this.msIdTenantCurrentUser}";
+                options.AcquireTokenOptions.Tenant = $"{this.msIdTenantCurrentUser}";
                 options.BaseUrl = environmentUrl + options.BaseUrl;
                 options.RelativePath = "/solutions";
-                options.HttpMethod = HttpMethod.Post;
-                options.Scopes = $"{environmentUrl}/.default";
+                options.HttpMethod = HttpMethod.Post.Method;
+                options.Scopes = new[] { $"{environmentUrl}/.default" };
             }, content: solutionContent);
 
             if (!response.IsSuccessStatusCode)
@@ -395,13 +395,13 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: ApplicationsController CreateNewPublisher(newPublisherGuid: {newPublisherGuid.ToString()}, user TenantNavigation MsId: {user.TenantNavigation.MsId}, environment Id: {environment.Id})");
 
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{user.TenantNavigation.MsId}";
+                options.AcquireTokenOptions.Tenant = $"{user.TenantNavigation.MsId}";
                 options.BaseUrl = environment.BasicUrl + options.BaseUrl;
                 options.RelativePath = $"/publishers({newPublisherGuid})";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{environment.BasicUrl}/.default";
+                options.HttpMethod = HttpMethod.Get.Method;
+                options.Scopes = new[] { $"{environment.BasicUrl}/.default" };
             });
 
             JObject responseData = await response.Content.ReadAsAsync<JObject>();

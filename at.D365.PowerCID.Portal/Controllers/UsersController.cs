@@ -30,7 +30,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         private readonly IConfiguration configuration;
         private readonly ILogger logger;
 
-        public UsersController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, ILogger<UsersController> logger, AzureService azureService) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public UsersController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, ILogger<UsersController> logger, AzureService azureService) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.configuration = configuration;
             this.logger = logger;
@@ -318,7 +318,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             return currentDbUser;
         }
 
-        private async Task<Tenant> AddTenant(IDownstreamWebApi webApi, Guid msId)
+        private async Task<Tenant> AddTenant(IDownstreamApi webApi, Guid msId)
         {
             logger.LogDebug($"Begin: UsersController AddTenant(msId: {msId.ToString()})");
 
@@ -346,15 +346,15 @@ namespace at.D365.PowerCID.Portal.Controllers
                 logger.LogInformation("content null");
                 logger.LogDebug($"End: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
 
-                return await this.downstreamWebApi.CallWebApiForUserAsync(
+                return await this.downstreamWebApi.CallApiForUserAsync(
                                "DataverseApi",
                                options =>
                                {
                                    options.BaseUrl = environment.BasicUrl + options.BaseUrl;
-                                   options.Tenant = $"{user.TenantNavigation.MsId}";
+                                   options.AcquireTokenOptions.Tenant = $"{user.TenantNavigation.MsId}";
                                    options.RelativePath = relativePath;
-                                   options.HttpMethod = httpMethod;
-                                   options.Scopes = $"{environment.BasicUrl}/user_impersonation";
+                                   options.HttpMethod = httpMethod.Method;
+                                   options.Scopes = new[] { $"{environment.BasicUrl}/user_impersonation" };
                                });
             }
             else
@@ -362,16 +362,16 @@ namespace at.D365.PowerCID.Portal.Controllers
                 logger.LogInformation("content not null");
                 logger.LogDebug($"End: UsersController UpdateUserIfNeeded(environment BasicUrl: {environment.BasicUrl}, user TenantNavigation MsId: {user.TenantNavigation.MsId.ToString()}, relativePath: {relativePath})");
 
-                return await this.downstreamWebApi.CallWebApiForUserAsync(
+                return await this.downstreamWebApi.CallApiForUserAsync(
                                "DataverseApi",
                                options =>
                                {
                                    options.BaseUrl = environment.BasicUrl + options.BaseUrl;
-                                   options.Tenant = $"{user.TenantNavigation.MsId}";
+                                   options.AcquireTokenOptions.Tenant = $"{user.TenantNavigation.MsId}";
                                    options.RelativePath = relativePath;
-                                   options.HttpMethod = httpMethod;
-                                   options.Scopes = $"{environment.BasicUrl}/user_impersonation";
-                               }, content: content);
+                                   options.HttpMethod = httpMethod.Method;
+                                   options.Scopes = new[] { $"{environment.BasicUrl}/user_impersonation" };
+                               }, null, content);
             }
         }
     }

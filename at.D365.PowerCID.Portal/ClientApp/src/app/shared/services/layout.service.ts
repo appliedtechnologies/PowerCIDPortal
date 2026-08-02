@@ -47,7 +47,7 @@ export class LayoutService {
   }
 
   public confirmUnsavedChanged(): Promise<boolean> {
-    let dialog = custom({
+    const dialog = custom({
       dragEnabled: false,
       messageHtml: "There are unsaved changes that will be lost if you continue. Are you sure you want this?",
       title: "Discard changes?",

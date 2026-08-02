@@ -1,4 +1,4 @@
-import { Component, ViewChild } from "@angular/core";
+import { Component, ViewChild, ChangeDetectionStrategy } from "@angular/core";
 import { DxDataGridComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import ODataStore from "devextreme/data/odata/store";
@@ -24,6 +24,7 @@ import { confirm } from 'devextreme/ui/dialog';
     selector: "app-application",
     templateUrl: "./application.component.html",
     styleUrls: ["./application.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class ApplicationComponent {
@@ -33,13 +34,13 @@ export class ApplicationComponent {
   dataSourceApplications: DataSource;
   dataSourceEnvironments: DataSource;
   dataStoreEnvironments: ODataStore;
-  isPullApplications: boolean = false;
+  isPullApplications = false;
   currentEnvironment: Environment;
   developmentEnvironments: Environment[];
   pulledApplications: string[] = [];
   currentApplication: string;
   applicationSelectionDisabled = true;
-  isAssignDevelopmentPaths: boolean = false;
+  isAssignDevelopmentPaths = false;
   deploymentPaths: DeploymentPath[];
   currentApplicationId: number;
   applicationDeploymentPaths;
@@ -84,7 +85,7 @@ export class ApplicationComponent {
   }
 
   public onToolbarPreparingDataGrid(e): void {
-    let toolbarItems = e.toolbarOptions.items;
+    const toolbarItems = e.toolbarOptions.items;
 
     toolbarItems.unshift({
       widget: "dxButton",
@@ -146,8 +147,8 @@ export class ApplicationComponent {
       e.Cancel = true;
     } else {
       e.toData.splice(e.toIndex, 0, e.itemData);
-      let itemDataId = e.itemData.Id;
-      let toIndex = e.toIndex + 1;
+      const itemDataId = e.itemData.Id;
+      const toIndex = e.toIndex + 1;
 
       this.applicationDeploymentPathService.getStore().insert({
         Application: this.currentApplicationId,
@@ -159,8 +160,8 @@ export class ApplicationComponent {
 
   onRemove(e) {
     e.fromData.splice(e.fromIndex, 1);
-    let itemDataId = e.itemData.Id;
-    let fromIndex = e.fromIndex + 1;
+    const itemDataId = e.itemData.Id;
+    const fromIndex = e.fromIndex + 1;
 
     this.applicationDeploymentPathService.getStore().remove({
       Application: this.currentApplicationId,
@@ -169,9 +170,9 @@ export class ApplicationComponent {
   }
 
   onReorder(e) {
-    let itemDataId = e.itemData.Id;
-    let fromIndex = e.fromIndex + 1;
-    let toIndex = e.toIndex + 1;
+    const itemDataId = e.itemData.Id;
+    const fromIndex = e.fromIndex + 1;
+    const toIndex = e.toIndex + 1;
 
     this.applicationDeploymentPathService
       .getStore()
@@ -219,11 +220,11 @@ export class ApplicationComponent {
   }
 
   onClickDisableApplication(e) {
-    let result = confirm("Are you sure you want to disable this application?<br /> This will NOT delete the application in any environment.", "Confirm Deactivation");
+    const result = confirm("Are you sure you want to disable this application?<br /> This will NOT delete the application in any environment.", "Confirm Deactivation");
     result.then((dialogResult) => {
       if (dialogResult) {
         this.layoutService.change(LayoutParameter.ShowLoading, true);
-        let applicationId: number = e.row.data.Id;
+        const applicationId: number = e.row.data.Id;
         this.applicationService.delete(applicationId)
           .then(() => {
             this.layoutService.notify({
@@ -281,7 +282,7 @@ export class ApplicationComponent {
         this.dataGrid.instance.refresh();
       })
       .catch((e) => {
-        let message =
+        const message =
           this.currentApplication == null
             ? "Select an application"
             : e.error.value;
@@ -316,7 +317,7 @@ export class ApplicationComponent {
 
   loadFilteredPublishers(environmentId: number): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      let publishers: Publisher[] = [];
+      const publishers: Publisher[] = [];
       if (environmentId !== undefined) {
         this.environmentService
           .getDataversePublishers(environmentId)
@@ -368,7 +369,7 @@ export class ApplicationComponent {
   }
 
   onEditorPreparing(e): void {
-    var columnCaptionNames: String[] = [
+    const columnCaptionNames: string[] = [
       "Solution Unique Name",
       "Development Environment",
     ];
@@ -399,7 +400,7 @@ export class ApplicationComponent {
         message: "App Id is missing. Make sure to add an app id if available.",
       });
     } else {
-      let url =
+      const url =
         e.row.data.DevelopmentEnvironmentNavigation.BasicUrl +
         "main.aspx?appid=" +
         e.row.data.MsId;
@@ -415,14 +416,14 @@ export class ApplicationComponent {
   }
 
   private onClickSaveSorting(): void {
-    let result = confirm("Are you sure you want to save the current sorting of the grid permanently as Ordinal Numbers?<br /> Existing Ordinal Numbers will be overwritten. Hidden rows (by filtering) are not included.", "Overwrite Ordinal Numbers");
+    const result = confirm("Are you sure you want to save the current sorting of the grid permanently as Ordinal Numbers?<br /> Existing Ordinal Numbers will be overwritten. Hidden rows (by filtering) are not included.", "Overwrite Ordinal Numbers");
     result.then((dialogResult) => {
       if (dialogResult) {
-        var loadOptions = this.dataGrid.instance.getDataSource().loadOptions();
-        var filterExpression = this.dataGrid.instance.getCombinedFilter(true);
+        const loadOptions = this.dataGrid.instance.getDataSource().loadOptions();
+        const filterExpression = this.dataGrid.instance.getCombinedFilter(true);
 
         this.dataGrid.instance.getDataSource().store().load({filter: filterExpression, sort: loadOptions?.sort}).then((rows: any) => {
-          var updates = [];
+          const updates = [];
 
           rows.forEach((row, index) => { 
             updates.push(this.applicationService.update(row.Id, {OrdinalNumber: index}));

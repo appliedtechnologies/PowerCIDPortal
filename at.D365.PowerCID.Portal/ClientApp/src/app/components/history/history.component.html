@@ -162,7 +162,7 @@
     [width]="700"
     height="auto"
     [showTitle]="true"
-    [title]="'Details: ' + this.selectedSolution?.Name"
+    [title]="'Details: ' + $safeNavigationMigration(this.selectedSolution?.Name)"
     [hideOnOutsideClick]="true"
     [(visible)]="isSolutionDetailPopupVisible"
     [dragEnabled]="false"

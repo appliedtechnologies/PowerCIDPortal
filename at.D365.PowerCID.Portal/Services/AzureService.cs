@@ -28,7 +28,7 @@ namespace at.D365.PowerCID.Portal.Services
             this.configuration = configuration;
         }
 
-        public async Task AdminRoleSync(IDownstreamWebApi webApi, Guid tenantMsId){
+        public async Task AdminRoleSync(IDownstreamApi webApi, Guid tenantMsId){
             logger.LogDebug($"Begin: AzureService AdminRoleSync(tenantMsId: {tenantMsId})");
 
             var appRoleIdAdmin = Guid.Parse(configuration["AppRoleIds:Admin"]);
@@ -71,18 +71,18 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: AzureService AdminRoleSync(tenantMsId: {tenantMsId})");
         }
 
-        public async Task<IEnumerable<Guid>> GetApplicationOwnerMsIds(IDownstreamWebApi webApi, Guid tenantMsId){
+        public async Task<IEnumerable<Guid>> GetApplicationOwnerMsIds(IDownstreamApi webApi, Guid tenantMsId){
             logger.LogDebug($"Begin: AzureService GetApplicationOwnerMsIds(tenantMsId: {tenantMsId})");
 
             var enterpriseAppId = await this.GetEnterpriseAppId(webApi, tenantMsId);
 
-            var response = await webApi.CallWebApiForUserAsync(
+            var response = await webApi.CallApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
-                    options.Tenant = tenantMsId.ToString();
+                    options.AcquireTokenOptions.Tenant = tenantMsId.ToString();
                     options.RelativePath = $"/servicePrincipals/{enterpriseAppId}/owners";
-                    options.HttpMethod = HttpMethod.Get;
+                    options.HttpMethod = HttpMethod.Get.Method;
                 });
 
             if (!response.IsSuccessStatusCode)
@@ -100,7 +100,7 @@ namespace at.D365.PowerCID.Portal.Services
             return ownerMsIds;
         }
 
-        public async Task<bool> IsApplicationOwner(IDownstreamWebApi webApi, Guid tenantMsId, Guid userMsId){
+        public async Task<bool> IsApplicationOwner(IDownstreamApi webApi, Guid tenantMsId, Guid userMsId){
             logger.LogDebug($"Begin: AzureService IsApplicationOwner(tenantMsId: {tenantMsId}, userMsId: {userMsId})");
 
             var ownerMsIds = await this.GetApplicationOwnerMsIds(webApi, tenantMsId);
@@ -111,17 +111,17 @@ namespace at.D365.PowerCID.Portal.Services
             return isUserOwner;
         }
 
-        public async Task<IEnumerable<AppRoleAssignment>> GetAppRoleAssignmentsOfUser(IDownstreamWebApi webApi, Guid tenantMsId, Guid userMsId){
+        public async Task<IEnumerable<AppRoleAssignment>> GetAppRoleAssignmentsOfUser(IDownstreamApi webApi, Guid tenantMsId, Guid userMsId){
             logger.LogDebug($"Begin: AzureService GetAppRoleIdsOfUser(tenantMsId: {tenantMsId.ToString()}, userMsId: {userMsId.ToString()})");
 
-            var response = await webApi.CallWebApiForUserAsync(
+            var response = await webApi.CallApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
-                    options.Tenant = tenantMsId.ToString();
+                    options.AcquireTokenOptions.Tenant = tenantMsId.ToString();
                     options.RelativePath = $"/users/{userMsId.ToString()}/appRoleAssignments";
-                    options.HttpMethod = HttpMethod.Get;
-                    options.TokenAcquisitionOptions = new TokenAcquisitionOptions { ForceRefresh = true };
+                    options.HttpMethod = HttpMethod.Get.Method;
+                    options.AcquireTokenOptions.ForceRefresh = true;
                 });
 
             if (!response.IsSuccessStatusCode)
@@ -146,7 +146,7 @@ namespace at.D365.PowerCID.Portal.Services
             return appRoleIds;   
         }
 
-        public async Task AssignAppRoleToUser(IDownstreamWebApi webApi, Guid tenantMsId, Guid userMsId, Guid appRoleId){
+        public async Task AssignAppRoleToUser(IDownstreamApi webApi, Guid tenantMsId, Guid userMsId, Guid appRoleId){
             logger.LogDebug($"Begin: AzureService AssignAppRole(tenantMsId: {tenantMsId.ToString()}, userMsId: {userMsId.ToString()}, appRoleId: {appRoleId.ToString()})");
 
             var enterpriseAppId = await this.GetEnterpriseAppId(webApi, tenantMsId);
@@ -160,14 +160,14 @@ namespace at.D365.PowerCID.Portal.Services
 
             logger.LogDebug($"Graph Request Body: {tenantMsId}");
 
-            var response = await webApi.CallWebApiForUserAsync(
+            var response = await webApi.CallApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
-                    options.Tenant = tenantMsId.ToString();
+                    options.AcquireTokenOptions.Tenant = tenantMsId.ToString();
                     options.RelativePath = $"/users/{userMsId.ToString()}/appRoleAssignments";
-                    options.HttpMethod = HttpMethod.Post;
-                }, content: roleContent);
+                    options.HttpMethod = HttpMethod.Post.Method;
+                }, null, roleContent);
 
             if (!response.IsSuccessStatusCode)
                 throw new Exception("Could not assign role");
@@ -175,16 +175,16 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: AzureService AssignAppRole()");
         }
 
-        public async Task RemoveAppRoleFromUser(IDownstreamWebApi webApi, Guid tenantMsId, Guid userMsId, string appRoleAssignmentId){
+        public async Task RemoveAppRoleFromUser(IDownstreamApi webApi, Guid tenantMsId, Guid userMsId, string appRoleAssignmentId){
             logger.LogDebug($"Begin: AzureService RemoveAppRole(tenantMsId: {tenantMsId.ToString()}, userMsId: {userMsId.ToString()}, userMsId: {appRoleAssignmentId.ToString()})");
 
-            var response = await webApi.CallWebApiForUserAsync(
+            var response = await webApi.CallApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
-                    options.Tenant = tenantMsId.ToString();
+                    options.AcquireTokenOptions.Tenant = tenantMsId.ToString();
                     options.RelativePath = $"/users/{userMsId.ToString()}/appRoleAssignments/{appRoleAssignmentId}";
-                    options.HttpMethod = HttpMethod.Delete;
+                    options.HttpMethod = HttpMethod.Delete.Method;
                 });
 
             if (!response.IsSuccessStatusCode)
@@ -193,11 +193,11 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: AzureService RemoveAssignedRole()");
         }
 
-        public async Task<string> GetTenantName(IDownstreamWebApi webApi, Guid msId)
+        public async Task<string> GetTenantName(IDownstreamApi webApi, Guid msId)
         {
             logger.LogDebug($"Begin: AzureService GetTenantName(msId: {msId.ToString()})");
 
-            var tenantResponse = await webApi.CallWebApiForUserAsync(
+            var tenantResponse = await webApi.CallApiForUserAsync(
                 "AzureManagementApi",
                 options =>
                 {
@@ -224,19 +224,19 @@ namespace at.D365.PowerCID.Portal.Services
         }
 
 
-        private async Task<Guid> GetEnterpriseAppId(IDownstreamWebApi webApi, Guid tenantMsId)
+        private async Task<Guid> GetEnterpriseAppId(IDownstreamApi webApi, Guid tenantMsId)
         {
             logger.LogDebug($"Begin: AzureService GetEnterpriseAppId(tenantMsId: {tenantMsId.ToString()})");
 
             Guid appId = Guid.Parse(configuration["AzureAd:ClientId"]);
 
-            var response = await webApi.CallWebApiForUserAsync(
+            var response = await webApi.CallApiForUserAsync(
                 "GraphApi",
                 options =>
                 {
-                    options.Tenant = tenantMsId.ToString();
+                    options.AcquireTokenOptions.Tenant = tenantMsId.ToString();
                     options.RelativePath = $"/servicePrincipals?$filter=appId eq '{appId}'";
-                    options.HttpMethod = HttpMethod.Get;
+                    options.HttpMethod = HttpMethod.Get.Method;
                 });
             JToken enterpriseApp = (await response.Content.ReadAsAsync<JObject>())["value"][0];
             Guid enterpriseAppId = Guid.Parse((string)enterpriseApp["id"]);

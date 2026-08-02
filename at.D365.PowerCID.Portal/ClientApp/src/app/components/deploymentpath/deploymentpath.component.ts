@@ -1,4 +1,4 @@
-import { Component, ViewChild } from "@angular/core";
+import { Component, ViewChild, ChangeDetectionStrategy } from "@angular/core";
 import { DxTreeViewComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import { DeploymentPath } from "src/app/shared/models/deploymentpath.model";
@@ -20,6 +20,7 @@ import { DeploymentPathEnvironmentService } from "src/app/shared/services/deploy
     templateUrl: "./deploymentpath.component.html",
     styleUrls: ["./deploymentpath.component.css"],
     providers: [DeploymentpathService, EnvironmentService],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class DeploymentpathComponent {
@@ -268,10 +269,10 @@ export class DeploymentpathComponent {
       return;
     }
 
-    let environmentId = fromNode.itemData.Environment;
-    let deploymentPathId = fromNode.itemData.DeploymentPath;
-    let fromIndex = fromNode.itemData.StepNumber;
-    let toIndex = toNode.itemData.StepNumber;
+    const environmentId = fromNode.itemData.Environment;
+    const deploymentPathId = fromNode.itemData.DeploymentPath;
+    const fromIndex = fromNode.itemData.StepNumber;
+    const toIndex = toNode.itemData.StepNumber;
 
     if(fromIndex == undefined || toIndex == undefined){
       this.layoutService.notify({
@@ -349,13 +350,13 @@ export class DeploymentpathComponent {
         ],
       })
       .then((data) => {
-        let sortedDeploymentPaths: DeploymentPath[] = data;
+        const sortedDeploymentPaths: DeploymentPath[] = data;
 
         let deploymentPathEnvironments: DeploymentPathEnvironment[] = [];
 
         for (let i = 0; i < data.length; i++) {
           for (let j = 0; j < data[i].DeploymentPathEnvironments.length; j++) {
-            let stepNumber = data[i].DeploymentPathEnvironments[j].StepNumber;
+            const stepNumber = data[i].DeploymentPathEnvironments[j].StepNumber;
             deploymentPathEnvironments[stepNumber - 1] =
               data[i].DeploymentPathEnvironments[j];
           }
@@ -382,7 +383,7 @@ export class DeploymentpathComponent {
   }
 
   private findNodeById(nodes, id: number): any{
-    for (var i = 0; i < nodes.length; i++) {
+    for (let i = 0; i < nodes.length; i++) {
       if (nodes[i].itemData.Id == id) {
         return nodes[i];
       }

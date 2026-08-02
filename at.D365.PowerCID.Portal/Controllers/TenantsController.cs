@@ -26,7 +26,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class TenantsController : BaseController
     {
         private readonly ILogger logger;
-        public TenantsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<TenantsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public TenantsController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<TenantsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }

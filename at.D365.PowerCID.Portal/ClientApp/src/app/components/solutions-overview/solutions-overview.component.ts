@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewChild } from "@angular/core";
+import { Component, OnDestroy, OnInit, ViewChild, ChangeDetectionStrategy } from "@angular/core";
 import {
   DxButtonComponent,
   DxDataGridComponent,
@@ -35,6 +35,7 @@ import { alert, confirm } from 'devextreme/ui/dialog';
     selector: "app-solutions-overview",
     templateUrl: "./solutions-overview.component.html",
     styleUrls: ["./solutions-overview.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class SolutionsOverviewComponent implements OnInit, OnDestroy {
@@ -67,7 +68,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   public isConfigureDeploymentPopupVisible: boolean;
   public configureDeploymentEnvironment: Environment;
 
-  private refreshAfterPopupClose: boolean = false;
+  private refreshAfterPopupClose = false;
 
   constructor(
     public userService: UserService,
@@ -93,7 +94,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public ngOnInit(): void {
-    let selectedApplicationIdFromLocalStorage =
+    const selectedApplicationIdFromLocalStorage =
       parseInt(
         localStorage.getItem("atPowerCIDPortal_SolutionOverview_SelectedId")
       ) || null;
@@ -106,7 +107,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public onToolbarPreparingSolutionsGrid(e): void {
-    let toolbarItems = e.toolbarOptions.items;
+    const toolbarItems = e.toolbarOptions.items;
 
     toolbarItems.unshift(
       {
@@ -228,17 +229,17 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public onClickDownloadSolution(e: any, cellInfo, lastAction: Action) {
-    let unmanaged = e.ctrlKey;
+    const unmanaged = e.ctrlKey;
 
     this.layoutService.notify({ message: "Downloading solution...", type: NotificationType.Info });
 
-    var solutionType = cellInfo.data["ApplyManually"] === undefined
+    const solutionType = cellInfo.data["ApplyManually"] === undefined
         ? "Patch"
         : "Upgrade";
 
-    var solutionVersion = cellInfo.data.Version;
+    const solutionVersion = cellInfo.data.Version;
 
-    let fileName = `${this.selectedApplication.SolutionUniqueName}_${solutionType}_${solutionVersion
+    const fileName = `${this.selectedApplication.SolutionUniqueName}_${solutionType}_${solutionVersion
       .split(".")
       .join("-")}${unmanaged ? "_unmanaged" : "_managed"}.zip`;
 
@@ -257,8 +258,8 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     downloadLink.click();
   }
 
-  public onClickDeploySolution(cellInfo, exportOnly: boolean = false, applyUpgradeOnly: boolean = false, enableFlowsOnly: boolean = false): void {
-    let targetEnvironmentId = cellInfo.column.name.split(",")[1];
+  public onClickDeploySolution(cellInfo, exportOnly = false, applyUpgradeOnly = false, enableFlowsOnly = false): void {
+    const targetEnvironmentId = cellInfo.column.name.split(",")[1];
 
     if (exportOnly) {
       this.executeExport(cellInfo, exportOnly);
@@ -275,11 +276,11 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           this.layoutService.change(LayoutParameter.ShowLoading, false);
         });
     } else {
-      let deploymentPathId = cellInfo.column.name.split(",")[0];
+      const deploymentPathId = cellInfo.column.name.split(",")[0];
       this.layoutService.change(LayoutParameter.ShowLoading, true);
       this.applicationService.getDeploymentSettingsStatus(this.selectedApplication.Id, targetEnvironmentId).then((status) => {
         if (status == 0) {
-          let confirmResult = confirm("Import without completed Deployment Settings (e.g. Connection References)?", "Incomplete Deployment Settings");
+          const confirmResult = confirm("Import without completed Deployment Settings (e.g. Connection References)?", "Incomplete Deployment Settings");
           this.layoutService.change(LayoutParameter.ShowLoading, false);
           confirmResult.then((result) => {
             this.layoutService.change(LayoutParameter.ShowLoading, true);
@@ -360,7 +361,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public onClickCancelImport(lastAction: Action): void {
-    let result = confirm("Are you sure you want to cancel this import?<br /> This will not affect any operations already in progress in the environment.", "Confirm Cancellation");
+    const result = confirm("Are you sure you want to cancel this import?<br /> This will not affect any operations already in progress in the environment.", "Confirm Cancellation");
     result.then((dialogResult) => {
       if (dialogResult) {
         this.cancelAutoRefresh();
@@ -379,7 +380,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   onClickDeletePatch(patch: Patch) {
-    let result = confirm("Are you sure you want to delete this patch?<br /> This will also delete the patch in the development environment.", "Confirm Deletion");
+    const result = confirm("Are you sure you want to delete this patch?<br /> This will also delete the patch in the development environment.", "Confirm Deletion");
     result.then((dialogResult) => {
       if (dialogResult) {
         this.layoutService.change(LayoutParameter.ShowLoading, true);
@@ -406,8 +407,8 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public getLastActionForEnvironment(cellInfo): Action {
-    let allActionOfSolution: Action[] = cellInfo.data.Actions;
-    let targetEnvironmentId =
+    const allActionOfSolution: Action[] = cellInfo.data.Actions;
+    const targetEnvironmentId =
       cellInfo.column.name.split(",").length > 1
         ? cellInfo.column.name.split(",")[1]
         : cellInfo.column.name;
@@ -420,14 +421,14 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   public canDeployToEnv(cellInfo): boolean {
     this.canImport = true;
     if (cellInfo.column.name.split(",").length > 1) {
-      let deploymentPathId = cellInfo.column.name.split(",")[0];
-      let environmentId = cellInfo.column.name.split(",")[1];
+      const deploymentPathId = cellInfo.column.name.split(",")[0];
+      const environmentId = cellInfo.column.name.split(",")[1];
 
-      let deploymentPath = this.selectedApplication.DeploymentPaths.find(
+      const deploymentPath = this.selectedApplication.DeploymentPaths.find(
         (x) => x.Id == deploymentPathId
       );
 
-      let stepNumber = deploymentPath?.DeploymentPathEnvironments.find(
+      const stepNumber = deploymentPath?.DeploymentPathEnvironments.find(
         (x) =>
           x.DeploymentPath == deploymentPathId && x.Environment == environmentId
       ).StepNumber;
@@ -525,7 +526,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     this.autoRefreshCancelButtonInstance.option("visible", true);
     this.autoRefreshInterval = window.setInterval(() => {
       this.dataGrid.instance.refresh().then(() => {
-        let refreshedLastAction: Action = (
+        const refreshedLastAction: Action = (
           this.dataGrid.instance.getDataSource().items() as Solution[]
         ).find((e) => e.Id == action.Solution).Actions[0];
 
@@ -557,10 +558,10 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
       this.setSelectedApplicationId(null);
       return;
     }
-    let developmentEnvironment: Environment =
+    const developmentEnvironment: Environment =
       this.selectedApplication.DevelopmentEnvironmentNavigation;
 
-    let sortedDeploymentPaths: DeploymentPath[] =
+    const sortedDeploymentPaths: DeploymentPath[] =
       this.applicationService.sortAfterHierarchieAndStepNumber(
         this.selectedApplication,
         true

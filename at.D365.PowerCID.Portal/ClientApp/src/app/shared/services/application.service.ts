@@ -78,17 +78,17 @@ export class ApplicationService {
     application: any,
     sortStepNumber: boolean
   ) {
-    let deploymentPaths: DeploymentPath[] = [];
+    const deploymentPaths: DeploymentPath[] = [];
     for (let i = 0; i < application?.ApplicationDeploymentPaths.length; i++) {
-      let hierarchieNumber =
+      const hierarchieNumber =
         application.ApplicationDeploymentPaths[i].HierarchieNumber;
       deploymentPaths[hierarchieNumber - 1] = application.DeploymentPaths[i];
     }
     if (sortStepNumber == true) {
       for (let i = 0; i < deploymentPaths.length; i++) {
         deploymentPaths[i].Environments = deploymentPaths[i].Environments.sort((a: Environment, b: Environment) => {
-          let stepA: DeploymentPathEnvironment = deploymentPaths[i].DeploymentPathEnvironments.find(e => e.Environment == a.Id);
-          let stepB: DeploymentPathEnvironment = deploymentPaths[i].DeploymentPathEnvironments.find(e => e.Environment == b.Id);
+          const stepA: DeploymentPathEnvironment = deploymentPaths[i].DeploymentPathEnvironments.find(e => e.Environment == a.Id);
+          const stepB: DeploymentPathEnvironment = deploymentPaths[i].DeploymentPathEnvironments.find(e => e.Environment == b.Id);
           return (stepA.StepNumber > stepB.StepNumber) ? 1 : -1;
         });
       }

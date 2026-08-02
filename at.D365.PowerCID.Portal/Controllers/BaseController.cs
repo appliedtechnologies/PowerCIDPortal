@@ -11,13 +11,13 @@ namespace at.D365.PowerCID.Portal.Controllers
     public abstract class BaseController : ODataController
     {
         protected atPowerCIDContext dbContext;
-        protected IDownstreamWebApi downstreamWebApi;
+        protected IDownstreamApi downstreamWebApi;
         protected ITokenAcquisition tokenAcquisition;
         protected Guid msIdTenantCurrentUser;
         protected Guid msIdCurrentUser;
 
         
-        public BaseController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ITokenAcquisition tokenAcquisition = null)
+        public BaseController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ITokenAcquisition tokenAcquisition = null)
         {
             dbContext = atPowerCIDContext;
             this.downstreamWebApi = downstreamWebApi;

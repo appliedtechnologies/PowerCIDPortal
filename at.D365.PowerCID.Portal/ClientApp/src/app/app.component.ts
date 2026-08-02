@@ -1,4 +1,4 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnInit, ChangeDetectionStrategy } from "@angular/core";
 import { Router } from "@angular/router";
 import { LayoutService } from "./shared/services/layout.service";
 import notify from "devextreme/ui/notify";
@@ -10,13 +10,14 @@ import Button from "devextreme/ui/button"
     selector: "app-root",
     templateUrl: "./app.component.html",
     styleUrls: ["./app.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class AppComponent implements OnInit {
 
   showLoading: boolean;
   loadingMessage: string;
-  isDrawerOpen: boolean = true;
+  isDrawerOpen = true;
   toolbarContent = [];
   isLoggedIn : boolean;
   userName : string;
@@ -56,8 +57,8 @@ export class AppComponent implements OnInit {
   }
 
   onContentReady(e){
-    let buttonElement = document.querySelector(".dx-toolbar-menu-container .dx-dropdownmenu-button");
-    let instance = Button.getInstance(buttonElement) as Button;  
+    const buttonElement = document.querySelector(".dx-toolbar-menu-container .dx-dropdownmenu-button");
+    const instance = Button.getInstance(buttonElement) as Button;
     instance.option("type", "default");
     instance.option("visible", this.userService.isLogggedIn);
     instance.option("text", this.userName);
@@ -65,7 +66,7 @@ export class AppComponent implements OnInit {
   } 
 
   generateToolbarContent(isLoggedIn: boolean){  
-      let content =  [      
+      const content =  [
         {
           widget: "dxButton",
           location: "before",

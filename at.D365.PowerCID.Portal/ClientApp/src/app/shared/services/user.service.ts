@@ -29,12 +29,12 @@ import { alert } from "devextreme/ui/dialog";
 
 @Injectable()
 export class UserService {
-  public isLogggedIn: boolean = false;
+  public isLogggedIn = false;
   public currentUserRoles: string[];
   public currentIdentityUser: AccountInfo;
   public currentDbUserWithTenant: User;
 
-  private isPortalLogginInProgess: boolean = false;
+  private isPortalLogginInProgess = false;
 
   //observables
   private readonly _destroying$ = new Subject<void>();
@@ -81,7 +81,7 @@ export class UserService {
         }
       });
 
-    let login$ = this.msalBroadcastService.msalSubject$.pipe(
+    const login$ = this.msalBroadcastService.msalSubject$.pipe(
       filter((msg: EventMessage) => msg.eventType === EventType.LOGIN_SUCCESS),
       takeUntil(this._destroying$),
       switchMap((data) => {
@@ -107,7 +107,7 @@ export class UserService {
       })
     );
 
-    let logout$ = this.msalBroadcastService.msalSubject$.pipe(
+    const logout$ = this.msalBroadcastService.msalSubject$.pipe(
       filter((msg: EventMessage) => msg.eventType === EventType.LOGOUT_SUCCESS),
       takeUntil(this._destroying$),
       map(() => {
@@ -256,7 +256,7 @@ export class UserService {
     });
   }
 
-  private updateUserInformation(forceDbReload: boolean = false, forceIdentityReload: boolean = false): Promise<void> {
+  private updateUserInformation(forceDbReload = false, forceIdentityReload = false): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.isLogggedIn = this.isMSALLoggedIn() && this.isPortalLoggedIn();
       this.manualUpdate.next();
@@ -280,7 +280,7 @@ export class UserService {
 
   private callPortalLogin(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      let request = this.http
+      const request = this.http
         .post(`${AppConfig.settings.api.url}/Users/Login`, {})
         .subscribe({
           next: () => resolve(),

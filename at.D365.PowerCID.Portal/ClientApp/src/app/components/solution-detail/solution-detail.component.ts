@@ -5,6 +5,7 @@ import {
   OnChanges,
   Output,
   ViewChild,
+  ChangeDetectionStrategy
 } from "@angular/core";
 import { DxTextBoxComponent } from "devextreme-angular";
 import { Application } from "src/app/shared/models/application.model";
@@ -23,6 +24,7 @@ import Validator from "devextreme/ui/validator";
     selector: "app-solution-detail",
     templateUrl: "./solution-detail.component.html",
     styleUrls: ["./solution-detail.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class SolutionDetailComponent implements OnChanges {
@@ -54,7 +56,7 @@ export class SolutionDetailComponent implements OnChanges {
   }
 
   public onClickSaveSolution(e) {
-    let validation = e.validationGroup.validate();
+    const validation = e.validationGroup.validate();
     if (validation.isValid) {
       this.layoutService.change(LayoutParameter.ShowLoading, true);
       this.solution.Application = this.application.Id;
@@ -105,8 +107,8 @@ export class SolutionDetailComponent implements OnChanges {
   public onFocusOutSolutionName(e: any): void {
     if(!this.isAdd)
     {
-      let newValue: string = this.textBoxName.value;
-      let validation = (Validator.getInstance(e.element) as Validator).validate();
+      const newValue: string = this.textBoxName.value;
+      const validation = (Validator.getInstance(e.element) as Validator).validate();
       if(validation.isValid && newValue && newValue != this.solution.Name){
         if (this.isUpgrade) {
           this.renameUpgrade(this.solution.Id, e.component.option("value"));
@@ -120,8 +122,8 @@ export class SolutionDetailComponent implements OnChanges {
   public onFocusOutSolutionDescription(e: any): void {
     if(!this.isAdd)
     {
-      let newValue: string = this.textAreaDescription.value;
-      let validation = (Validator.getInstance(e.element) as Validator).validate();
+      const newValue: string = this.textAreaDescription.value;
+      const validation = (Validator.getInstance(e.element) as Validator).validate();
       if(validation.isValid && newValue && newValue != this.solution.Description){
         if (this.isUpgrade) {
           this.changeDescriptionUpgrade(this.solution.Id, e.component.option("value"));

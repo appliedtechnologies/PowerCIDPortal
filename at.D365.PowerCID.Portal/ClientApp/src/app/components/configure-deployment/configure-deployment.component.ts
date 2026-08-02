@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from "@angular/core";
+import { Component, Input, OnInit, ChangeDetectionStrategy } from "@angular/core";
 import { Application } from "src/app/shared/models/application.model";
 import { ConnectionReference } from "src/app/shared/models/connectionreference.model";
 import { ConnectionReferenceEnvironment } from "src/app/shared/models/connectionreferenceenvironment.model";
@@ -16,6 +16,7 @@ import { LayoutParameter, LayoutService, NotificationType } from "src/app/shared
     selector: "app-configure-deployment",
     templateUrl: "./configure-deployment.component.html",
     styleUrls: ["./configure-deployment.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class ConfigureDeploymentComponent implements OnInit {
@@ -31,10 +32,10 @@ export class ConfigureDeploymentComponent implements OnInit {
 
     public ngOnInit(): void {
         this.layoutService.change(LayoutParameter.ShowLoading, true);
-        let promiseConnectionRefernecesFromDataverse = this.connectionReferenceService.getFromDataverseForApplication(this.application.Id);
-        let promiseConnectionReferencesExisting = this.connectionReferenceService.getExistingForApplication(this.application.Id);
-        let promiseEnvironmentVariablesFromDataverse = this.environmentVariableService.getFromDataverseForApplication(this.application.Id);
-        let promiseEnvironmentVariablesExisting = this.environmentVariableService.getExistingForApplication(this.application.Id);
+        const promiseConnectionRefernecesFromDataverse = this.connectionReferenceService.getFromDataverseForApplication(this.application.Id);
+        const promiseConnectionReferencesExisting = this.connectionReferenceService.getExistingForApplication(this.application.Id);
+        const promiseEnvironmentVariablesFromDataverse = this.environmentVariableService.getFromDataverseForApplication(this.application.Id);
+        const promiseEnvironmentVariablesExisting = this.environmentVariableService.getExistingForApplication(this.application.Id);
         Promise.all([promiseConnectionRefernecesFromDataverse, promiseConnectionReferencesExisting, promiseEnvironmentVariablesFromDataverse, promiseEnvironmentVariablesExisting])
         .then((data) => {
             this.connectionReferencesFromDataverse = data[0]["value"];
@@ -49,8 +50,8 @@ export class ConfigureDeploymentComponent implements OnInit {
 
     public onValueChangedConnectionIdTextBox(e: any, connectionReference: ConnectionReference){
         if(e.value != e.previousValue){
-            let connectionId = e.value;
-            let existingConnectionReference: ConnectionReference = this.existingConnectionReferences.find(e => e.MsId == connectionReference.MsId);
+            const connectionId = e.value;
+            const existingConnectionReference: ConnectionReference = this.existingConnectionReferences.find(e => e.MsId == connectionReference.MsId);
             if(!existingConnectionReference){
                 //create connection reference
                 this.connectionReferenceService.add(connectionReference)    
@@ -80,8 +81,8 @@ export class ConfigureDeploymentComponent implements OnInit {
 
     public onValueChangedEnvVarValueTextBox(e: any, environmentVariable: EnvironmentVariable){
         if(e.value != e.previousValue){
-            let envVarValue = e.value;
-            let existingEnvironmentVariables: EnvironmentVariable = this.existingEnvironmentVariables.find(e => e.MsId == environmentVariable.MsId);
+            const envVarValue = e.value;
+            const existingEnvironmentVariables: EnvironmentVariable = this.existingEnvironmentVariables.find(e => e.MsId == environmentVariable.MsId);
             if(!existingEnvironmentVariables){
                 //create environment variable
                 this.environmentVariableService.add(environmentVariable)    
@@ -110,13 +111,13 @@ export class ConfigureDeploymentComponent implements OnInit {
     }
 
     public onInitializedConnectionIdTextBox(e: any, connectionReference: ConnectionReference){
-        let connectionId = this.existingConnectionReferences.find(e => e.MsId == connectionReference.MsId)?.ConnectionReferenceEnvironments?.find(e =>e.Environment == this.environment.Id)?.ConnectionId
+        const connectionId = this.existingConnectionReferences.find(e => e.MsId == connectionReference.MsId)?.ConnectionReferenceEnvironments?.find(e =>e.Environment == this.environment.Id)?.ConnectionId
         if(connectionId)
             e.component.option("value", connectionId);
     }
 
     public onInitializedEnvVarValueTextBox(e: any, environmentVariable: EnvironmentVariable){
-        let envVarValue = this.existingEnvironmentVariables.find(e => e.MsId == environmentVariable.MsId)?.EnvironmentVariableEnvironments?.find(e =>e.Environment == this.environment.Id)?.Value
+        const envVarValue = this.existingEnvironmentVariables.find(e => e.MsId == environmentVariable.MsId)?.EnvironmentVariableEnvironments?.find(e =>e.Environment == this.environment.Id)?.Value
         if(envVarValue)
             e.component.option("value", envVarValue);
     }
@@ -126,7 +127,7 @@ export class ConfigureDeploymentComponent implements OnInit {
     }
 
     private saveNewEnvVarValue(environmentVariable: EnvironmentVariable, value: string): Promise<EnvironmentVariableEnvironment>{
-        let environmentVariableEnvironment: EnvironmentVariableEnvironment = {
+        const environmentVariableEnvironment: EnvironmentVariableEnvironment = {
             EnvironmentVariable: environmentVariable.Id,
             Environment: this.environment.Id,
             Value: value
@@ -140,7 +141,7 @@ export class ConfigureDeploymentComponent implements OnInit {
     }
 
     private saveNewConnectionId(connectionReference: ConnectionReference, connectionId: string): Promise<ConnectionReferenceEnvironment>{
-        let connectionReferenceEnvironment: ConnectionReferenceEnvironment = {
+        const connectionReferenceEnvironment: ConnectionReferenceEnvironment = {
             ConnectionReference: connectionReference.Id,
             Environment: this.environment.Id,
             ConnectionId: connectionId

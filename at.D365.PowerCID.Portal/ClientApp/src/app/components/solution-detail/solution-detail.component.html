@@ -17,7 +17,7 @@
     <dxi-item dataField="Version" [editorOptions]="{placeholder: 'leave blank to get next version number according to schema'}"></dxi-item>
     <dxi-item [isRequired]="this.isAdd" [label]="{ text: 'Application' }">
       <div *dxTemplate>
-        <dx-text-box [value]="this.application?.Name" [readOnly]="true">
+        <dx-text-box [value]="$safeNavigationMigration(this.application?.Name)" [readOnly]="true">
         </dx-text-box>
       </div>
     </dxi-item>

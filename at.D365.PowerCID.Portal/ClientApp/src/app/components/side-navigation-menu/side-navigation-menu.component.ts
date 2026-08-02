@@ -1,4 +1,4 @@
-import { Component} from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { UserService } from "src/app/shared/services/user.service";
 import { AppConfig } from 'src/app/shared/config/app.config';
 import { NavigationEnd, Router } from '@angular/router';
@@ -8,13 +8,14 @@ import { filter } from 'rxjs/operators';
     selector: 'app-side-navigation-menu',
     templateUrl: './side-navigation-menu.component.html',
     styleUrls: ['./side-navigation-menu.component.css'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class SideNavigationMenuComponent {
 
   navigationEntries: NavigationEntry[];
   version: string = AppConfig.settings.version;
-  selectedItemRoute: String;
+  selectedItemRoute: string;
 
   constructor(private router: Router, private userService: UserService) {
     this.router.events

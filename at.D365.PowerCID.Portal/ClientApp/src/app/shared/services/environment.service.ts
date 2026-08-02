@@ -26,7 +26,7 @@ export class EnvironmentService {
 
   public callPullEnvironments(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      let request = this.http
+      const request = this.http
         .post(`${AppConfig.settings.api.url}/Environments/PullExisting`, {})
         .subscribe({
           next: () => resolve(),
@@ -44,7 +44,7 @@ export class EnvironmentService {
 
   public getDataversePublishers(environmentId: number): Promise<any>{
     return new Promise<any>((resolve, reject) => {
-      let request = this.http
+      const request = this.http
         .post(`${AppConfig.settings.api.url}/Environments(${environmentId})/GetDataversePublishers`, {})
         .subscribe({
           next: (data) => resolve(data),

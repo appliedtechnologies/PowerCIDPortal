@@ -34,7 +34,7 @@
           </div>
         }
         @if (roles) {
-          <app-history [userId]="this.user?.Id" class="flex-container"></app-history>
+          <app-history [userId]="$safeNavigationMigration(this.user?.Id)" class="flex-container"></app-history>
         }
       </div>
     }
