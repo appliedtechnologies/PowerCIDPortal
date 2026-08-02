@@ -10,7 +10,7 @@
   [columnAutoWidth]="true"
   [width]="'100%'"
   (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
->
+  >
   <dxo-sorting mode="multiple"></dxo-sorting>
   <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_Users_GridState"></dxo-state-storing>
   <dxo-header-filter [visible]="true"></dxo-header-filter>
@@ -23,21 +23,21 @@
   <dxo-paging [pageSize]="20"></dxo-paging>
   <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
 
-  <dxi-column 
-    dataField="Firstname"    
-    sortOrder="asc" 
+  <dxi-column
+    dataField="Firstname"
+    sortOrder="asc"
     [sortIndex]="0"
     caption="First Name"
   ></dxi-column>
-  <dxi-column 
-    dataField="Lastname" 
+  <dxi-column
+    dataField="Lastname"
     caption="Last Name"
-    sortOrder="asc" 
+    sortOrder="asc"
     [sortIndex]="1"
   > </dxi-column>
   <dxi-column dataField="Email"></dxi-column>
-  <dxi-column 
-    dataField="MsId" 
+  <dxi-column
+    dataField="MsId"
     caption="Azure AD Id"
   ></dxi-column>
   <dxi-column type="buttons">
@@ -59,12 +59,12 @@
   </dxi-column>
 </dx-data-grid>
 
-<dx-popup
-  #popupPermissionEnvironments
-  *ngIf="isEditPermissionsPopupVisible"
-  [width]="480"
-  height="auto"
-  [showTitle]="true"
+@if (isEditPermissionsPopupVisible) {
+  <dx-popup
+    #popupPermissionEnvironments
+    [width]="480"
+    height="auto"
+    [showTitle]="true"
   [title]="
     'Manage Permissions (' +
     currentSelectedUser.Firstname +
@@ -72,36 +72,37 @@
     currentSelectedUser.Lastname +
     ')'
   "
-  [hideOnOutsideClick]="false"
-  [(visible)]="isEditPermissionsPopupVisible"
-  [maxHeight]="'90%'"
->
-  <div id="hint-permissions">
-    Select which Environments
-    <i
-      >{{ currentSelectedUser.Firstname }} {{ currentSelectedUser.Lastname }}</i
+    [hideOnOutsideClick]="false"
+    [(visible)]="isEditPermissionsPopupVisible"
+    [maxHeight]="'90%'"
     >
-    could import to.
-  </div>
-  <dx-list
-    [dataSource]="dataSourceEnvironments"
-    [height]="'100%'"
-    selectionMode="all"
-    selectAllMode="allPages"
-    [showSelectionControls]="true"
-    [selectedItemKeys]="selectedItemKeysPermissionEnvironments"
-    displayExpr="Name"
-    (onSelectionChanged)="onSelectionChangedPermissionEnvironments($event)"
-    (onContentReady)="onContentReadyPermissionEnvironmentList($event)"
-  >
-  </dx-list>
-</dx-popup>
+    <div id="hint-permissions">
+      Select which Environments
+      <i
+        >{{ currentSelectedUser.Firstname }} {{ currentSelectedUser.Lastname }}</i
+        >
+        could import to.
+      </div>
+      <dx-list
+        [dataSource]="dataSourceEnvironments"
+        [height]="'100%'"
+        selectionMode="all"
+        selectAllMode="allPages"
+        [showSelectionControls]="true"
+        [selectedItemKeys]="selectedItemKeysPermissionEnvironments"
+        displayExpr="Name"
+        (onSelectionChanged)="onSelectionChangedPermissionEnvironments($event)"
+        (onContentReady)="onContentReadyPermissionEnvironmentList($event)"
+        >
+      </dx-list>
+    </dx-popup>
+  }
 
-<dx-popup
-  *ngIf="isEditRolesVisible"
-  [width]="480"
-  height="auto"
-  [showTitle]="true"
+  @if (isEditRolesVisible) {
+    <dx-popup
+      [width]="480"
+      height="auto"
+      [showTitle]="true"
   [title]="
     'Manage Roles (' +
     currentSelectedUser.Firstname +
@@ -109,25 +110,30 @@
     currentSelectedUser.Lastname +
     ')'
   "
-  [hideOnOutsideClick]="false"
-  [(visible)]="isEditRolesVisible"
->
-  <div id="hint-permissions">A higher role contains all the rights of the lower roles. Therefore, only one role needs to be assigned.</div>
-  <div class="dx-fieldset">
-    <div *ngFor="let roleName of appRoleNames | keyvalue">
-      <div class="dx-field">
-        <div class="dx-field-label">{{roleName.value}}</div>
-        <div class="dx-field-value">
-          <dx-check-box 
-            [disabled]="roleName.key == 'admin'"
-            [value]="this.currentSelectedUserRoles | hasUserRole: roleName.key"
-            (onValueChanged)="onValueChangedRoleAssignment($event, roleName.key)"
-          ></dx-check-box>
-        </div>
-        <div *ngIf="roleName.key == 'admin'" class="hint-role-sync">
-          This role is in sync with the app ownership - <a href="https://github.com/appliedtechnologies/PowerCIDPortal/wiki/Setup-and-maintenance-of-a-tenant#unilateral-synchronization-of-ownership-and-administrator-role" target="_blank">more info.</a>
-        </div>  
-      </div>      
-    </div>
-  </div>
-</dx-popup>
+      [hideOnOutsideClick]="false"
+      [(visible)]="isEditRolesVisible"
+      >
+      <div id="hint-permissions">A higher role contains all the rights of the lower roles. Therefore, only one role needs to be assigned.</div>
+      <div class="dx-fieldset">
+        @for (roleName of appRoleNames | keyvalue; track roleName) {
+          <div>
+            <div class="dx-field">
+              <div class="dx-field-label">{{roleName.value}}</div>
+              <div class="dx-field-value">
+                <dx-check-box
+                  [disabled]="roleName.key === 'admin'"
+                  [value]="this.currentSelectedUserRoles | hasUserRole: roleName.key"
+                  (onValueChanged)="onValueChangedRoleAssignment($event, roleName.key)"
+                ></dx-check-box>
+              </div>
+              @if (roleName.key === 'admin') {
+                <div class="hint-role-sync">
+                  This role is in sync with the app ownership - <a href="https://github.com/appliedtechnologies/PowerCIDPortal/wiki/Setup-and-maintenance-of-a-tenant#unilateral-synchronization-of-ownership-and-administrator-role" target="_blank">more info.</a>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </dx-popup>
+  }

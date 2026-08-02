@@ -12,23 +12,36 @@ jobs:
   build:
     runs-on: windows-latest
 
-    env: 
-        DEVEXTREME_KEY: ${{ secrets.DevExtremeKey }} 
-        
+    env:
+      DevExpress_License: '${{secrets.DevExtremeKey}}'
+
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up .NET Core
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '6.0'
-          include-prerelease: true
+          dotnet-version: '10.0.x'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: at.D365.PowerCID.Portal/ClientApp/package-lock.json
+
+      - name: Restore frontend dependencies
+        working-directory: at.D365.PowerCID.Portal/ClientApp
+        run: npm ci
+
+      - name: Restore .NET dependencies
+        run: dotnet restore
 
       - name: Build with dotnet
-        run: dotnet build --configuration Release
+        run: dotnet build --configuration Release --no-restore
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish -c Release --no-build -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4

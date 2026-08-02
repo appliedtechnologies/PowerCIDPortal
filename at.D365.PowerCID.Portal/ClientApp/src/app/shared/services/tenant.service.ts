@@ -19,7 +19,7 @@ export class TenantService {
     return this.odataService.context["Tenants"];
   }
 
-  public setGitHubInstallation(installationId: number): Promise<any> {
+  public setGitHubInstallation(installationId: number): Promise<void> {
     return this.getStore()
       .update(this.userService.currentDbUserWithTenant.Tenant, {
         GitHubInstallationId: installationId,
@@ -29,7 +29,7 @@ export class TenantService {
       });
   }
 
-  public setGitHubRepositoryName(repositoryName: string): Promise<any> {
+  public setGitHubRepositoryName(repositoryName: string): Promise<void> {
     return this.getStore()
       .update(this.userService.currentDbUserWithTenant.Tenant, {
         GitHubRepositoryName: repositoryName,
@@ -39,7 +39,7 @@ export class TenantService {
       });
   }
 
-  public setDisablePatchCreation(valueDisablePatchCreation: boolean): Promise<any> {
+  public setDisablePatchCreation(valueDisablePatchCreation: boolean): Promise<void> {
     return this.getStore()
       .update(this.userService.currentDbUserWithTenant.Tenant, {
         DisablePatchCreation: valueDisablePatchCreation,
@@ -51,7 +51,7 @@ export class TenantService {
 
   public getGitHubRepositories(): Promise<string[]> {
     return new Promise<string[]>((resolve, reject) => {
-      let request = this.http
+      this.http
         .post(`${AppConfig.settings.api.url}/Tenants(${this.userService.currentDbUserWithTenant.Tenant})/GetGitHubRepositories`, {})
         .subscribe({
           next: (data) => resolve(data["value"]),

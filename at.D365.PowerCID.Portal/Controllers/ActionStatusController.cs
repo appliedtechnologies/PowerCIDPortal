@@ -11,7 +11,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class ActionStatusController : BaseController
     {
         private readonly ILogger logger;
-        public ActionStatusController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public ActionStatusController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ActionStatusController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
               this.logger = logger;
         }

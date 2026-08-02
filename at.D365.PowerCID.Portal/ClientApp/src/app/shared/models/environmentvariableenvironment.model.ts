@@ -1,6 +1,5 @@
 import { Environment } from "./environment.model";
 import { EnvironmentVariable } from "./environmentvariable.model";
-import { User } from "./user.model";
 
 export interface EnvironmentVariableEnvironment {
     EnvironmentVariable?: number;

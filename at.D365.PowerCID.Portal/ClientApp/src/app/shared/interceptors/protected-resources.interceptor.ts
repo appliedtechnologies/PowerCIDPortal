@@ -1,10 +1,5 @@
 import { Inject, Injectable } from "@angular/core";
-import {
-  HttpEvent,
-  HttpInterceptor,
-  HttpHandler,
-  HttpRequest,
-} from "@angular/common/http";
+import { HttpEvent, HttpInterceptor, HttpHandler, HttpRequest } from "@angular/common/http";
 
 import { Observable } from "rxjs";
 import {
@@ -20,23 +15,24 @@ export class ProtectedResourcesInterceptor implements HttpInterceptor {
   ) {}
 
   public intercept(
-    req: HttpRequest<any>,
+    req: HttpRequest<unknown>,
     next: HttpHandler
-  ): Observable<HttpEvent<any>> {
-      try{
-        if(req.url.includes("dynamics.com")){
-          let url = new URL(req.url);
-          if (url.origin.includes("dynamics.com"))
+  ): Observable<HttpEvent<unknown>> {
+      if(req.url.includes("dynamics.com")){
+        try {
+          const url = new URL(req.url);
+          if (url.origin.includes("dynamics.com")) {
             this.addDataverseResource(url.origin);
+          }
+        } catch {
+          // ignore invalid URLs and continue request handling
         }
       }
-      finally{
-        return next.handle(req);
-      }
+      return next.handle(req);
   }
 
   private addDataverseResource(url: string) {
-    let resource: string = `${url}/api/data/v9.2/*`;
+    const resource = `${url}/api/data/v9.2/*`;
 
     if (!this.msalInterceptorConfig.protectedResourceMap.has(resource))
       this.msalInterceptorConfig.protectedResourceMap.set(resource, [

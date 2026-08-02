@@ -25,7 +25,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class PatchesController : BaseController
     {
         private readonly ILogger logger;
-        public PatchesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<PatchesController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public PatchesController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<PatchesController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }
@@ -54,7 +54,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                     return Forbid();
 
                 if((await this.dbContext.Tenants.FirstAsync(e => e.MsId == this.msIdTenantCurrentUser)).DisablePatchCreation)
-                    return BadRequest(new ODataError { ErrorCode =  "400", Message = "Creation of patches is disabled." });
+                    return BadRequest(new ODataError { Code = "400", Message = "Creation of patches is disabled." });
 
                 Application application = this.dbContext.Applications.First(e => e.Id == patch.Application);
                 string displayNameDataversePatch = $"{application.Name}_{patch.Name}";
@@ -76,7 +76,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 logger.LogError(ex, $"Error: PatchesController Post(patch Version: {patch.Version})");
 
-                return BadRequest(new ODataError { ErrorCode = "400", Message = ex.Message });
+                return BadRequest(new ODataError { Code = "400", Message = ex.Message });
             }
         }
 
@@ -101,7 +101,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 }
 
                 if(patch.GetChangedPropertyNames().Contains(nameof(Solution.Name)) && entity.Actions.Any(e => e.Result == 1 || e.Status == 2 || e.Status == 1))
-                    return BadRequest(new ODataError { ErrorCode =  "400", Message = "Can not rename Patch with existing Actions in progress or successfully completed." });
+                    return BadRequest(new ODataError { Code = "400", Message = "Can not rename Patch with existing Actions in progress or successfully completed." });
 
                 patch.Patch(entity);
                 try
@@ -163,13 +163,13 @@ namespace at.D365.PowerCID.Portal.Controllers
         private async Task DeletePatchInDataverse (Guid solutionMsId, string basicUrl){
             logger.LogDebug($"Begin: PatchesController DeletePatchInDataverse(solutionUniqueName: {solutionMsId}, basicUrl: {basicUrl})");
 
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{this.msIdTenantCurrentUser}";
+                options.AcquireTokenOptions.Tenant = $"{this.msIdTenantCurrentUser}";
                 options.BaseUrl = basicUrl + options.BaseUrl;
                 options.RelativePath = $"/solutions({solutionMsId})";
-                options.HttpMethod = HttpMethod.Delete;
-                options.Scopes = $"{basicUrl}/.default";
+                options.HttpMethod = HttpMethod.Delete.Method;
+                options.Scopes = new[] { $"{basicUrl}/.default" };
             });
 
             if (!response.IsSuccessStatusCode)
@@ -191,13 +191,13 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             StringContent solutionContent = new StringContent(JsonConvert.SerializeObject(newSolution), Encoding.UTF8, mediaType: "application/json");
 
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{this.msIdTenantCurrentUser}";
+                options.AcquireTokenOptions.Tenant = $"{this.msIdTenantCurrentUser}";
                 options.BaseUrl = basicUrl + options.BaseUrl;
                 options.RelativePath = "/CloneAsPatch";
-                options.HttpMethod = HttpMethod.Post;
-                options.Scopes = $"{basicUrl}/.default";
+                options.HttpMethod = HttpMethod.Post.Method;
+                options.Scopes = new[] { $"{basicUrl}/.default" };
             }, content: solutionContent);
 
             if (!response.IsSuccessStatusCode)
@@ -216,13 +216,13 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: PatchesController GetUniqueSolutioNamePatchFromDataverse(basicUrl: {basicUrl}, msId: {msId.ToString()}");
 
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{this.msIdTenantCurrentUser}";
+                options.AcquireTokenOptions.Tenant = $"{this.msIdTenantCurrentUser}";
                 options.BaseUrl = basicUrl + options.BaseUrl;
                 options.RelativePath = $"/solutions({msId})";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{basicUrl}/.default";
+                options.HttpMethod = HttpMethod.Get.Method;
+                options.Scopes = new[] { $"{basicUrl}/.default" };
             });
 
             if (!response.IsSuccessStatusCode)

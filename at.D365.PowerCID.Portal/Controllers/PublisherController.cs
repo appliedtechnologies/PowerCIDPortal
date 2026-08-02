@@ -17,7 +17,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class PublisherController : BaseController
     {
         private readonly ILogger logger;
-        public PublisherController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<PublisherController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public PublisherController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<PublisherController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }

@@ -2,7 +2,6 @@ import { Injectable } from "@angular/core";
 import { LogService } from "./log.service";
 import { AppConfig } from "../config/app.config";
 import { Router } from "@angular/router";
-import { UserService } from "./user.service";
 import ODataContext from "devextreme/data/odata/context";
 
 @Injectable()
@@ -10,7 +9,6 @@ export class ODataService {
   context: ODataContext;
   constructor(private router: Router, private logService: LogService) {
     this.context = new ODataContext({
-      beforeSend: (e) => {},
       url: AppConfig.settings.api.url,
       version: 4,
       errorHandler: (error) => {

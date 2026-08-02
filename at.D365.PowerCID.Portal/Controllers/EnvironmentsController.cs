@@ -22,7 +22,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     {
         private readonly ILogger logger;
 
-        public EnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ITokenAcquisition tokenAcquisition, ILogger<EnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor, tokenAcquisition)
+        public EnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ITokenAcquisition tokenAcquisition, ILogger<EnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor, tokenAcquisition)
         {
             this.logger = logger;
         }
@@ -127,13 +127,13 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             Environment environment = await this.dbContext.Environments.FindAsync(key);
 
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{this.msIdTenantCurrentUser}";
+                options.AcquireTokenOptions.Tenant = $"{this.msIdTenantCurrentUser}";
                 options.BaseUrl = environment.BasicUrl + options.BaseUrl;
                 options.RelativePath = "/publishers?$orderby=friendlyname";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{environment.BasicUrl}/.default";
+                options.HttpMethod = HttpMethod.Get.Method;
+                options.Scopes = new[] { $"{environment.BasicUrl}/.default" };
             });
 
             if (!response.IsSuccessStatusCode)
@@ -179,7 +179,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug("Begin: EnvironmentsController GetExistingEnvironments()");
 
 
-            var environmentsRepsonse = await this.downstreamWebApi.CallWebApiForUserAsync(
+            var environmentsRepsonse = await this.downstreamWebApi.CallApiForUserAsync(
                 "AzureManagementApi",
                 options =>
                 {

@@ -1,11 +1,7 @@
 import { BrowserModule } from "@angular/platform-browser";
 import { APP_INITIALIZER, NgModule } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import {
-  HttpClient,
-  HttpClientModule,
-  HTTP_INTERCEPTORS,
-} from "@angular/common/http";
+import { HttpClient, HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi, withXhr } from "@angular/common/http";
 import {
   DxDataGridModule,
   DxDrawerModule,
@@ -78,7 +74,7 @@ import { HistoryComponent } from "./components/history/history.component";
 import { UserComponent } from "./components/user/user.component";
 import { ApplicationdeploymentpathService } from "./shared/services/applicationdeploymentpath.service";
 import { RoleGuard } from "./shared/guards/role.guard";
-import { Router, RouterModule, provideRouter } from "@angular/router";
+import { RouterModule, provideRouter } from "@angular/router";
 import { LogPipe } from "./shared/pipes/log.pipe";
 import { ConfigureDeploymentComponent } from "./components/configure-deployment/configure-deployment.component";
 import { ConnectionReferenceEnvironmentService } from "./shared/services/connectionreferenceenvironment.service";
@@ -92,122 +88,117 @@ import { HasUserRole as HasUserRolePipe } from "./shared/pipes/has-user-role.pip
 import { routes } from "./app-routing.module";
 import config from "devextreme/core/config";
 import { licenseKey } from "src/devextreme-license";
+import { IPublicClientApplication } from "@azure/msal-browser";
 
-export function initializeAppConfig(appConfig: AppConfig, router: Router) {
-  return () => appConfig.load();
+export function initializeMsal(msalInstance: IPublicClientApplication) {
+  return () => msalInstance.initialize();
 }
 
 config({ licenseKey });  
 
-@NgModule({
-  declarations: [
-    AppComponent,
-    HomeComponent,
-    ProfileComponent,
-    EnvironmentComponent,
-    ApplicationComponent,
-    SolutionsOverviewComponent,
-    DeploymentpathComponent,
-    ActionDetailComponent,
-    SolutionDetailComponent,
-    HistoryComponent,
-    SettingsComponent,
-    UserComponent,
-    ConfigureDeploymentComponent,  
-    LogPipe, 
-    SideNavigationMenuComponent, 
-    FullNamePipe,
-    IsPatchPipe,
-    IsPatchDeletablePipe,
-    HasUserRolePipe
-  ],
-  imports: [
-    BrowserModule.withServerTransition({ appId: "ng-cli-universal" }),
-    RouterModule,
-    HttpClientModule,
-    FormsModule,
-    MsalModule,
-    DxDataGridModule,
-    DxDrawerModule,
-    DxListModule,
-    DxToolbarModule,
-    DxLoadPanelModule,
-    DxSelectBoxModule,
-    DxTreeListModule,
-    DxSortableModule,
-    DxTreeViewModule,
-    DxButtonModule,
-    DxSelectBoxModule,
-    DxFormModule,
-    DxLookupModule,
-    DxPopupModule,
-    DxTextBoxModule,
-    DxTreeViewModule,
-    DxSortableModule,
-    DxTextBoxModule,
-    DxTextAreaModule,
-    DxScrollViewModule,
-    DxContextMenuModule,
-    DxResponsiveBoxModule,
-    DxCheckBoxModule,
-    DxSwitchModule 
-  ],
-  providers: [
-    provideRouter(routes),
-    AppConfig,
-    LogService,
-    {
-      provide: APP_INITIALIZER,
-      useFactory: initializeAppConfig,
-      deps: [AppConfig, Router],
-      multi: true,
-    },
-    {
-      provide: MSAL_INSTANCE,
-      useFactory: MSALInstanceFactory,
-    },
-    {
-      provide: MSAL_GUARD_CONFIG,
-      useFactory: MSALGuardConfigFactory,
-    },
-    {
-      provide: MSAL_INTERCEPTOR_CONFIG,
-      useFactory: MSALInterceptorConfigFactory,
-    },
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: ProtectedResourcesInterceptor,
-      multi: true,
-    },
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: MsalInterceptor,
-      multi: true,
-    },
-    UserService,
-    MsalService,
-    MsalGuard,
-    MsalBroadcastService,
-    RoleGuard,
-    ODataService,
-    LayoutService,
-    ActionService,
-    ApplicationService,
-    EnvironmentService,
-    PatchService,
-    TenantService,
-    UpgradeService,
-    SolutionService,
-    PublisherService,
-    DeploymentpathService,
-    ApplicationdeploymentpathService,
-    ConnectionReferenceEnvironmentService,
-    ConnectionReferenceService,
-    EnvironmentVariableService,
-    IsPatchPipe
-  ],
-  bootstrap: [AppComponent, MsalRedirectComponent],
-})
+@NgModule({ declarations: [
+        AppComponent,
+        HomeComponent,
+        ProfileComponent,
+        EnvironmentComponent,
+        ApplicationComponent,
+        SolutionsOverviewComponent,
+        DeploymentpathComponent,
+        ActionDetailComponent,
+        SolutionDetailComponent,
+        HistoryComponent,
+        SettingsComponent,
+        UserComponent,
+        ConfigureDeploymentComponent,
+        LogPipe,
+        SideNavigationMenuComponent,
+        FullNamePipe,
+        IsPatchPipe,
+        IsPatchDeletablePipe,
+        HasUserRolePipe
+    ],
+    bootstrap: [AppComponent, MsalRedirectComponent], imports: [BrowserModule,
+        RouterModule,
+        FormsModule,
+        MsalModule,
+        DxDataGridModule,
+        DxDrawerModule,
+        DxListModule,
+        DxToolbarModule,
+        DxLoadPanelModule,
+        DxSelectBoxModule,
+        DxTreeListModule,
+        DxSortableModule,
+        DxTreeViewModule,
+        DxButtonModule,
+        DxSelectBoxModule,
+        DxFormModule,
+        DxLookupModule,
+        DxPopupModule,
+        DxTextBoxModule,
+        DxTreeViewModule,
+        DxSortableModule,
+        DxTextBoxModule,
+        DxTextAreaModule,
+        DxScrollViewModule,
+        DxContextMenuModule,
+        DxResponsiveBoxModule,
+        DxCheckBoxModule,
+        DxSwitchModule], providers: [
+        provideRouter(routes),
+        AppConfig,
+        LogService,
+        {
+            provide: MSAL_INSTANCE,
+            useFactory: MSALInstanceFactory,
+        },
+        {
+            provide: APP_INITIALIZER,
+            useFactory: initializeMsal,
+            deps: [MSAL_INSTANCE],
+            multi: true,
+        },
+        {
+            provide: MSAL_GUARD_CONFIG,
+            useFactory: MSALGuardConfigFactory,
+        },
+        {
+            provide: MSAL_INTERCEPTOR_CONFIG,
+            useFactory: MSALInterceptorConfigFactory,
+        },
+        {
+            provide: HTTP_INTERCEPTORS,
+            useClass: ProtectedResourcesInterceptor,
+            multi: true,
+        },
+        {
+            provide: HTTP_INTERCEPTORS,
+            useClass: MsalInterceptor,
+            multi: true,
+        },
+        UserService,
+        MsalService,
+        MsalGuard,
+        MsalBroadcastService,
+        RoleGuard,
+        ODataService,
+        LayoutService,
+        ActionService,
+        ApplicationService,
+        EnvironmentService,
+        PatchService,
+        TenantService,
+        UpgradeService,
+        SolutionService,
+        PublisherService,
+        DeploymentpathService,
+        ApplicationdeploymentpathService,
+        ConnectionReferenceEnvironmentService,
+        ConnectionReferenceService,
+        EnvironmentVariableService,
+        IsPatchPipe,
+        provideHttpClient(withXhr(), withInterceptorsFromDi())
+    ] })
 export class AppModule {
   constructor(httpClient: HttpClient) {
     devextremeAjax.inject({ sendRequest: sendRequestFactory(httpClient) });

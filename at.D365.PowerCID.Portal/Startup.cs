@@ -121,10 +121,10 @@ namespace at.D365.PowerCID.Portal
             services.AddHttpContextAccessor();
             services.AddMicrosoftIdentityWebApiAuthentication(Configuration, "AzureAd")
                 .EnableTokenAcquisitionToCallDownstreamApi()
-                .AddDownstreamWebApi("AzureManagementApi", Configuration.GetSection("DownstreamApis:AzureManagementApi"))
-                .AddDownstreamWebApi("DataverseApi", Configuration.GetSection("DownstreamApis:DataverseApi"))
-                .AddDownstreamWebApi("GraphApi", Configuration.GetSection("DownstreamApis:GraphApi"))
                 .AddInMemoryTokenCaches();
+            services.AddDownstreamApi("AzureManagementApi", Configuration.GetSection("DownstreamApis:AzureManagementApi"));
+            services.AddDownstreamApi("DataverseApi", Configuration.GetSection("DownstreamApis:DataverseApi"));
+            services.AddDownstreamApi("GraphApi", Configuration.GetSection("DownstreamApis:GraphApi"));
             // In production, the Angular files will be served from this directory
             services.AddSpaStaticFiles(configuration =>
             {

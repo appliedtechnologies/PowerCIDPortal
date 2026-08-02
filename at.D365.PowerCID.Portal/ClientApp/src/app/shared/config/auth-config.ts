@@ -5,20 +5,14 @@ import {
 } from "@azure/msal-angular";
 import {
   BrowserCacheLocation,
-  EndSessionRequest,
   InteractionType,
   IPublicClientApplication,
   LogLevel,
   PublicClientApplication,
   RedirectRequest,
-  SilentRequest,
 } from "@azure/msal-browser";
 
 import { AppConfig } from "src/app/shared/config/app.config";
-
-const isIE =
-  window.navigator.userAgent.indexOf("MSIE ") > -1 ||
-  window.navigator.userAgent.indexOf("Trident/") > -1;
 
 export function loggerCallback(logLevel: LogLevel, message: string) {
   console.log(message);
@@ -35,7 +29,6 @@ export function MSALInstanceFactory(): IPublicClientApplication {
     },
     cache: {
       cacheLocation: BrowserCacheLocation.LocalStorage,
-      storeAuthStateInCookie: isIE, // set to true for IE 11
     },
     system: {
       loggerOptions: {
@@ -48,7 +41,7 @@ export function MSALInstanceFactory(): IPublicClientApplication {
 }
 
 export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
-  const protectedResourceMap = new Map<string, Array<string | ProtectedResourceScopes>>([
+  const protectedResourceMap = new Map<string, (string | ProtectedResourceScopes)[]>([
     ["https://graph.microsoft.com/v1.0/*", ["user.read"]],
     [location.origin + "/odata/*", [`api://${AppConfig.settings.azure.applicationId}/access_as_user`]],
   ]);

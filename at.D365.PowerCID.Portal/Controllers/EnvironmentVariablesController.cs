@@ -22,7 +22,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class EnvironmentVariablesController : BaseController
     {
         private readonly ILogger logger;
-        public EnvironmentVariablesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<EnvironmentVariablesController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public EnvironmentVariablesController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<EnvironmentVariablesController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }

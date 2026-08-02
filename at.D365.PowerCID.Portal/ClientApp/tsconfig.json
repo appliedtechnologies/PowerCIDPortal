@@ -2,26 +2,25 @@
   "compileOnSave": false,
   "compilerOptions": {
     "baseUrl": "./",
+    "rootDir": "./src",
+    "ignoreDeprecations": "6.0",
+    "esModuleInterop": true,
     "module": "es2020",
     "outDir": "./dist/out-tsc",
     "sourceMap": true,
     "declaration": false,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "experimentalDecorators": true,
     "target": "ES2022",
     "typeRoots": [
       "node_modules/@types"
-    ],
-    "lib": [
-      "es2017",
-      "dom",
-      "ES2018.Promise"
     ],
     "paths": {
       "jszip": [
         "node_modules/jszip/dist/jszip.min.js"
       ]
     },
+    "strict": false,
     "skipLibCheck": false,
     "useDefineForClassFields": false
   },
