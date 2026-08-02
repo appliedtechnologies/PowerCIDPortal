@@ -1,25 +1,17 @@
 import { Component, OnDestroy, OnInit, ViewChild, ChangeDetectionStrategy } from "@angular/core";
-import {
-  DxButtonComponent,
-  DxDataGridComponent,
-  DxSelectBoxComponent,
-  DxSelectBoxModule,
-} from "devextreme-angular";
+import { DxDataGridComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import { Column } from "devextreme/ui/data_grid";
 import dxSelectBox from "devextreme/ui/select_box";
 import { ApplicationService } from "src/app/shared/services/application.service";
 import { PatchService } from "src/app/shared/services/patch.service";
 import { SolutionService } from "src/app/shared/services/solution.service";
-import { UpgradeService } from "src/app/shared/services/upgrade.service";
 import { UserService } from "src/app/shared/services/user.service";
 import { Patch } from "src/app/shared/models/patch.model";
 import { Application } from "src/app/shared/models/application.model";
 import { Environment } from "src/app/shared/models/environment.model";
 import { EnvironmentService } from "src/app/shared/services/environment.service";
 import { Action } from "src/app/shared/models/action.model";
-import { ActionResult } from "src/app/shared/models/actionresult.model";
-import { ActionStatus } from "src/app/shared/models/actionstatus.model";
 import { Solution } from "src/app/shared/models/solution.model";
 import dxButton from "devextreme/ui/button";
 import { ActionService } from "src/app/shared/services/action.service";
@@ -30,6 +22,19 @@ import {
 } from "src/app/shared/services/layout.service";
 import { DeploymentPath } from "src/app/shared/models/deploymentpath.model";
 import { alert, confirm } from 'devextreme/ui/dialog';
+import { InitializedEvent as ButtonInitializedEvent } from "devextreme/ui/button";
+import { InitializedEvent as SelectBoxInitializedEvent } from "devextreme/ui/select_box";
+
+type SolutionRowData = Solution & {
+  ApplyManually?: unknown;
+};
+
+interface SolutionCellInfo {
+  data: SolutionRowData;
+  column: {
+    name: string;
+  };
+}
 
 @Component({
     selector: "app-solutions-overview",
@@ -119,7 +124,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           stylingMode: "text",
           disabled: true,
           visible: this.autoRefreshInterval != undefined,
-          onInitialized: (args: any) => {
+          onInitialized: (args: ButtonInitializedEvent) => {
             this.autoRefreshHintButtonInstance = args.component;
           },
         },
@@ -133,7 +138,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           type: "success",
           onClick: this.onClickCancelAutoRefresh.bind(this),
           visible: this.autoRefreshInterval != undefined,
-          onInitialized: (args: any) => {
+          onInitialized: (args: ButtonInitializedEvent) => {
             this.autoRefreshCancelButtonInstance = args.component;
           },
         },
@@ -159,7 +164,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           value: this.selectedApplication?.Id,
           hint: "Select an application from which solutions should be displayed.",
           displayExpr: "Name",
-          onInitialized: (args: any) => {
+          onInitialized: (args: SelectBoxInitializedEvent) => {
             this.applicationSelectBoxInstance = args.component;
           },
           onValueChanged: (e) => {
@@ -185,7 +190,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
             type: "success",
             disabled: this.selectedApplication == null ? true : false,
             onClick: this.onClickAddPatch.bind(this),
-            onInitialized: (args: any) => {
+            onInitialized: (args: ButtonInitializedEvent) => {
               this.addPatchButtonInstance = args.component;
             },
           },
@@ -204,7 +209,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           type: "success",
           disabled: this.selectedApplication == null ? true : false,
           onClick: this.onClickAddUpgrade.bind(this),
-          onInitialized: (args: any) => {
+          onInitialized: (args: ButtonInitializedEvent) => {
             this.addUpgradeButtonInstance = args.component;
           },
         },
@@ -228,8 +233,8 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     this.isActionDetailPopupVisible = true;
   }
 
-  public onClickDownloadSolution(e: any, cellInfo, lastAction: Action) {
-    const unmanaged = e.ctrlKey;
+  public onClickDownloadSolution(e: Event, cellInfo: SolutionCellInfo, lastAction: Action) {
+    const unmanaged = (e as MouseEvent | KeyboardEvent).ctrlKey === true;
 
     this.layoutService.notify({ message: "Downloading solution...", type: NotificationType.Info });
 
@@ -262,7 +267,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     const targetEnvironmentId = cellInfo.column.name.split(",")[1];
 
     if (exportOnly) {
-      this.executeExport(cellInfo, exportOnly);
+      this.executeExport(cellInfo);
     } else if(applyUpgradeOnly) {
       this.layoutService.change(LayoutParameter.ShowLoading, true);
       this.startApplyUpgrade(cellInfo.data.Id, targetEnvironmentId)
@@ -305,7 +310,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  public executeExport(cellInfo, exportOnly: boolean) {
+  public executeExport(cellInfo) {
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.solutionService
       .export(cellInfo.data.Id)
@@ -344,6 +349,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public onHiddenSolutionDetailPopup(e): void {
+    void e;
     if(this.refreshAfterPopupClose)
       this.dataGrid.instance.refresh();
 
@@ -351,6 +357,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   }
 
   public onSaveCompletedSolutionDetail(e): void {
+    void e;
     this.isSolutionDetailPopupVisible = false;
     this.resetSolutionDetailPopup();
     this.dataGrid.instance.refresh();
@@ -452,11 +459,12 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     return this.canImport;
   }
 
-  public onClickOpenMakerPortal(cellInfo: any): void {
+  public onClickOpenMakerPortal(cellInfo: SolutionCellInfo): void {
     window.open(cellInfo.data.UrlMakerportal, "_blank")
   }
 
-  public onRenamedSolutionDetail(e: any): void{
+  public onRenamedSolutionDetail(e: unknown): void{
+    void e;
     this.refreshAfterPopupClose = true;
   }
 
@@ -574,7 +582,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
         width: 90,
         allowReordering: false,
         cellTemplate: "typeCellTemplate",
-        calculateCellValue: (rowData: any) => {
+        calculateCellValue: (rowData: SolutionRowData) => {
           if (rowData["ApplyManually"] === undefined) return "Patch";
           else return "Upgrade";
         },

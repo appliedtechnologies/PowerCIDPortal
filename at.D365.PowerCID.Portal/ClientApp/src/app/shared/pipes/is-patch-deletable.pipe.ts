@@ -1,8 +1,5 @@
 import { Pipe, PipeTransform } from '@angular/core';
-import { Action } from 'rxjs/internal/scheduler/Action';
 import { Patch } from '../models/patch.model';
-import { Solution } from '../models/solution.model';
-import { LogService } from '../services/log.service';
 import { IsPatchPipe } from './is-patch.pipe';
 import DataSource from 'devextreme/data/data_source';
 

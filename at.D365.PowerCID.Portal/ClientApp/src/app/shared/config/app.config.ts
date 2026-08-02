@@ -15,7 +15,7 @@ export class AppConfig {
       new HttpClient(this.httpBackend).get(jsonFile).toPromise().then((response: IAppConfig) => {
         AppConfig.settings = response as IAppConfig;
         resolve();
-      }).catch((response: any) => {
+      }).catch((response: unknown) => {
         reject(`Could not load file '${jsonFile}': ${JSON.stringify(response)}`);
       });
     });

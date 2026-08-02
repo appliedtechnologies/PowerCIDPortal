@@ -16,8 +16,6 @@ import {
 } from "src/app/shared/services/layout.service";
 import { PublisherService } from "src/app/shared/services/publisher.service";
 import { ApplicationdeploymentpathService } from "src/app/shared/services/applicationdeploymentpath.service";
-import { ApplicationDeploymentPath } from "src/app/shared/models/applicationdeploymentpath.model";
-import { from } from "rxjs";
 import { confirm } from 'devextreme/ui/dialog';
 
 @Component({
@@ -44,7 +42,7 @@ export class ApplicationComponent {
   deploymentPaths: DeploymentPath[];
   currentApplicationId: number;
   applicationDeploymentPaths;
-  currentApplicationName: any;
+  currentApplicationName: string;
 
   constructor(
     private applicationService: ApplicationService,
@@ -161,7 +159,6 @@ export class ApplicationComponent {
   onRemove(e) {
     e.fromData.splice(e.fromIndex, 1);
     const itemDataId = e.itemData.Id;
-    const fromIndex = e.fromIndex + 1;
 
     this.applicationDeploymentPathService.getStore().remove({
       Application: this.currentApplicationId,
@@ -340,6 +337,7 @@ export class ApplicationComponent {
   }
 
   onRowInserted(e) {
+    void e;
     this.layoutService.notify({
       type: NotificationType.Success,
       message: "Created solution in dataverse successfully.",
@@ -373,8 +371,8 @@ export class ApplicationComponent {
       "Solution Unique Name",
       "Development Environment",
     ];
-    for (let index = 0; index < columnCaptionNames.length; index++) {
-      if (e.caption == columnCaptionNames[index] && e.parentType == "dataRow") {
+    for (const columnCaptionName of columnCaptionNames) {
+      if (e.caption == columnCaptionName && e.parentType == "dataRow") {
         e.editorOptions.disabled = !e.row.isNewRow;
       }
     }
@@ -422,7 +420,7 @@ export class ApplicationComponent {
         const loadOptions = this.dataGrid.instance.getDataSource().loadOptions();
         const filterExpression = this.dataGrid.instance.getCombinedFilter(true);
 
-        this.dataGrid.instance.getDataSource().store().load({filter: filterExpression, sort: loadOptions?.sort}).then((rows: any) => {
+        this.dataGrid.instance.getDataSource().store().load({filter: filterExpression, sort: loadOptions?.sort}).then((rows: Application[]) => {
           const updates = [];
 
           rows.forEach((row, index) => { 

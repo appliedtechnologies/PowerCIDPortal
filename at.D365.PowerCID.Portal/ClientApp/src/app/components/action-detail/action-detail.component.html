@@ -48,7 +48,7 @@
       editorType="dxTextArea"
       [editorOptions]="{ height: 100 }"
     ></dxi-item>
-    @if (this.action?.Type == 2) {
+    @if (this.action?.Type === 2) {
       <dxi-item
         dataField="DeploymentDetails"
         editorType="dxTextArea"

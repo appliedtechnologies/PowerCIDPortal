@@ -1,19 +1,15 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Router } from "@angular/router";
 import { MsalBroadcastService, MsalService } from "@azure/msal-angular";
 import {
   AccountInfo,
   EventMessage,
   EventType,
   InteractionStatus,
-  SilentRequest,
 } from "@azure/msal-browser";
-import { ThrottlingUtils } from "@azure/msal-common";
 import ODataStore from "devextreme/data/odata/store";
-import { firstValueFrom, forkJoin, from, merge, Observable, Subject } from "rxjs";
+import { merge, Observable, Subject } from "rxjs";
 import { filter, map, switchMap, takeUntil } from "rxjs/operators";
-import { isDebuggerStatement } from "typescript";
 import { AppConfig } from "../config/app.config";
 import { InitRedirctRequest } from "../config/auth-config";
 import { User } from "../models/user.model";
@@ -26,6 +22,10 @@ import { LogService } from "./log.service";
 import { ODataService } from "./odata.service";
 import { AppRoleAssignment } from "../models/approleassignment.model";
 import { alert } from "devextreme/ui/dialog";
+
+interface SetupApplicationUsersResponse {
+  value: string[];
+}
 
 @Injectable()
 export class UserService {
@@ -84,7 +84,7 @@ export class UserService {
     const login$ = this.msalBroadcastService.msalSubject$.pipe(
       filter((msg: EventMessage) => msg.eventType === EventType.LOGIN_SUCCESS),
       takeUntil(this._destroying$),
-      switchMap((data) => {
+      switchMap(() => {
         return this.doPortalLogin()
           .then(() => {
             this.checkUpdatedOwnership();
@@ -194,12 +194,12 @@ export class UserService {
     });
   }
 
-  setupApplicationUsers() {
-    return new Promise<any>((resolve, reject) => {
+  setupApplicationUsers(): Promise<SetupApplicationUsersResponse> {
+    return new Promise<SetupApplicationUsersResponse>((resolve, reject) => {
       this.http
         .post(`${AppConfig.settings.api.url}/Users/SetupApplicationUsers`, {})
         .subscribe({
-          next: (data) => resolve(data as any),
+          next: (data) => resolve(data as SetupApplicationUsersResponse),
           error: () => reject(),
         });
     });
@@ -210,7 +210,7 @@ export class UserService {
       this.http
         .post(`${AppConfig.settings.api.url}/Users/SyncAdminRole`, {})
         .subscribe({
-          next: (data) => resolve(),
+          next: () => resolve(),
           error: () => reject(),
         });
     });
@@ -280,7 +280,7 @@ export class UserService {
 
   private callPortalLogin(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      const request = this.http
+      this.http
         .post(`${AppConfig.settings.api.url}/Users/Login`, {})
         .subscribe({
           next: () => resolve(),

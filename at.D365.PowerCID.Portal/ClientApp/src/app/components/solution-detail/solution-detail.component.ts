@@ -19,6 +19,7 @@ import {
 import { PatchService } from "src/app/shared/services/patch.service";
 import { UpgradeService } from "src/app/shared/services/upgrade.service";
 import Validator from "devextreme/ui/validator";
+import { FocusOutEvent } from "devextreme/ui/text_box";
 
 @Component({
     selector: "app-solution-detail",
@@ -31,15 +32,15 @@ export class SolutionDetailComponent implements OnChanges {
   @Input() solution: Patch | Upgrade;
   @Input() application: Application;
   @Input() isAddUpgrade: boolean;
-  @Output() onSaveCompleted = new EventEmitter<void>();
-  @Output() onRenamed = new EventEmitter<void>();
+  @Output() saveCompleted = new EventEmitter<void>();
+  @Output() renamed = new EventEmitter<void>();
 
   @ViewChild("textBoxName") public textBoxName: DxTextBoxComponent;
   @ViewChild("textAreaDescription") public textAreaDescription: DxTextBoxComponent;
 
   public isUpgrade: boolean;
   public isAdd: boolean;
-  public buttonOptionsSaveAdd: any;
+  public buttonOptionsSaveAdd: Record<string, unknown>;
 
   constructor(
     private patchService: PatchService,
@@ -79,7 +80,7 @@ export class SolutionDetailComponent implements OnChanges {
           })
           .then(() => {
             this.layoutService.change(LayoutParameter.ShowLoading, false);
-            this.onSaveCompleted.emit();
+            this.saveCompleted.emit();
           });
       } else {
         this.patchService
@@ -98,13 +99,13 @@ export class SolutionDetailComponent implements OnChanges {
           })
           .then(() => {
             this.layoutService.change(LayoutParameter.ShowLoading, false);
-            this.onSaveCompleted.emit();
+            this.saveCompleted.emit();
           });
       }
     }
   }
 
-  public onFocusOutSolutionName(e: any): void {
+  public onFocusOutSolutionName(e: FocusOutEvent): void {
     if(!this.isAdd)
     {
       const newValue: string = this.textBoxName.value;
@@ -119,7 +120,7 @@ export class SolutionDetailComponent implements OnChanges {
     }
   }
 
-  public onFocusOutSolutionDescription(e: any): void {
+  public onFocusOutSolutionDescription(e: FocusOutEvent): void {
     if(!this.isAdd)
     {
       const newValue: string = this.textAreaDescription.value;
@@ -159,7 +160,7 @@ export class SolutionDetailComponent implements OnChanges {
         type: NotificationType.Success,
         message: "The Patch was successfully renamed.",
       });
-      this.onRenamed.emit();
+      this.renamed.emit();
     })
     .catch((error) => {
       if(error != null)
@@ -186,7 +187,7 @@ export class SolutionDetailComponent implements OnChanges {
         type: NotificationType.Success,
         message: "The Upgrade was successfully renamed.",
       });
-      this.onRenamed.emit();
+      this.renamed.emit();
     })
     .catch((error) => {
       if(error != null)
@@ -213,7 +214,7 @@ export class SolutionDetailComponent implements OnChanges {
         type: NotificationType.Success,
         message: "Description was successfully changed.",
       });
-      this.onRenamed.emit();
+      this.renamed.emit();
     })
     .catch((error) => {
       if(error != null)
@@ -240,7 +241,7 @@ export class SolutionDetailComponent implements OnChanges {
         type: NotificationType.Success,
         message: "Description was successfully renamed.",
       });
-      this.onRenamed.emit();
+      this.renamed.emit();
     })
     .catch((error) => {
       if(error != null)

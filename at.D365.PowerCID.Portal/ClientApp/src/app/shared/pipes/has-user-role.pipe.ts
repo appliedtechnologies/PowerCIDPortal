@@ -10,8 +10,9 @@ import { AppConfig } from '../config/app.config';
 export class HasUserRole implements PipeTransform {
     constructor(private logService: LogService) {}
 
-    transform(appRoleAssignments: AppRoleAssignment[], roleNameKey: any): any {
-        const appRoleId: string = AppConfig.settings.azure.appRoleIds[roleNameKey];
+    transform(appRoleAssignments: AppRoleAssignment[], roleNameKey: string | number | symbol): boolean {
+        const appRoleIds = AppConfig.settings.azure.appRoleIds as Record<string, string>;
+        const appRoleId: string = appRoleIds[String(roleNameKey)];
         const hasUserRole: boolean = appRoleAssignments.some(e => e.AppRoleId == appRoleId);
         return hasUserRole;
     }

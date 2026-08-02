@@ -8,7 +8,7 @@ import { LogService } from '../services/log.service';
 export class LogPipe implements PipeTransform {
     constructor(private logService: LogService) {}
 
-    transform(value: any, args?: any): any {
+    transform(value: unknown): null {
         this.logService.debug(value);
         return null;
     }

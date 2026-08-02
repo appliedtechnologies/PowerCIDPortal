@@ -7,10 +7,10 @@ import { EnvironmentVariable } from "src/app/shared/models/environmentvariable.m
 import { EnvironmentVariableEnvironment } from "src/app/shared/models/environmentvariableenvironment.model";
 import { ConnectionReferenceService } from "src/app/shared/services/connectionreference.service";
 import { ConnectionReferenceEnvironmentService } from "src/app/shared/services/connectionreferenceenvironment.service";
-import { EnvironmentService } from "src/app/shared/services/environment.service";
 import { EnvironmentVariableService } from "src/app/shared/services/environmentvariable.service";
 import { EnvironmentVariableEnvironmentService } from "src/app/shared/services/environmentvariableenvironment.service";
 import { LayoutParameter, LayoutService, NotificationType } from "src/app/shared/services/layout.service";
+import { InitializedEvent, ValueChangedEvent } from "devextreme/ui/text_box";
 
 @Component({
     selector: "app-configure-deployment",
@@ -48,7 +48,7 @@ export class ConfigureDeploymentComponent implements OnInit {
         });
     }
 
-    public onValueChangedConnectionIdTextBox(e: any, connectionReference: ConnectionReference){
+    public onValueChangedConnectionIdTextBox(e: ValueChangedEvent, connectionReference: ConnectionReference){
         if(e.value != e.previousValue){
             const connectionId = e.value;
             const existingConnectionReference: ConnectionReference = this.existingConnectionReferences.find(e => e.MsId == connectionReference.MsId);
@@ -79,7 +79,7 @@ export class ConfigureDeploymentComponent implements OnInit {
         }
     }
 
-    public onValueChangedEnvVarValueTextBox(e: any, environmentVariable: EnvironmentVariable){
+    public onValueChangedEnvVarValueTextBox(e: ValueChangedEvent, environmentVariable: EnvironmentVariable){
         if(e.value != e.previousValue){
             const envVarValue = e.value;
             const existingEnvironmentVariables: EnvironmentVariable = this.existingEnvironmentVariables.find(e => e.MsId == environmentVariable.MsId);
@@ -110,13 +110,13 @@ export class ConfigureDeploymentComponent implements OnInit {
         }
     }
 
-    public onInitializedConnectionIdTextBox(e: any, connectionReference: ConnectionReference){
+    public onInitializedConnectionIdTextBox(e: InitializedEvent, connectionReference: ConnectionReference){
         const connectionId = this.existingConnectionReferences.find(e => e.MsId == connectionReference.MsId)?.ConnectionReferenceEnvironments?.find(e =>e.Environment == this.environment.Id)?.ConnectionId
         if(connectionId)
             e.component.option("value", connectionId);
     }
 
-    public onInitializedEnvVarValueTextBox(e: any, environmentVariable: EnvironmentVariable){
+    public onInitializedEnvVarValueTextBox(e: InitializedEvent, environmentVariable: EnvironmentVariable){
         const envVarValue = this.existingEnvironmentVariables.find(e => e.MsId == environmentVariable.MsId)?.EnvironmentVariableEnvironments?.find(e =>e.Environment == this.environment.Id)?.Value
         if(envVarValue)
             e.component.option("value", envVarValue);

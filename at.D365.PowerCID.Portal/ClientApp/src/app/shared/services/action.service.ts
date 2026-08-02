@@ -21,7 +21,7 @@ export class ActionService {
       this.http
         .post(`${AppConfig.settings.api.url}/Actions(${actionId})/CancelImport`, {})
         .subscribe({
-          next: (data) => resolve(),
+          next: () => resolve(),
           error: (error) => reject(error),
         });
     });

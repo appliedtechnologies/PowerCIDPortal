@@ -1,19 +1,8 @@
-import { HttpClient } from "@angular/common/http";
 import { Component, OnInit, ChangeDetectionStrategy } from "@angular/core";
-import { MsalService, MsalBroadcastService } from "@azure/msal-angular";
-import {
-  EventMessage,
-  EventType,
-  InteractionStatus,
-} from "@azure/msal-browser";
-import { Subject } from "rxjs";
-import { filter, takeUntil } from "rxjs/operators";
 import { User } from "src/app/shared/models/user.model";
-import { ODataService } from "src/app/shared/services/odata.service";
 import { UserService } from "src/app/shared/services/user.service";
 import { UserEnvironmentService } from "src/app/shared/services/userenvironment.service";
 import { UserEnvironment } from "src/app/shared/models/userenvironment.model";
-import { DxListComponent, DxPopupComponent } from "devextreme-angular";
 import { LayoutService, NotificationType } from "src/app/shared/services/layout.service";
 
 @Component({
@@ -43,6 +32,7 @@ export class ProfileComponent implements OnInit {
   }
 
   public onClickResetGridSettings(e): void {
+    void e;
     localStorage.removeItem("atPowerCIDPortal_Environments_GridState");
     localStorage.removeItem("atPowerCIDPortal_Applications_GridState");
     localStorage.removeItem("atPowerCIDPortal_Users_GridState");

@@ -1,6 +1,6 @@
 
 export class TimeHelper{
-    static millisecondsToString(duration: number, args?: any): string {
+    static millisecondsToString(duration: number): string {
         const milliseconds: number | string = Math.floor((duration % 1000) / 100);
         let seconds: number | string = Math.floor((duration / 1000) % 60);
         let minutes: number | string = Math.floor((duration / (1000 * 60)) % 60);

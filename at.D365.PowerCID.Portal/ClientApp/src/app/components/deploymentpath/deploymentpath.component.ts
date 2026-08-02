@@ -12,8 +12,16 @@ import {
   LayoutService,
   NotificationType,
 } from "src/app/shared/services/layout.service";
-import dxTreeView from "devextreme/ui/tree_view";
+import dxTreeView, { ContentReadyEvent as TreeViewContentReadyEvent, dxTreeViewNode } from "devextreme/ui/tree_view";
 import { DeploymentPathEnvironmentService } from "src/app/shared/services/deploymentpathEnvironment.service";
+import { AddEvent, DragChangeEvent, DragEndEvent, ReorderEvent } from "devextreme/ui/sortable";
+
+type DeploymentPathTreeItem = DeploymentPath & DeploymentPathEnvironment & {
+  items?: DeploymentPathTreeItem[];
+  isDirectory?: boolean;
+};
+
+type DeploymentPathTreeNode = dxTreeViewNode<DeploymentPathTreeItem, number>;
 
 @Component({
     selector: "app-deploymentpath",
@@ -50,7 +58,7 @@ export class DeploymentpathComponent {
     });
   }
 
-  public onClickSaveDeploymentPath(e: any): void{
+  public onClickSaveDeploymentPath(): void{
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.deploymentPathService.add(this.newDeploymentPath)
       .then(() => this.layoutService.notify({
@@ -69,7 +77,7 @@ export class DeploymentpathComponent {
       });
   }
 
-  public onClickSaveRenameDeploymentPath(e: any): void{
+  public onClickSaveRenameDeploymentPath(): void{
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.deploymentPathService.update(this.deploymentPathToEdit.Id, { Name: this.deploymentPathToEdit.Name})
       .then(() => this.layoutService.notify({
@@ -92,7 +100,8 @@ export class DeploymentpathComponent {
     this.isAddDeploymentPathVisible = true;
   }
 
-  public onClickDeleteDeploymentPathOrStep(e: any, entry: any): void{
+  public onClickDeleteDeploymentPathOrStep(e: unknown, entry: DeploymentPathTreeItem): void{
+    void e;
     let result: Promise<boolean>;
     if (entry.StepNumber === undefined)
       result = confirm(
@@ -144,17 +153,18 @@ export class DeploymentpathComponent {
     });
   }
 
-  public onClickOpenRenameDeploymentPath(e: any, entry: any): void {
+  public onClickOpenRenameDeploymentPath(e: unknown, entry: DeploymentPathTreeItem): void {
+    void e;
     this.deploymentPathToEdit = { Id: entry.Id, Name: entry.Name };
     this.isRenameDeploymentPathVisible = true;
   }
 
-  public onAdd(e: any): void{
+  public onAdd(e: AddEvent): void{
     if (e.fromComponent === e.toComponent && e.fromIndex === e.toIndex) {
       return;
     }
-    const fromTreeView = this.getTreeView(e.fromData);
-    const toTreeView = this.getTreeView(e.toData);
+    const fromTreeView = this.getTreeView(e.fromData as string);
+    const toTreeView = this.getTreeView(e.toData as string);
 
     const fromNode = this.findNode(fromTreeView, e.fromIndex);
     const toNode = this.findNode(toTreeView, this.calculateToIndex(e));
@@ -225,12 +235,12 @@ export class DeploymentpathComponent {
     }
   }
 
-  public onDragChange(e: any): void{
+  public onDragChange(e: DragChangeEvent): void{
     if (e.fromComponent === e.toComponent) {
-      const fromNode = this.findNode(this.getTreeView(e.fromData), e.fromIndex);
+      const fromNode = this.findNode(this.getTreeView(e.fromData as string), e.fromIndex ?? 0);
 
       const toNode = this.findNode(
-        this.getTreeView(e.toData),
+        this.getTreeView(e.toData as string),
         this.calculateToIndex(e)
       );
 
@@ -240,7 +250,8 @@ export class DeploymentpathComponent {
     }
   }
 
-  public onContentReadyTreeViewDeploymentPaths(e: any): void{
+  public onContentReadyTreeViewDeploymentPaths(e: TreeViewContentReadyEvent<DeploymentPathTreeItem, number>): void{
+    void e;
     if (this.deploymentPathIdToExpand) {
       this.treeViewDeploymentpath.instance.expandItem(
         this.deploymentPathIdToExpand
@@ -249,17 +260,15 @@ export class DeploymentpathComponent {
     }
   }
 
-  public onReorder(e: any): void{
+  public onReorder(e: ReorderEvent): void{
     if (e.fromComponent === e.toComponent && e.fromIndex === e.toIndex) {
       return;
     }
-    const fromTreeView = this.getTreeView(e.fromData);
-    const toTreeView = this.getTreeView(e.toData);
+    const fromTreeView = this.getTreeView(e.fromData as string);
+    const toTreeView = this.getTreeView(e.toData as string);
 
     const fromNode = this.findNode(fromTreeView, e.fromIndex);
     const toNode = this.findNode(toTreeView, this.calculateToIndex(e));
-
-    const toItems = toTreeView.option("items");
 
     if(fromNode.itemData.DeploymentPath != toNode.itemData.DeploymentPath){
       this.layoutService.notify({
@@ -309,13 +318,13 @@ export class DeploymentpathComponent {
     }
   }
 
-  public onDragEnd(e: any): void{
+  public onDragEnd(e: DragEndEvent): void{
     if (e.fromComponent === e.toComponent && e.fromIndex === e.toIndex) {
       return;
     }
 
-    const fromTreeView = this.getTreeView(e.fromData);
-    const toTreeView = this.getTreeView(e.toData);
+    const fromTreeView = this.getTreeView(e.fromData as string);
+    const toTreeView = this.getTreeView(e.toData as string);
     const fromTopVisibleNode = this.getTopVisibleNode(e.fromComponent);
     const toTopVisibleNode = this.getTopVisibleNode(e.toComponent);
 
@@ -354,13 +363,13 @@ export class DeploymentpathComponent {
 
         let deploymentPathEnvironments: DeploymentPathEnvironment[] = [];
 
-        for (let i = 0; i < data.length; i++) {
-          for (let j = 0; j < data[i].DeploymentPathEnvironments.length; j++) {
-            const stepNumber = data[i].DeploymentPathEnvironments[j].StepNumber;
+        for (const deploymentPath of sortedDeploymentPaths) {
+          for (const deploymentPathEnvironment of deploymentPath.DeploymentPathEnvironments) {
+            const stepNumber = deploymentPathEnvironment.StepNumber;
             deploymentPathEnvironments[stepNumber - 1] =
-              data[i].DeploymentPathEnvironments[j];
+              deploymentPathEnvironment;
           }
-          sortedDeploymentPaths[i].DeploymentPathEnvironments =
+          deploymentPath.DeploymentPathEnvironments =
             deploymentPathEnvironments;
           deploymentPathEnvironments = [];
         }
@@ -369,7 +378,7 @@ export class DeploymentpathComponent {
       });
   }
 
-  private findNode(treeView: any, index: number): any {
+  private findNode(treeView: dxTreeView<DeploymentPathTreeItem, number>, index: number): DeploymentPathTreeNode | null {
     const nodeElement = treeView
       .element()
       .querySelectorAll(".dx-treeview-node")[index];
@@ -382,15 +391,15 @@ export class DeploymentpathComponent {
     return null;
   }
 
-  private findNodeById(nodes, id: number): any{
-    for (let i = 0; i < nodes.length; i++) {
-      if (nodes[i].itemData.Id == id) {
-        return nodes[i];
+  private findNodeById(nodes: DeploymentPathTreeNode[], id: number | string | null): DeploymentPathTreeNode | null{
+    for (const node of nodes) {
+      if (node.itemData?.Id == id) {
+        return node;
       }
-      if (nodes[i].children) {
-        const node = this.findNodeById(nodes[i].children, id);
-        if (node != null) {
-          return node;
+      if (node.children) {
+        const foundNode = this.findNodeById(node.children, id);
+        if (foundNode != null) {
+          return foundNode;
         }
       }
     }
@@ -436,7 +445,6 @@ export class DeploymentpathComponent {
         toNode.itemData.Id != fromNode.itemData.Id
       ) {
         toNodeContainingArray.splice(toIndex, 0, fromNode.itemData);
-        toNodeContainingArray;
       } else {
         toNodeContainingArray.splice(
           toIndex,
@@ -463,21 +471,21 @@ export class DeploymentpathComponent {
     return false;
   }
 
-  private getTopVisibleNode(component): void{
+  private getTopVisibleNode(component): Element | null{
     const treeViewElement = component.element();
     const treeViewTopPosition = treeViewElement.getBoundingClientRect().top;
     const nodes = treeViewElement.querySelectorAll(".dx-treeview-node");
-    for (let i = 0; i < nodes.length; i++) {
-      const nodeTopPosition = nodes[i].getBoundingClientRect().top;
+    for (const node of nodes) {
+      const nodeTopPosition = node.getBoundingClientRect().top;
       if (nodeTopPosition >= treeViewTopPosition) {
-        return nodes[i];
+        return node;
       }
     }
 
     return null;
   }
 
-  private getTreeView(name): dxTreeView<any> {
+  private getTreeView(name: string): dxTreeView<DeploymentPathTreeItem, number> {
     return name === "deploymentpath"
       ? this.treeViewDeploymentpath.instance
       : this.treeViewEnvironment.instance;

@@ -74,6 +74,7 @@ export class SettingsComponent implements OnInit {
   }
 
   public onClickSetupApplicationUsers(e) {
+    void e;
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.userService.setupApplicationUsers().then((d) => {
       this.environmentMessages = d.value;
@@ -83,10 +84,12 @@ export class SettingsComponent implements OnInit {
   }
 
   public onClickConnectGitHub(e): void {
+    void e;
     window.location.href = AppConfig.settings.github.installation_url;
   }
 
   public onClickSaveRepositoryName(e): void {
+    void e;
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.tenatService
       .setGitHubRepositoryName(this.valueSelectBoxRepositoryName)
@@ -108,6 +111,7 @@ export class SettingsComponent implements OnInit {
   }
 
   public onValueChangedDisablePatchCreation(e): void {
+    void e;
     if(this.userService.currentDbUserWithTenant.TenantNavigation.DisablePatchCreation == this.valueDisablePatchCreation)
       return;
       

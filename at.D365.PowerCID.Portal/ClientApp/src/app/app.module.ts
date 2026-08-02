@@ -74,7 +74,7 @@ import { HistoryComponent } from "./components/history/history.component";
 import { UserComponent } from "./components/user/user.component";
 import { ApplicationdeploymentpathService } from "./shared/services/applicationdeploymentpath.service";
 import { RoleGuard } from "./shared/guards/role.guard";
-import { Router, RouterModule, provideRouter } from "@angular/router";
+import { RouterModule, provideRouter } from "@angular/router";
 import { LogPipe } from "./shared/pipes/log.pipe";
 import { ConfigureDeploymentComponent } from "./components/configure-deployment/configure-deployment.component";
 import { ConnectionReferenceEnvironmentService } from "./shared/services/connectionreferenceenvironment.service";

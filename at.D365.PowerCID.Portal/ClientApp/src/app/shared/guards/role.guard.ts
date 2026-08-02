@@ -1,6 +1,5 @@
 import { Injectable } from "@angular/core";
 import { ActivatedRouteSnapshot, Router } from "@angular/router";
-import { MsalService } from "@azure/msal-angular";
 import { LayoutService, NotificationType } from "../services/layout.service";
 import { UserService } from "../services/user.service";
 @Injectable()

@@ -20,8 +20,8 @@ export class SideNavigationMenuComponent {
   constructor(private router: Router, private userService: UserService) {
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
-      .subscribe((event) => {
-        this.selectedItemRoute = this.router.url.split(/[\#\?]+/)[0];
+      .subscribe(() => {
+        this.selectedItemRoute = this.router.url.split(/[#?]+/)[0];
         this.setNavigationEntries();
       });
 
@@ -41,7 +41,7 @@ export class SideNavigationMenuComponent {
       this.setNavigationEntries(!e.itemData.expanded);
   }
 
-  onItemExpanded(e): void{
+  onItemExpanded(): void{
     this.setNavigationEntries();
   }
 

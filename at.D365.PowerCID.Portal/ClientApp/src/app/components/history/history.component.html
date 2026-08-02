@@ -49,6 +49,10 @@
           class="dx-icon-info clickable-icon"
           title="show details"
           (click)="onClickSolutionInfo(rowData)"
+          (keydown.enter)="onClickSolutionInfo(rowData)"
+          (keydown.space)="$event.preventDefault(); onClickSolutionInfo(rowData)"
+          tabindex="0"
+          role="button"
         ></i>
         {{ rowData.text }}
       </div>
@@ -137,6 +141,10 @@
           class="dx-icon-info clickable-icon"
           title="show details"
           (click)="onClickActionInfo(rowData)"
+          (keydown.enter)="onClickActionInfo(rowData)"
+          (keydown.space)="$event.preventDefault(); onClickActionInfo(rowData)"
+          tabindex="0"
+          role="button"
           >
         </i>
       </div>

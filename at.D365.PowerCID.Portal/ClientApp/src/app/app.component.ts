@@ -57,6 +57,7 @@ export class AppComponent implements OnInit {
   }
 
   onContentReady(e){
+    void e;
     const buttonElement = document.querySelector(".dx-toolbar-menu-container .dx-dropdownmenu-button");
     const instance = Button.getInstance(buttonElement) as Button;
     instance.option("type", "default");

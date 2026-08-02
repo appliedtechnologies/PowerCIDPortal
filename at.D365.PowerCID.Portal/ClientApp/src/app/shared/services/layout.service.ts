@@ -23,14 +23,14 @@ export class LayoutService {
     this.change(LayoutParameter.LoadingMessage, "Loading...");
   }
 
-  public change(valueToChange: LayoutParameter, value: any): void {
+  public change(valueToChange: LayoutParameter, value: boolean | string): void {
     Promise.resolve(null).then(() => {
       switch (valueToChange) {
         case LayoutParameter.ShowLoading:
-          this.showLoadingSource.next(value);
+          this.showLoadingSource.next(value as boolean);
           break;
         case LayoutParameter.LoadingMessage:
-          this.loadingMessageSource.next(value);
+          this.loadingMessageSource.next(value as string);
           if (value === false)
             this.change(LayoutParameter.LoadingMessage, "Loding...");
           break;
@@ -78,7 +78,7 @@ export interface Notification {
   message?: string,
   type: NotificationType,
   displayTime?: number,
-  options?: any
+  options?: unknown
 }
 
 export enum NotificationType {

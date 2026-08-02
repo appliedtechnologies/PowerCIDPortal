@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, OnInit, SimpleChanges, ChangeDetectionStrategy } from "@angular/core";
+import { Component, Input, OnChanges, ChangeDetectionStrategy } from "@angular/core";
 import { Action } from "src/app/shared/models/action.model";
 import { ActionService } from "src/app/shared/services/action.service";
 
@@ -17,7 +17,7 @@ export class ActionDetailComponent implements OnChanges {
     public actionService: ActionService
   ) {}
 
-  public ngOnChanges(changes: SimpleChanges): void {
+  public ngOnChanges(): void {
       this.actionService.getStore().byKey(this.actionId, {
         expand: [
           "CreatedByNavigation",

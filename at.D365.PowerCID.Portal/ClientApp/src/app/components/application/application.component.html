@@ -118,7 +118,7 @@
       </dxi-column>
 
       <div *dxTemplate="let cellInfo of 'environmentsDropdownTemplate'">
-        @if (cellInfo.row.isNewRow == true) {
+        @if (cellInfo.row.isNewRow === true) {
           <dx-select-box
             [dataSource]="dataSourceEnvironments"
             displayExpr="Name"
@@ -139,7 +139,7 @@
       </div>
 
       <div *dxTemplate="let cellInfo of 'publishersDropdownTemplate'">
-        @if (cellInfo.row.isNewRow == true) {
+        @if (cellInfo.row.isNewRow === true) {
           <dx-select-box
             [items]="filteredPublishers"
             displayExpr="Name"
