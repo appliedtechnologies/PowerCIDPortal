@@ -66,7 +66,7 @@
     <div
       *ngIf="
         getLastActionForEnvironment(cellInfo);
-        else noActionAvailable;
+        else noActionAvailableForEnvironment;
         let lastAction
       "
     >
@@ -138,7 +138,7 @@
         {{ lastAction.ResultNavigation?.Result }}
       </div>
     </div>
-    <ng-template #noActionAvailable>
+    <ng-template #noActionAvailableForEnvironment>
       <div class="card dx-card dx-theme-text-color card-ready" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
         <span>
           <i

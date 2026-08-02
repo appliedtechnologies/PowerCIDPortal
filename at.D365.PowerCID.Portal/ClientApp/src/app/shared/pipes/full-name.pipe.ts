@@ -2,7 +2,8 @@ import { Pipe, PipeTransform } from '@angular/core';
 import { LogService } from '../services/log.service';
 
 @Pipe({
-    name: 'fullname'
+    name: 'fullname',
+    standalone: false
 })
 export class FullNamePipe implements PipeTransform {
     constructor(private logService: LogService) {}

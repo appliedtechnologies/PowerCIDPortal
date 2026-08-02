@@ -59,7 +59,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 logger.LogError(ex, $"Error: UpgradesController Post(upgrade Application: {upgrade.Application})");
 
-                return BadRequest(new ODataError { ErrorCode = "400", Message = ex.Message });
+                return BadRequest(new ODataError { Code = "400", Message = ex.Message });
             }
         }
 
@@ -84,7 +84,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 }
 
                 if(upgrade.GetChangedPropertyNames().Contains(nameof(Solution.Name)) && entity.Actions.Any(e => e.Result == 1 || e.Status == 2 || e.Status == 1))
-                    return BadRequest(new ODataError { ErrorCode =  "400", Message = "Can not rename Upgrade with existing Actions in progress or successfully completed." });
+                    return BadRequest(new ODataError { Code = "400", Message = "Can not rename Upgrade with existing Actions in progress or successfully completed." });
 
                 upgrade.Patch(entity);
                 try

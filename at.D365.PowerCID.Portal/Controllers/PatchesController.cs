@@ -54,7 +54,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                     return Forbid();
 
                 if((await this.dbContext.Tenants.FirstAsync(e => e.MsId == this.msIdTenantCurrentUser)).DisablePatchCreation)
-                    return BadRequest(new ODataError { ErrorCode =  "400", Message = "Creation of patches is disabled." });
+                    return BadRequest(new ODataError { Code = "400", Message = "Creation of patches is disabled." });
 
                 Application application = this.dbContext.Applications.First(e => e.Id == patch.Application);
                 string displayNameDataversePatch = $"{application.Name}_{patch.Name}";
@@ -76,7 +76,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 logger.LogError(ex, $"Error: PatchesController Post(patch Version: {patch.Version})");
 
-                return BadRequest(new ODataError { ErrorCode = "400", Message = ex.Message });
+                return BadRequest(new ODataError { Code = "400", Message = ex.Message });
             }
         }
 
@@ -101,7 +101,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 }
 
                 if(patch.GetChangedPropertyNames().Contains(nameof(Solution.Name)) && entity.Actions.Any(e => e.Result == 1 || e.Status == 2 || e.Status == 1))
-                    return BadRequest(new ODataError { ErrorCode =  "400", Message = "Can not rename Patch with existing Actions in progress or successfully completed." });
+                    return BadRequest(new ODataError { Code = "400", Message = "Can not rename Patch with existing Actions in progress or successfully completed." });
 
                 patch.Patch(entity);
                 try

@@ -17,9 +17,10 @@ import { DxListComponent, DxPopupComponent } from "devextreme-angular";
 import { LayoutService, NotificationType } from "src/app/shared/services/layout.service";
 
 @Component({
-  selector: "app-profile",
-  templateUrl: "./profile.component.html",
-  styleUrls: ["./profile.component.css"]
+    selector: "app-profile",
+    templateUrl: "./profile.component.html",
+    styleUrls: ["./profile.component.css"],
+    standalone: false
 })
 export class ProfileComponent implements OnInit {
   isLoggedIn = false;

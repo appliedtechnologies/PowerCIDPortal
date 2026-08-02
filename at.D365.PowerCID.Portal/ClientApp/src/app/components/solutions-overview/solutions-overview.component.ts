@@ -32,9 +32,10 @@ import { DeploymentPath } from "src/app/shared/models/deploymentpath.model";
 import { alert, confirm } from 'devextreme/ui/dialog';
 
 @Component({
-  selector: "app-solutions-overview",
-  templateUrl: "./solutions-overview.component.html",
-  styleUrls: ["./solutions-overview.component.css"],
+    selector: "app-solutions-overview",
+    templateUrl: "./solutions-overview.component.html",
+    styleUrls: ["./solutions-overview.component.css"],
+    standalone: false
 })
 export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   @ViewChild(DxDataGridComponent, { static: false })

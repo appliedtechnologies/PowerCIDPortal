@@ -20,9 +20,10 @@ import { SolutionService } from "src/app/shared/services/solution.service";
 import { UserService } from "src/app/shared/services/user.service";
 
 @Component({
-  selector: "app-history",
-  templateUrl: "./history.component.html",
-  styleUrls: ["./history.component.css"],
+    selector: "app-history",
+    templateUrl: "./history.component.html",
+    styleUrls: ["./history.component.css"],
+    standalone: false
 })
 export class HistoryComponent implements OnInit {
   @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;

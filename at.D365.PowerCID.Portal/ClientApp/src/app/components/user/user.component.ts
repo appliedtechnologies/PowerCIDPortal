@@ -18,9 +18,10 @@ import { AppRoleAssignment } from "src/app/shared/models/approleassignment.model
 import { confirm } from 'devextreme/ui/dialog';
 
 @Component({
-  selector: "app-user",
-  templateUrl: "./user.component.html",
-  styleUrls: ["./user.component.css"],
+    selector: "app-user",
+    templateUrl: "./user.component.html",
+    styleUrls: ["./user.component.css"],
+    standalone: false
 })
 export class UserComponent {
   @ViewChild(DxPopupComponent, { static: false }) popupPermissionEnvironments: DxPopupComponent;

@@ -45,7 +45,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest(ModelState);
 
             if (dbContext.DeploymentPaths.Any(x => x.TenantNavigation.MsId == this.msIdTenantCurrentUser && x.Name == deploymentPath.Name))
-                return BadRequest(new ODataError { ErrorCode =  "400", Message = "A Deployment Path with this name already exists." });
+                return BadRequest(new ODataError { Code = "400", Message = "A Deployment Path with this name already exists." });
 
             deploymentPath.Tenant = this.dbContext.Tenants.First(e => e.MsId == this.msIdTenantCurrentUser).Id;
             base.dbContext.DeploymentPaths.Add(deploymentPath);
@@ -79,7 +79,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 }
                 deploymentPath.Patch(entity);
                 if (dbContext.DeploymentPaths.Any(x => x.TenantNavigation.MsId == this.msIdTenantCurrentUser && x.Name == entity.Name))
-                    return BadRequest(new ODataError { ErrorCode =  "400", Message = "A Deployment Path with this name already exists." });
+                    return BadRequest(new ODataError { Code = "400", Message = "A Deployment Path with this name already exists." });
                 try
                 {
                     await base.dbContext.SaveChangesAsync();
@@ -119,7 +119,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return Forbid();
 
             if(this.dbContext.ApplicationDeploymentPaths.Any(e => e.DeploymentPath == key))
-                return BadRequest(new ODataError { ErrorCode =  "400", Message = $"The deployment path is used by application '{this.dbContext.ApplicationDeploymentPaths.First(e => e.DeploymentPath == key).ApplicationNavigation.Name}'." });
+                return BadRequest(new ODataError { Code = "400", Message = $"The deployment path is used by application '{this.dbContext.ApplicationDeploymentPaths.First(e => e.DeploymentPath == key).ApplicationNavigation.Name}'." });
 
             this.dbContext.Remove(deploymentPathToDelete);
             await this.dbContext.SaveChangesAsync();

@@ -21,9 +21,10 @@ import { from } from "rxjs";
 import { confirm } from 'devextreme/ui/dialog';
 
 @Component({
-  selector: "app-application",
-  templateUrl: "./application.component.html",
-  styleUrls: ["./application.component.css"],
+    selector: "app-application",
+    templateUrl: "./application.component.html",
+    styleUrls: ["./application.component.css"],
+    standalone: false
 })
 export class ApplicationComponent {
   @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;

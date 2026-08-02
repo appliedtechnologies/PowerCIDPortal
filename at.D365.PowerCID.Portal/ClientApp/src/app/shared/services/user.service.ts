@@ -3,7 +3,6 @@ import { Injectable } from "@angular/core";
 import { Router } from "@angular/router";
 import { MsalBroadcastService, MsalService } from "@azure/msal-angular";
 import {
-  AccountEntity,
   AccountInfo,
   EventMessage,
   EventType,

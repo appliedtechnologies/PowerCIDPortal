@@ -4,7 +4,8 @@ import { AppRoleAssignment } from '../models/approleassignment.model';
 import { AppConfig } from '../config/app.config';
 
 @Pipe({
-    name: 'hasUserRole'
+    name: 'hasUserRole',
+    standalone: false
 })
 export class HasUserRole implements PipeTransform {
     constructor(private logService: LogService) {}

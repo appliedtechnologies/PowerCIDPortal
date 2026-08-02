@@ -2,7 +2,7 @@
   <dxi-item itemType="group" cssClass="first-group" [colCount]="1">
     <dxi-item dataField="Name" [isRequired]="this.isAdd">
       <div *dxTemplate>
-        <dx-text-box 
+        <dx-text-box
           #textBoxName
           [value]="this.solution.Name"
           [readOnly]="false"
@@ -10,7 +10,9 @@
         </dx-text-box>
       </div>
       <dxi-validation-rule type="stringLength" [max]="100" message="Name must not be longer than 100 characters."> </dxi-validation-rule>
-      <dxi-validation-rule *ngIf="this.isAdd" type="required" message="A name must be entered."> </dxi-validation-rule>
+      @if (this.isAdd) {
+        <dxi-validation-rule type="required" message="A name must be entered."> </dxi-validation-rule>
+      }
     </dxi-item>
     <dxi-item dataField="Version" [editorOptions]="{placeholder: 'leave blank to get next version number according to schema'}"></dxi-item>
     <dxi-item [isRequired]="this.isAdd" [label]="{ text: 'Application' }">
@@ -19,15 +21,18 @@
         </dx-text-box>
       </div>
     </dxi-item>
-    <dxi-item dataField="UniqueName" *ngIf="!this.isAdd"></dxi-item>
-    <dxi-item
-      dataField="UrlMakerportal"
-      *ngIf="!this.isAdd"
-      [label]="{ text: 'URL Portal' }"
-    ></dxi-item>
+    @if (!this.isAdd) {
+      <dxi-item dataField="UniqueName"></dxi-item>
+    }
+    @if (!this.isAdd) {
+      <dxi-item
+        dataField="UrlMakerportal"
+        [label]="{ text: 'URL Portal' }"
+      ></dxi-item>
+    }
     <dxi-item dataField="Description">
       <div *dxTemplate>
-        <dx-text-area 
+        <dx-text-area
           #textAreaDescription
           [value]="this.solution.Description"
           height="100"
@@ -37,11 +42,12 @@
       </div>
       <dxi-validation-rule type="stringLength" [max]="5000" message="Description must not be longer than 5000 characters."> </dxi-validation-rule>
     </dxi-item>
-    <dxi-item
-      editorType="dxCheckBox"
-      dataField="ApplyManually"
-      *ngIf="isUpgrade || isAddUpgrade"
-    ></dxi-item>
+    @if (isUpgrade || isAddUpgrade) {
+      <dxi-item
+        editorType="dxCheckBox"
+        dataField="ApplyManually"
+      ></dxi-item>
+    }
     <dxi-item
       editorType="dxCheckBox"
       dataField="OverwriteUnmanagedCustomizations"
@@ -59,40 +65,41 @@
     [buttonOptions]="buttonOptionsSaveAdd"
   ></dxi-item>
 
-  <dxi-item
-    *ngIf="!this.isAdd"
-    itemType="group"
-    cssClass="second-group"
-    caption="History"
-    [colCount]="2"
-  >
-    <dxi-item [label]="{ text: 'Created by' }">
-      <div *dxTemplate>
-        <dx-text-box
-          value="{{this.solution.CreatedByNavigation | fullname}}"
-        >
-        </dx-text-box>
-      </div>
-    </dxi-item>
+  @if (!this.isAdd) {
     <dxi-item
-      dataField="CreatedOn"
+      itemType="group"
+      cssClass="second-group"
+      caption="History"
+      [colCount]="2"
+      >
+      <dxi-item [label]="{ text: 'Created by' }">
+        <div *dxTemplate>
+          <dx-text-box
+            value="{{this.solution.CreatedByNavigation | fullname}}"
+            >
+          </dx-text-box>
+        </div>
+      </dxi-item>
+      <dxi-item
+        dataField="CreatedOn"
       [editorOptions]="{
         displayFormat: 'dd.MM.yyyy HH:mm:ss'
       }"
-      [label]="{ text: 'Created on' }"
-    ></dxi-item>
-    <dxi-item [label]="{ text: 'Modified by' }">
-      <div *dxTemplate>
-        <dx-text-box value="{{this.solution.ModifiedByNavigation | fullname}}">
-        </dx-text-box>
-      </div>
-    </dxi-item>
-    <dxi-item
-      dataField="ModifiedOn"
+        [label]="{ text: 'Created on' }"
+      ></dxi-item>
+      <dxi-item [label]="{ text: 'Modified by' }">
+        <div *dxTemplate>
+          <dx-text-box value="{{this.solution.ModifiedByNavigation | fullname}}">
+          </dx-text-box>
+        </div>
+      </dxi-item>
+      <dxi-item
+        dataField="ModifiedOn"
       [editorOptions]="{
         displayFormat: 'dd.MM.yyyy HH:mm:ss'
       }"
-      [label]="{ text: 'Modified on' }"
-    ></dxi-item>
-  </dxi-item>
+        [label]="{ text: 'Modified on' }"
+      ></dxi-item>
+    </dxi-item>
+  }
 </dx-form>

@@ -16,6 +16,7 @@ import { LayoutParameter, LayoutService, NotificationType } from "src/app/shared
     selector: "app-configure-deployment",
     templateUrl: "./configure-deployment.component.html",
     styleUrls: ["./configure-deployment.component.css"],
+    standalone: false
 })
 export class ConfigureDeploymentComponent implements OnInit {
     @Input() environment: Environment;

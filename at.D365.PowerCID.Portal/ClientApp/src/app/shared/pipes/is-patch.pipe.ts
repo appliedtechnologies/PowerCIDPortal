@@ -3,7 +3,8 @@ import { Solution } from '../models/solution.model';
 import { LogService } from '../services/log.service';
 
 @Pipe({
-    name: 'isPatch'
+    name: 'isPatch',
+    standalone: false
 })
 export class IsPatchPipe implements PipeTransform {
     constructor() {}

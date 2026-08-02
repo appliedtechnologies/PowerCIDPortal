@@ -5,9 +5,10 @@ import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-side-navigation-menu',
-  templateUrl: './side-navigation-menu.component.html',
-  styleUrls: ['./side-navigation-menu.component.css']
+    selector: 'app-side-navigation-menu',
+    templateUrl: './side-navigation-menu.component.html',
+    styleUrls: ['./side-navigation-menu.component.css'],
+    standalone: false
 })
 export class SideNavigationMenuComponent {
 

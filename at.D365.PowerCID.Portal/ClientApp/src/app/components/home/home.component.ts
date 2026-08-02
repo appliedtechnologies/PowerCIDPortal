@@ -1,13 +1,11 @@
-import { Input } from "@angular/core";
 import { Component, OnInit } from "@angular/core";
-import DevExpress from "devextreme";
-import { Button } from "protractor";
 import { UserService } from "src/app/shared/services/user.service";
 
 @Component({
-  selector: "app-home",
-  templateUrl: "./home.component.html",
-  styleUrls: ["./home.component.css"]
+    selector: "app-home",
+    templateUrl: "./home.component.html",
+    styleUrls: ["./home.component.css"],
+    standalone: false
 })
 export class HomeComponent implements OnInit {
   isLoggedIn: boolean;

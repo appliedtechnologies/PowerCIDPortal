@@ -16,10 +16,11 @@ import dxTreeView from "devextreme/ui/tree_view";
 import { DeploymentPathEnvironmentService } from "src/app/shared/services/deploymentpathEnvironment.service";
 
 @Component({
-  selector: "app-deploymentpath",
-  templateUrl: "./deploymentpath.component.html",
-  styleUrls: ["./deploymentpath.component.css"],
-  providers: [DeploymentpathService, EnvironmentService],
+    selector: "app-deploymentpath",
+    templateUrl: "./deploymentpath.component.html",
+    styleUrls: ["./deploymentpath.component.css"],
+    providers: [DeploymentpathService, EnvironmentService],
+    standalone: false
 })
 export class DeploymentpathComponent {
   @ViewChild("treeViewDeploymentpath") public treeViewDeploymentpath: DxTreeViewComponent;

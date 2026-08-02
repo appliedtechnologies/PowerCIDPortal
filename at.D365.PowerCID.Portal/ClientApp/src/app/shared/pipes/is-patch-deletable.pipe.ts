@@ -7,7 +7,8 @@ import { IsPatchPipe } from './is-patch.pipe';
 import DataSource from 'devextreme/data/data_source';
 
 @Pipe({
-    name: 'isPatchDeletable'
+    name: 'isPatchDeletable',
+    standalone: false
 })
 export class IsPatchDeletablePipe implements PipeTransform {
     constructor(private isPatchPipe: IsPatchPipe) {}

@@ -16,10 +16,6 @@ import {
 
 import { AppConfig } from "src/app/shared/config/app.config";
 
-const isIE =
-  window.navigator.userAgent.indexOf("MSIE ") > -1 ||
-  window.navigator.userAgent.indexOf("Trident/") > -1;
-
 export function loggerCallback(logLevel: LogLevel, message: string) {
   console.log(message);
 }
@@ -35,7 +31,6 @@ export function MSALInstanceFactory(): IPublicClientApplication {
     },
     cache: {
       cacheLocation: BrowserCacheLocation.LocalStorage,
-      storeAuthStateInCookie: isIE, // set to true for IE 11
     },
     system: {
       loggerOptions: {

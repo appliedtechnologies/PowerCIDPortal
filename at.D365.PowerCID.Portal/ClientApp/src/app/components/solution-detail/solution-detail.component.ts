@@ -20,9 +20,10 @@ import { UpgradeService } from "src/app/shared/services/upgrade.service";
 import Validator from "devextreme/ui/validator";
 
 @Component({
-  selector: "app-solution-detail",
-  templateUrl: "./solution-detail.component.html",
-  styleUrls: ["./solution-detail.component.css"],
+    selector: "app-solution-detail",
+    templateUrl: "./solution-detail.component.html",
+    styleUrls: ["./solution-detail.component.css"],
+    standalone: false
 })
 export class SolutionDetailComponent implements OnChanges {
   @Input() solution: Patch | Upgrade;

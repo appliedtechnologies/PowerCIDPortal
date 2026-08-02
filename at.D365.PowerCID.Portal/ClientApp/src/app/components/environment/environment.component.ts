@@ -12,9 +12,10 @@ import { UserService } from "src/app/shared/services/user.service";
 import { confirm } from 'devextreme/ui/dialog';
 
 @Component({
-  selector: "app-environment",
-  templateUrl: "./environment.component.html",
-  styleUrls: ["./environment.component.css"],
+    selector: "app-environment",
+    templateUrl: "./environment.component.html",
+    styleUrls: ["./environment.component.css"],
+    standalone: false
 })
 export class EnvironmentComponent {
   @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;

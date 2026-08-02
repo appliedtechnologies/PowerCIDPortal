@@ -64,10 +64,10 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return Forbid();
 
             if (base.dbContext.Applications.Any(a => (a.DevelopmentEnvironment == application.DevelopmentEnvironment) && (a.Name == application.Name || a.SolutionUniqueName == application.SolutionUniqueName)))
-                return BadRequest(new ODataError { ErrorCode =  "400", Message = "An Application with this name already exists." });
+                return BadRequest(new ODataError { Code = "400", Message = "An Application with this name already exists." });
 
             if (await solutionService.GetSolutionIdByUniqueName(application.SolutionUniqueName, dbContext.Environments.Find(application.DevelopmentEnvironment).BasicUrl) != Guid.Empty)
-                return BadRequest(new ODataError { ErrorCode =  "400", Message = "An application with this Solution Unique Name already exists on the Development Environment." });
+                return BadRequest(new ODataError { Code = "400", Message = "An application with this Solution Unique Name already exists on the Development Environment." });
 
             if (application.OrdinalNumber == null)
             {

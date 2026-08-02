@@ -3,9 +3,10 @@ import { Action } from "src/app/shared/models/action.model";
 import { ActionService } from "src/app/shared/services/action.service";
 
 @Component({
-  selector: "app-action-detail",
-  templateUrl: "./action-detail.component.html",
-  styleUrls: ["./action-detail.component.css"],
+    selector: "app-action-detail",
+    templateUrl: "./action-detail.component.html",
+    styleUrls: ["./action-detail.component.css"],
+    standalone: false
 })
 export class ActionDetailComponent implements OnChanges {
   @Input() actionId: number;
