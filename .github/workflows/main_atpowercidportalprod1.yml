@@ -13,7 +13,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-        DEVEXTREME_KEY: ${{ secrets.DevExtremeKey }}
+      DevExpress_License: '${{secrets.DevExtremeKey}}'
 
     steps:
       - uses: actions/checkout@v4

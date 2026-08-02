@@ -2,6 +2,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "baseUrl": "./",
+    "rootDir": "./src",
     "ignoreDeprecations": "6.0",
     "esModuleInterop": true,
     "module": "es2020",

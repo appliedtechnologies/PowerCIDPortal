@@ -7,7 +7,7 @@
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
-    "postinstall": "node add-devextreme-license",
+    "postinstall": "devextreme-license --out src/devextreme-license.ts --force",
     "serve:ssr:at.D365.PowerCID.Portal": "node dist/server/server.mjs"
   },
   "private": true,

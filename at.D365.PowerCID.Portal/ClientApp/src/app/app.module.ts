@@ -88,9 +88,10 @@ import { HasUserRole as HasUserRolePipe } from "./shared/pipes/has-user-role.pip
 import { routes } from "./app-routing.module";
 import config from "devextreme/core/config";
 import { licenseKey } from "src/devextreme-license";
+import { IPublicClientApplication } from "@azure/msal-browser";
 
-export function initializeAppConfig(appConfig: AppConfig, router: Router) {
-  return () => appConfig.load();
+export function initializeMsal(msalInstance: IPublicClientApplication) {
+  return () => msalInstance.initialize();
 }
 
 config({ licenseKey });  
@@ -148,14 +149,14 @@ config({ licenseKey });
         AppConfig,
         LogService,
         {
-            provide: APP_INITIALIZER,
-            useFactory: initializeAppConfig,
-            deps: [AppConfig, Router],
-            multi: true,
-        },
-        {
             provide: MSAL_INSTANCE,
             useFactory: MSALInstanceFactory,
+        },
+        {
+            provide: APP_INITIALIZER,
+            useFactory: initializeMsal,
+            deps: [MSAL_INSTANCE],
+            multi: true,
         },
         {
             provide: MSAL_GUARD_CONFIG,
