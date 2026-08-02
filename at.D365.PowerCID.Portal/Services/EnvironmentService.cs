@@ -18,7 +18,6 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Octokit.GraphQL;
 using Action = at.D365.PowerCID.Portal.Data.Models.Action;
 using Microsoft.Extensions.Logging;
 
