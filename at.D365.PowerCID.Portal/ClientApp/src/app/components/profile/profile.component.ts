@@ -34,7 +34,7 @@ export class ProfileComponent implements OnInit {
   public onClickResetGridSettings(e): void {
     void e;
     localStorage.removeItem("atPowerCIDPortal_Environments_GridState");
-    localStorage.removeItem("atPowerCIDPortal_Applications_GridState");
+    localStorage.removeItem("atPowerCIDPortal_Applications_GridState_v2");
     localStorage.removeItem("atPowerCIDPortal_Users_GridState");
     localStorage.removeItem("atPowerCIDPortal_History_GridState");
     this.layoutService.notify({ message: "The grid settings have been successfully reset.", type: NotificationType.Success });
