@@ -102,12 +102,14 @@
       </dxi-column>
 
       <dxi-column
-       dataField="Group"
-       caption="Group"
-       [groupIndex]="0"
-       [showWhenGrouped]="true"
-       [allowSearch]="true"
-      ></dxi-column>
+        dataField="Group"
+        caption="Group"
+        [groupIndex]="0"
+        [showWhenGrouped]="true"
+        [allowSearch]="true"
+      >
+        <dxi-validation-rule type="stringLength" [max]="100" message="Must not be longer than 100 characters"></dxi-validation-rule>
+      </dxi-column>
 
       <dxi-column [width]="150" type="buttons">
         <dxi-button name="edit" [visible]="isActiveApplication"></dxi-button>
