@@ -96,6 +96,9 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     private patchService: PatchService
   ) {
     this.selectionToolbarItems = this.createSelectionToolbarItems();
+    this.userService.stateChanged$.subscribe(() => {
+      this.selectionToolbarItems = this.createSelectionToolbarItems();
+    });
     this.applicationService.getStore().load({
       filter: ["IsDeactive", "=", false],
       select: ["Group"],
@@ -692,7 +695,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
         },
       ];
 
-      if (!this.userService.currentDbUserWithTenant.TenantNavigation.DisablePatchCreation) {
+      if (this.userService.currentDbUserWithTenant?.TenantNavigation.DisablePatchCreation === false) {
         items.push({
           location: "before",
           widget: "dxButton",
