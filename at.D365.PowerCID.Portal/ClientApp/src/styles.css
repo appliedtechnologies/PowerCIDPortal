@@ -16,7 +16,7 @@ html, body{
 }
 
 .dx-popup-title.dx-toolbar .dx-closebutton {
-  inset-inline-start: 0;
+  inset-inline-start: 0 !important;
 }
 
 #init-loading-screen {
