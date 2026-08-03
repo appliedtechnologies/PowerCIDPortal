@@ -587,6 +587,10 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
       this.applicationService.getApplicationById(id).then((application) => {
         this.selectedApplication = application;
         this.selectedApplicationGroup = this.selectedApplication.Group ?? null;
+        this.applicationSelectBoxInstance?.option(
+          "dataSource",
+          this.createApplicationDataSource(this.selectedApplicationGroup)
+        );
         this.groupSelectBoxInstance?.option(
           "value",
           this.selectedApplicationGroup
