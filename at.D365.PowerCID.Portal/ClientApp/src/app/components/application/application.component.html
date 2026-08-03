@@ -43,6 +43,16 @@
     ></dxi-column>
 
     <dxi-column
+      dataField="Group"
+      caption="Group"
+      [groupIndex]="0"
+      [showWhenGrouped]="true"
+      [allowSearch]="true"
+    >
+      <dxi-validation-rule type="stringLength" [max]="100" message="Must not be longer than 100 characters"></dxi-validation-rule>
+    </dxi-column>
+
+    <dxi-column
       dataField="MsId"
       caption="App Id"
       [allowSearch]="false">
@@ -99,16 +109,6 @@
         [width]="300"
         >
         <dxi-validation-rule type="stringLength" [max]="5000" message="Must not be longer than 5,000 characters"> </dxi-validation-rule>
-      </dxi-column>
-
-      <dxi-column
-        dataField="Group"
-        caption="Group"
-        [groupIndex]="0"
-        [showWhenGrouped]="true"
-        [allowSearch]="true"
-      >
-        <dxi-validation-rule type="stringLength" [max]="100" message="Must not be longer than 100 characters"></dxi-validation-rule>
       </dxi-column>
 
       <dxi-column [width]="150" type="buttons">
