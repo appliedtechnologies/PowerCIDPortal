@@ -140,7 +140,12 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return NotFound();
             }
+            var wasDeactivated = entity.IsDeactive;
             application.Patch(entity);
+            if (!wasDeactivated && entity.IsDeactive)
+            {
+                await RemoveApplicationDeploymentPaths(entity.Id);
+            }
             try
             {
                 await base.dbContext.SaveChangesAsync();
@@ -161,28 +166,12 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Updated(entity);
         }
 
-        [Authorize(Roles = "atPowerCID.Admin")]
-        public async Task<IActionResult> Delete([FromODataUri] int key)
+        private async Task RemoveApplicationDeploymentPaths(int applicationId)
         {
-            logger.LogDebug($"Begin: ApplicationsController Delete(key: {key})");
-
-            var application = await this.dbContext.Applications.FindAsync(key);
-            
-            if (application == null)
-                return NotFound();
-
-            if (application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId != this.msIdTenantCurrentUser)
-                return Forbid();
-
-            if (application == null)
-                return NotFound();
-
-            application.IsDeactive = true;
-            await dbContext.SaveChangesAsync();
-
-            logger.LogDebug($"End: ApplicationsController Delete(key: {key})");
-
-            return Ok();
+            var applicationDeploymentPaths = await this.dbContext.ApplicationDeploymentPaths
+                .Where(e => e.Application == applicationId && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)
+                .ToListAsync();
+            this.dbContext.ApplicationDeploymentPaths.RemoveRange(applicationDeploymentPaths);
         }
 
         [HttpPost]

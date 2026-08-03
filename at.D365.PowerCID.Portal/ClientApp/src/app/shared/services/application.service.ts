@@ -113,10 +113,6 @@ export class ApplicationService {
     });
   }
 
-  public delete(id: number): Promise<void>{
-    return this.getStore().remove(id);
-  }
-
   public setDeactivated(id: number, isDeactive: boolean): Promise<void> {
     return Promise.resolve(this.getStore().update(id, { IsDeactive: isDeactive }))
       .then(() => undefined);
