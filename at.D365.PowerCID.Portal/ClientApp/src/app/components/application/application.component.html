@@ -14,7 +14,7 @@
   [width]="'100%'"
   >
   <dxo-sorting mode="multiple"></dxo-sorting>
-  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_Applications_GridState"></dxo-state-storing>
+  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_Applications_GridState_v2"></dxo-state-storing>
   <dxo-editing mode="row" [allowUpdating]="true" [useIcons]="true"></dxo-editing>
   <dxo-search-panel
     [visible]="true"
@@ -41,6 +41,17 @@
     >
     <dxi-validation-rule type="required"> </dxi-validation-rule
     ></dxi-column>
+
+    <dxi-column
+      dataField="Group"
+      caption="Group"
+      [groupIndex]="0"
+      [showWhenGrouped]="true"
+      [allowSearch]="true"
+      groupCellTemplate="groupCellTemplate"
+    >
+      <dxi-validation-rule type="stringLength" [max]="100" message="Must not be longer than 100 characters"></dxi-validation-rule>
+    </dxi-column>
 
     <dxi-column
       dataField="MsId"
@@ -101,16 +112,6 @@
         <dxi-validation-rule type="stringLength" [max]="5000" message="Must not be longer than 5,000 characters"> </dxi-validation-rule>
       </dxi-column>
 
-      <dxi-column
-        dataField="Group"
-        caption="Group"
-        [groupIndex]="0"
-        [showWhenGrouped]="true"
-        [allowSearch]="true"
-      >
-        <dxi-validation-rule type="stringLength" [max]="100" message="Must not be longer than 100 characters"></dxi-validation-rule>
-      </dxi-column>
-
       <dxi-column [width]="150" type="buttons">
         <dxi-button name="edit" [visible]="isActiveApplication"></dxi-button>
         <dxi-button icon="folder" text="Open in make.powerapps.com" [visible]="isActiveApplication" [onClick]="onClickOpenMakerPortal"> </dxi-button>
@@ -154,6 +155,10 @@
 
       <div *dxTemplate="let cellInfo of 'publisherTemplate'">
         {{ cellInfo.data.PublisherNavigation.Name }}
+      </div>
+
+      <div *dxTemplate="let cellInfo of 'groupCellTemplate'">
+        {{ (cellInfo.column && cellInfo.column.caption) ? cellInfo.column.caption : 'Group' }}: {{ cellInfo.value == null || cellInfo.value === '' ? 'empty' : cellInfo.value }}
       </div>
 
       <div *dxTemplate="let cellInfo of 'publishersDropdownTemplate'">
