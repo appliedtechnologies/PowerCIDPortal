@@ -63,6 +63,18 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == application.DevelopmentEnvironment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
+            var deactivatedApplication = await this.dbContext.Applications
+                .FirstOrDefaultAsync(a =>
+                    a.DevelopmentEnvironment == application.DevelopmentEnvironment &&
+                    a.IsDeactive &&
+                    (a.Name == application.Name || a.SolutionUniqueName == application.SolutionUniqueName));
+            if (deactivatedApplication != null)
+            {
+                deactivatedApplication.IsDeactive = false;
+                await this.dbContext.SaveChangesAsync();
+                return Ok(deactivatedApplication);
+            }
+
             if (base.dbContext.Applications.Any(a => (a.DevelopmentEnvironment == application.DevelopmentEnvironment) && (a.Name == application.Name || a.SolutionUniqueName == application.SolutionUniqueName)))
                 return BadRequest(new ODataError { Code = "400", Message = "An Application with this name already exists." });
 
@@ -118,7 +130,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == key && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { nameof(Application.DevelopmentEnvironment), nameof(Application.OrdinalNumber), nameof(Application.Name), nameof(Application.MsId), nameof(Application.InternalDescription), nameof(Application.ForceManagedDeployment), nameof(Application.AfterDeploymentInformation) };
+            string[] propertyNamesAllowedToChange = { nameof(Application.DevelopmentEnvironment), nameof(Application.OrdinalNumber), nameof(Application.Name), nameof(Application.MsId), nameof(Application.InternalDescription), nameof(Application.ForceManagedDeployment), nameof(Application.AfterDeploymentInformation), nameof(Application.IsDeactive) };
             if (application.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() != 0)
             {
                 return BadRequest();

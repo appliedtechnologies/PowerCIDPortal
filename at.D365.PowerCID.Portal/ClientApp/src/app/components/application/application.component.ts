@@ -32,6 +32,7 @@ export class ApplicationComponent {
   dataSourceApplications: DataSource;
   dataSourceEnvironments: DataSource;
   dataStoreEnvironments: ODataStore;
+  showDeactivatedApplications = false;
   isPullApplications = false;
   currentEnvironment: Environment;
   developmentEnvironments: Environment[];
@@ -57,6 +58,8 @@ export class ApplicationComponent {
     this.onReorder = this.onReorder.bind(this);
     this.onClickAssignDeploymentPaths = this.onClickAssignDeploymentPaths.bind(this);
     this.onClickDisableApplication = this.onClickDisableApplication.bind(this);
+    this.onClickActivateApplication = this.onClickActivateApplication.bind(this);
+    this.onClickToggleDeactivatedApplications = this.onClickToggleDeactivatedApplications.bind(this);
     this.onClickOpenPage = this.onClickOpenPage.bind(this);
     this.onClickOpenMakerPortal = this.onClickOpenMakerPortal.bind(this);
     this.loadFilteredPublishers = this.loadFilteredPublishers.bind(this);
@@ -93,6 +96,19 @@ export class ApplicationComponent {
         type: "success",
         hint: "Refresh Applications",
         onClick: this.onClickRefresh.bind(this),
+      },
+      location: "after",
+    });
+
+    toolbarItems.unshift({
+      widget: "dxButton",
+      options: {
+        icon: "filter",
+        text: "Show deactivated",
+        stylingMode: "contained",
+        type: "normal",
+        hint: "Show deactivated applications.",
+        onClick: this.onClickToggleDeactivatedApplications,
       },
       location: "after",
     });
@@ -217,12 +233,12 @@ export class ApplicationComponent {
   }
 
   onClickDisableApplication(e) {
+    const application = e.row.data as Application;
     const result = confirm("Are you sure you want to disable this application?<br /> This will NOT delete the application in any environment.", "Confirm Deactivation");
     result.then((dialogResult) => {
       if (dialogResult) {
         this.layoutService.change(LayoutParameter.ShowLoading, true);
-        const applicationId: number = e.row.data.Id;
-        this.applicationService.delete(applicationId)
+        this.applicationService.setDeactivated(application.Id, true)
           .then(() => {
             this.layoutService.notify({
               type: NotificationType.Success,
@@ -243,6 +259,53 @@ export class ApplicationComponent {
     });
   }
 
+  onClickActivateApplication(e): void {
+    const application = e.row.data as Application;
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.applicationService
+      .setDeactivated(application.Id, false)
+      .then(() => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Application was successfully activated.",
+        });
+      })
+      .catch(() => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred while activating the application.",
+        });
+      })
+      .finally(() => {
+        this.layoutService.change(LayoutParameter.ShowLoading, false);
+        this.dataGrid.instance.refresh();
+      });
+  }
+
+  onClickToggleDeactivatedApplications(e): void {
+    this.showDeactivatedApplications = !this.showDeactivatedApplications;
+    this.dataSourceApplications.filter(["IsDeactive", "=", this.showDeactivatedApplications]);
+    this.dataSourceApplications.reload();
+    e.component.option(
+      "text",
+      this.showDeactivatedApplications ? "Show active" : "Show deactivated"
+    );
+    e.component.option(
+      "hint",
+      this.showDeactivatedApplications
+        ? "Show active applications."
+        : "Show deactivated applications."
+    );
+  }
+
+  public isActiveApplication(e): boolean {
+    return !e.row.data.IsDeactive;
+  }
+
+  public isDeactivatedApplication(e): boolean {
+    return e.row.data.IsDeactive === true;
+  }
+
   onClickAddNewRow() {
     this.dataGrid.instance.addRow();
   }
@@ -250,7 +313,7 @@ export class ApplicationComponent {
   onClickPullApplications(): void {
     this.environmentService
       .getStore()
-      .load({ filter: "IsDevelopmentEnvironment eq true" })
+      .load({ filter: [["IsDevelopmentEnvironment", "=", true], "and", ["IsDeactive", "=", false]] })
       .then((e) => (this.developmentEnvironments = e));
     this.isPullApplications = true;
   }
