@@ -29,7 +29,12 @@ type SolutionRowData = Solution & {
   ApplyManually?: unknown;
 };
 
-const ungroupedApplicationLabel = "ungruppiert";
+const ungroupedApplicationText = "Ungrouped";
+
+interface ApplicationGroupOption {
+  value: string | null;
+  text: string;
+}
 
 interface SolutionCellInfo {
   data: SolutionRowData;
@@ -54,10 +59,9 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   public addPatchButtonInstance: dxButton;
   public addUpgradeButtonInstance: dxButton;
   public dataSourceSolutions: DataSource;
-  public dataSourceApplications: DataSource;
   public showSolutionsGrid = true;
-  public applicationGroups: string[] = [];
-  public selectedApplicationGroup = ungroupedApplicationLabel;
+  public applicationGroups: ApplicationGroupOption[] = [];
+  public selectedApplicationGroup: string | null = null;
   public groupSelectBoxInstance: dxSelectBox;
   public selectionToolbarItems: unknown[] = [];
   public dataGridColumns: Column[] = [
@@ -91,26 +95,29 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     private layoutService: LayoutService,
     private patchService: PatchService
   ) {
-    this.dataSourceApplications = new DataSource({
-      store: this.applicationService.getStore(),
-      sort: [
-        { selector: "OrdinalNumber", desc: false },
-        { selector: "Name", desc: false },
-      ],
-      filter: [ "IsDeactive", "=", false ]
-    });
     this.selectionToolbarItems = this.createSelectionToolbarItems();
+    this.userService.stateChanged$.subscribe(() => {
+      this.selectionToolbarItems = this.createSelectionToolbarItems();
+    });
     this.applicationService.getStore().load({
       filter: ["IsDeactive", "=", false],
       select: ["Group"],
       sort: "Group",
     }).then((applications: Application[]) => {
-      this.applicationGroups = [...new Set(
-        applications
-          .map((application) => application.Group)
-          .filter((group): group is string => !!group)
-      )];
-      this.applicationGroups.unshift(ungroupedApplicationLabel);
+      this.applicationGroups = [
+        {
+          value: null,
+          text: ungroupedApplicationText,
+        },
+        ...[...new Set(
+          applications
+            .map((application) => application.Group)
+            .filter((group): group is string => !!group)
+        )].map((group) => ({
+          value: group,
+          text: group,
+        })),
+      ];
       this.groupSelectBoxInstance?.option("items", this.applicationGroups);
     });
     this.environmentService
@@ -579,7 +586,11 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
 
       this.applicationService.getApplicationById(id).then((application) => {
         this.selectedApplication = application;
-        this.selectedApplicationGroup = this.selectedApplication.Group ?? ungroupedApplicationLabel;
+        this.selectedApplicationGroup = this.selectedApplication.Group ?? null;
+        this.applicationSelectBoxInstance?.option(
+          "dataSource",
+          this.createApplicationDataSource(this.selectedApplicationGroup)
+        );
         this.groupSelectBoxInstance?.option(
           "value",
           this.selectedApplicationGroup
@@ -615,16 +626,14 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  private createApplicationDataSource(group: string): DataSource {
-      const filter = group === ungroupedApplicationLabel
+  private createApplicationDataSource(group: string | null): DataSource {
+      const filter = group == null
         ? [
           ["IsDeactive", "=", false],
           "and",
           [["Group", "=", null], "or", ["Group", "=", ""]],
         ]
-        : group == null
-          ? ["IsDeactive", "=", false]
-          : [["IsDeactive", "=", false], "and", ["Group", "=", group]];
+        : [["IsDeactive", "=", false], "and", ["Group", "=", group]];
 
       return new DataSource({
         store: this.applicationService.getStore(),
@@ -645,13 +654,15 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
             placeholder: "Select Group",
             hint: "Select an application group.",
             items: this.applicationGroups,
+            displayExpr: "text",
+            valueExpr: "value",
             value: this.selectedApplicationGroup,
             width: "220",
             onInitialized: (args: SelectBoxInitializedEvent) => {
               this.groupSelectBoxInstance = args.component;
             },
             onValueChanged: (e) => {
-              const selectedApplicationGroup = this.selectedApplication?.Group ?? ungroupedApplicationLabel;
+              const selectedApplicationGroup = this.selectedApplication?.Group ?? null;
               if (this.selectedApplication != null && e.value === selectedApplicationGroup) {
                 return;
               }
@@ -688,7 +699,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
         },
       ];
 
-      if (!this.userService.currentDbUserWithTenant.TenantNavigation.DisablePatchCreation) {
+      if (this.userService.currentDbUserWithTenant?.TenantNavigation.DisablePatchCreation === false) {
         items.push({
           location: "before",
           widget: "dxButton",
