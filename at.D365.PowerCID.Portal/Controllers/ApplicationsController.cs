@@ -169,7 +169,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         private async Task RemoveApplicationDeploymentPaths(int applicationId)
         {
             var applicationDeploymentPaths = await this.dbContext.ApplicationDeploymentPaths
-                .Where(e => e.Application == applicationId)
+                .Where(e => e.Application == applicationId && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)
                 .ToListAsync();
             this.dbContext.ApplicationDeploymentPaths.RemoveRange(applicationDeploymentPaths);
         }
