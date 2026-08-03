@@ -1,8 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import ODataStore from 'devextreme/data/odata/store';
-import { AppConfig } from '../config/app.config';
-import { DeploymentPath } from '../models/deploymentpath.model';
 import { ODataService } from './odata.service';
 
 @Injectable({

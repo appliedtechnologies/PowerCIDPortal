@@ -4,12 +4,12 @@ import { AppConfig } from "../config/app.config";
 @Injectable()
 export class LogService {
 
-  private log(logLevel: LogLevel, message: any): void {
+  private log(): void {
     //TODO log extern
   }
 
-  public trace(object: any, annotation?: string): void {
-    this.log(LogLevel.Trace, object);
+  public trace(object: unknown, annotation?: string): void {
+    this.log();
     if (AppConfig.settings.logging.console) {
       if (annotation === undefined)
         console.trace(object);
@@ -18,8 +18,8 @@ export class LogService {
     }
   }
 
-  public debug(object: any, annotation?: string): void {
-    this.log(LogLevel.Debug, object);
+  public debug(object: unknown, annotation?: string): void {
+    this.log();
     if (AppConfig.settings.logging.console) {
       if (annotation === undefined)
         console.debug(object);
@@ -28,8 +28,8 @@ export class LogService {
     }
   }
 
-  public info(object: any, annotation?: string): void {
-    this.log(LogLevel.Info, object);
+  public info(object: unknown, annotation?: string): void {
+    this.log();
     if (AppConfig.settings.logging.console) {
       if (annotation === undefined)
         console.info(object);
@@ -38,8 +38,8 @@ export class LogService {
     }
   }
 
-  public warn(object: any, annotation?: string): void {
-    this.log(LogLevel.Warn, object);
+  public warn(object: unknown, annotation?: string): void {
+    this.log();
     if (AppConfig.settings.logging.console) {
       if (annotation === undefined)
         console.warn(object);
@@ -48,8 +48,8 @@ export class LogService {
     }
   }
 
-  public error(object: any, annotation?: string): void {
-    this.log(LogLevel.Error, object);
+  public error(object: unknown, annotation?: string): void {
+    this.log();
     if (AppConfig.settings.logging.console) {
       if (annotation === undefined)
         console.error(object);
@@ -58,8 +58,8 @@ export class LogService {
     }
   }
 
-  public fatal(object: any, annotation?: string): void {
-    this.log(LogLevel.Fatal, object);
+  public fatal(object: unknown, annotation?: string): void {
+    this.log();
     if (AppConfig.settings.logging.console) {
       if (annotation === undefined)
         console.error(object);

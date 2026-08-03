@@ -1,7 +1,11 @@
 <h1>Solutions Overview</h1>
+<dx-toolbar
+  [items]="selectionToolbarItems"
+  class="solutions-selection-toolbar"
+></dx-toolbar>
 <dx-data-grid
   #solutionsGrid
-  *ngIf="this.userService.currentDbUserWithTenant"
+  *ngIf="this.userService.currentDbUserWithTenant && showSolutionsGrid"
   [dataSource]="dataSourceSolutions"
   [columns]="dataGridColumns"
   [showBorders]="true"
@@ -13,36 +17,47 @@
   [allowColumnReordering]="false"
   [scrolling]="{ mode: 'infinite' }"
   height="100%"
-  (onToolbarPreparing)="onToolbarPreparingSolutionsGrid($event)"
 >
   <div *dxTemplate="let cellInfo of 'typeCellTemplate'">
-    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''"> 
+    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
       {{ cellInfo.value }}
     </div>
   </div>
 
   <div *dxTemplate="let cellInfo of 'versionCellTemplate'">
-    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
+    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
       {{ cellInfo.value }}
     </div>
   </div>
 
   <div *dxTemplate="let cellInfo of 'nameCellTemplate'">
-    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
+    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
       <i 
-        *ngIf="cellInfo.data.WasDeleted != true"
+        *ngIf="(cellInfo.data.WasDeleted !== true)"
         class="dx-icon-info clickable-icon at-icon"
         (click)="onClickSolutionInfo(cellInfo)"
+          (keydown.enter)="onClickSolutionInfo(cellInfo)"
+          (keydown.space)="$event.preventDefault(); onClickSolutionInfo(cellInfo)"
+          tabindex="0"
+          role="button"
       ></i>
       <i
-        *ngIf="cellInfo.data.WasDeleted != true"
+        *ngIf="cellInfo.data.WasDeleted !== true"
         class="dx-icon-folder clickable-icon at-icon"
         (click)="onClickOpenMakerPortal(cellInfo)"
+          (keydown.enter)="onClickOpenMakerPortal(cellInfo)"
+          (keydown.space)="$event.preventDefault(); onClickOpenMakerPortal(cellInfo)"
+          tabindex="0"
+          role="button"
       ></i>
       <i 
-        *ngIf="(cellInfo.data | isPatch) && cellInfo.data.WasDeleted != true && (cellInfo.data | isPatchDeletable: this.dataSourceSolutions)"
+        *ngIf="(cellInfo.data | isPatch) && cellInfo.data.WasDeleted !== true && (cellInfo.data | isPatchDeletable: this.dataSourceSolutions)"
         class="dx-icon-trash clickable-icon at-icon"
         (click)="onClickDeletePatch(cellInfo.data)"
+          (keydown.enter)="onClickDeletePatch(cellInfo.data)"
+          (keydown.space)="$event.preventDefault(); onClickDeletePatch(cellInfo.data)"
+          tabindex="0"
+          role="button"
       ></i>
       {{ cellInfo.value }}
     </div>
@@ -53,9 +68,13 @@
       class="at-icon powercid-icon-einstellungen clickable-icon"
       title="configure deployment"
       (click)="onClickConfigureDeployment(cellInfo.column.environmentData)"
+          (keydown.enter)="onClickConfigureDeployment(cellInfo.column.environmentData)"
+          (keydown.space)="$event.preventDefault(); onClickConfigureDeployment(cellInfo.column.environmentData)"
+          tabindex="0"
+          role="button"
     ></i>
     <i
-      *ngIf="cellInfo.column.environmentData.DeployUnmanaged == true && selectedApplication?.ForceManagedDeployment == false"
+      *ngIf="cellInfo.column.environmentData.DeployUnmanaged === true && selectedApplication?.ForceManagedDeployment === false"
       class="at-icon dx-icon-warning red-icon"
       title="WARNING: deployments to this environment are unmanged"
     ></i>
@@ -66,31 +85,43 @@
     <div
       *ngIf="
         getLastActionForEnvironment(cellInfo);
-        else noActionAvailable;
+        else noActionAvailableForEnvironment;
         let lastAction
       "
     >
       <div
-        *ngIf="lastAction.Result == 1"
+        *ngIf="lastAction.Result === 1"
         class="card dx-card dx-theme-text-color card-success"
-        [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''"
+        [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''"
       >
         <i
-          *ngIf="cellInfo.data.WasDeleted != true"  
+          *ngIf="(cellInfo.data.WasDeleted !== true)"
           class="dx-icon-info clickable-icon at-icon"
           title="show details"
           (click)="onClickActionInfo(lastAction)"
+          (keydown.enter)="onClickActionInfo(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickActionInfo(lastAction)"
+          tabindex="0"
+          role="button"
         ></i>
         <i
-          *ngIf="cellInfo.data.WasDeleted != true"
+          *ngIf="cellInfo.data.WasDeleted !== true"
           class="dx-icon-download clickable-icon at-icon"
           title="download managed solution (hold ctrl-key while clicking for unmanaged solution)"
           (click)="onClickDownloadSolution($event, cellInfo, lastAction)"
+          (keydown.enter)="onClickDownloadSolution($event, cellInfo, lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickDownloadSolution($event, cellInfo, lastAction)"
+          tabindex="0"
+          role="button"
         ></i>
         <i
-          *ngIf="cellInfo.data.WasDeleted != true"
+          *ngIf="cellInfo.data.WasDeleted !== true"
           class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
+          (keydown.enter)="onClickDeploySolution(cellInfo, true)"
+          (keydown.space)="$event.preventDefault(); onClickDeploySolution(cellInfo, true)"
+          tabindex="0"
+          role="button"
           title="renew export"
         ></i>
         {{ lastAction.TypeNavigation.Type }}
@@ -98,39 +129,55 @@
         {{ lastAction.ResultNavigation?.Result }}
       </div>
       <div
-        *ngIf="lastAction.Result != 1 && lastAction.Status != 3"
+        *ngIf="lastAction.Result !== 1 && lastAction.Status !== 3"
         class="card dx-card dx-theme-text-color card-in-progress"
       >
         <i
           class="dx-icon-info clickable-icon at-icon"
           title="show details"
           (click)="onClickActionInfo(lastAction)"
+          (keydown.enter)="onClickActionInfo(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickActionInfo(lastAction)"
+          tabindex="0"
+          role="button"
         ></i>
         <i
-          *ngIf="autoRefreshInterval == null"
+          *ngIf="autoRefreshInterval === null || autoRefreshInterval === undefined"
           class="dx-icon-refresh clickable-icon at-icon"
           title="start auto-refresh"
           (click)="onClickStartAutoRefresh(lastAction)"
+          (keydown.enter)="onClickStartAutoRefresh(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickStartAutoRefresh(lastAction)"
+          tabindex="0"
+          role="button"
         ></i>
         {{ lastAction.TypeNavigation.Type }}
         {{ lastAction.StatusNavigation.Status }}
         {{ lastAction.ResultNavigation?.Result }}
       </div>
       <div
-        *ngIf="lastAction.Result != 1 && lastAction.Status == 3"
+        *ngIf="lastAction.Result !== 1 && lastAction.Status === 3"
         class="card dx-card dx-theme-text-color card-error"
-        [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''"
+        [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''"
       >
         <i
-          *ngIf="cellInfo.data.WasDeleted != true"
+          *ngIf="cellInfo.data.WasDeleted !== true"
           class="dx-icon-info clickable-icon at-icon"
           title="show details"
           (click)="onClickActionInfo(lastAction)"
+          (keydown.enter)="onClickActionInfo(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickActionInfo(lastAction)"
+          tabindex="0"
+          role="button"
         ></i>
         <i
-          *ngIf="cellInfo.data.WasDeleted != true"
+          *ngIf="cellInfo.data.WasDeleted !== true"
           class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
+          (keydown.enter)="onClickDeploySolution(cellInfo, true)"
+          (keydown.space)="$event.preventDefault(); onClickDeploySolution(cellInfo, true)"
+          tabindex="0"
+          role="button"
           title="renew export"
         ></i>
         {{ lastAction.TypeNavigation.Type }}
@@ -138,13 +185,17 @@
         {{ lastAction.ResultNavigation?.Result }}
       </div>
     </div>
-    <ng-template #noActionAvailable>
-      <div class="card dx-card dx-theme-text-color card-ready" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
+    <ng-template #noActionAvailableForEnvironment>
+      <div class="card dx-card dx-theme-text-color card-ready" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
         <span>
           <i
-            *ngIf="cellInfo.data.WasDeleted != true"
+            *ngIf="cellInfo.data.WasDeleted !== true"
             class="dx-icon-newfolder clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, true)"
+          (keydown.enter)="onClickDeploySolution(cellInfo, true)"
+          (keydown.space)="$event.preventDefault(); onClickDeploySolution(cellInfo, true)"
+          tabindex="0"
+          role="button"
             title="export only"
           ></i>
           not exported yet
@@ -154,8 +205,8 @@
   </div>
 
   <div *dxTemplate="let cellInfo of 'environmentCellTemplate'">
-    <div *ngIf="canDeployToEnv(cellInfo) == false; else canDeploy">
-      <div class="card dx-card dx-theme-text-color card-not-yet-available" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
+    <div *ngIf="canDeployToEnv(cellInfo) === false; else canDeploy">
+      <div class="card dx-card dx-theme-text-color card-not-yet-available" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
         via {{ this.previousEnvironmentName }}
       </div>
     </div>
@@ -168,24 +219,36 @@
         "
       >
         <div
-          *ngIf="lastAction.Result == 1"
+          *ngIf="lastAction.Result === 1"
           class="card dx-card dx-theme-text-color card-success"
         >
           <i
             class="dx-icon-info clickable-icon at-icon"
             title="show details"
             (click)="onClickActionInfo(lastAction)"
+          (keydown.enter)="onClickActionInfo(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickActionInfo(lastAction)"
+          tabindex="0"
+          role="button"
           ></i>
           <i
-            *ngIf="!lastAction.TargetEnvironmentNavigation.DeployUnmanaged && lastAction.Type == 2 && (cellInfo.data | isPatch) == false && $any(cellInfo.data).ApplyManually == true"
+            *ngIf="!lastAction.TargetEnvironmentNavigation.DeployUnmanaged && lastAction.Type === 2 && (cellInfo.data | isPatch) === false && $any(cellInfo.data).ApplyManually === true"
             class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, false, true)"
+          (keydown.enter)="onClickDeploySolution(cellInfo, false, true)"
+          (keydown.space)="$event.preventDefault(); onClickDeploySolution(cellInfo, false, true)"
+          tabindex="0"
+          role="button"
             title="apply upgrade"
           ></i>
           <i
-            *ngIf="lastAction.TargetEnvironmentNavigation.ConnectionsOwner && (lastAction.Type == 3 || (lastAction.Type == 2 && (cellInfo.data | isPatch) == false && $any(cellInfo.data).ApplyManually == false))"
+            *ngIf="lastAction.TargetEnvironmentNavigation.ConnectionsOwner && (lastAction.Type === 3 || (lastAction.Type === 2 && (cellInfo.data | isPatch) === false && $any(cellInfo.data).ApplyManually === false))"
             class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, false, false, true)"
+          (keydown.enter)="onClickDeploySolution(cellInfo, false, false, true)"
+          (keydown.space)="$event.preventDefault(); onClickDeploySolution(cellInfo, false, false, true)"
+          tabindex="0"
+          role="button"
             title="enable flows"
           ></i>
           {{ lastAction.TypeNavigation.Type }}
@@ -193,32 +256,44 @@
           {{ lastAction.ResultNavigation?.Result }}
         </div>
         <div
-          *ngIf="lastAction.Result != 1 && lastAction.Status != 3"
+          *ngIf="lastAction.Result !== 1 && lastAction.Status !== 3"
           class="card dx-card dx-theme-text-color card-in-progress"
         >
           <i
             class="dx-icon-info clickable-icon at-icon"
             title="show details"
             (click)="onClickActionInfo(lastAction)"
+          (keydown.enter)="onClickActionInfo(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickActionInfo(lastAction)"
+          tabindex="0"
+          role="button"
           ></i>
           <i
-            *ngIf="lastAction.Type == 2"
+            *ngIf="lastAction.Type === 2"
             class="dx-icon-clear clickable-icon at-icon"
             title="cancel import"
             (click)="onClickCancelImport(lastAction)"
+          (keydown.enter)="onClickCancelImport(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickCancelImport(lastAction)"
+          tabindex="0"
+          role="button"
           ></i>
           <i
-            *ngIf="autoRefreshInterval == null"
+            *ngIf="autoRefreshInterval === null || autoRefreshInterval === undefined"
             class="dx-icon-refresh clickable-icon at-icon"
             title="start auto-refresh"
             (click)="onClickStartAutoRefresh(lastAction)"
+          (keydown.enter)="onClickStartAutoRefresh(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickStartAutoRefresh(lastAction)"
+          tabindex="0"
+          role="button"
           ></i>
           {{ lastAction.TypeNavigation.Type }}
           {{ lastAction.StatusNavigation.Status }}
           {{ lastAction.ResultNavigation?.Result }}
         </div>
         <div
-          *ngIf="(lastAction.Result != 1 && lastAction.Status == 3)"
+          *ngIf="(lastAction.Result !== 1 && lastAction.Status === 3)"
           [class.card-error-applying-upgrade] = "lastAction.Type === 3"
           class="card dx-card dx-theme-text-color card-error"
         >
@@ -226,10 +301,18 @@
             class="dx-icon-info clickable-icon at-icon"
             title="show details"
             (click)="onClickActionInfo(lastAction)"
+          (keydown.enter)="onClickActionInfo(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickActionInfo(lastAction)"
+          tabindex="0"
+          role="button"
           ></i>
           <i
             class="at-icon powercid-icon-handcart clickable-icon at-icon"
-            (click)="onClickDeploySolution(cellInfo, false, lastAction.Type == 3, lastAction.Type == 4)"
+            (click)="onClickDeploySolution(cellInfo, false, lastAction.Type === 3, lastAction.Type === 4)"
+          (keydown.enter)="onClickDeploySolution(cellInfo, false, lastAction.Type === 3, lastAction.Type === 4)"
+          (keydown.space)="$event.preventDefault(); onClickDeploySolution(cellInfo, false, lastAction.Type === 3, lastAction.Type === 4)"
+          tabindex="0"
+          role="button"
             title="try deployment again"
           ></i>
           {{ lastAction.TypeNavigation.Type }}
@@ -239,12 +322,16 @@
       </div>
     </ng-template>
     <ng-template #noActionAvailable>
-      <div class="card dx-card dx-theme-text-color card-ready" [ngClass]="cellInfo.data.WasDeleted == true ? 'deleted-patch' : ''">
+      <div class="card dx-card dx-theme-text-color card-ready" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
         <span>
           <i
-            *ngIf="cellInfo.data.WasDeleted != true"
+            *ngIf="cellInfo.data.WasDeleted !== true"
             class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo)"
+          (keydown.enter)="onClickDeploySolution(cellInfo)"
+          (keydown.space)="$event.preventDefault(); onClickDeploySolution(cellInfo)"
+          tabindex="0"
+          role="button"
             title="deploy here"
           ></i>
           deploy here
@@ -301,8 +388,8 @@
       [isAddUpgrade]="isAddUpgrade"
       [solution]="detailSolution"
       [application]="this.selectedApplication"
-      (onSaveCompleted)="onSaveCompletedSolutionDetail($event)"
-      (onRenamed)="onRenamedSolutionDetail($event)"
+      (saveCompleted)="onSaveCompletedSolutionDetail($event)"
+      (renamed)="onRenamedSolutionDetail($event)"
     ></app-solution-detail>
   </dx-scroll-view>
 </dx-popup>

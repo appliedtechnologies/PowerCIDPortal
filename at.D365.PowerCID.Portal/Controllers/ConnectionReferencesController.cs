@@ -21,7 +21,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class ConnectionReferencesController : BaseController
     {
         private readonly ILogger logger;
-        public ConnectionReferencesController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ConnectionReferencesController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public ConnectionReferencesController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ConnectionReferencesController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }

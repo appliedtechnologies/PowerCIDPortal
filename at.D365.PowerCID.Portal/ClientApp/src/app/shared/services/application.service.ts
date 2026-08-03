@@ -5,7 +5,6 @@ import { ODataService } from "./odata.service";
 import { AppConfig } from "../config/app.config";
 import { HttpClient } from "@angular/common/http";
 import { Environment } from "../models/environment.model";
-import { environment } from "src/environments/environment";
 import { DeploymentPath } from "../models/deploymentpath.model";
 import { DeploymentPathEnvironment } from "../models/deploymentpathenvironment.model";
 
@@ -75,20 +74,20 @@ export class ApplicationService {
   }
 
   public sortAfterHierarchieAndStepNumber(
-    application: any,
+    application: Application,
     sortStepNumber: boolean
   ) {
-    let deploymentPaths: DeploymentPath[] = [];
+    const deploymentPaths: DeploymentPath[] = [];
     for (let i = 0; i < application?.ApplicationDeploymentPaths.length; i++) {
-      let hierarchieNumber =
+      const hierarchieNumber =
         application.ApplicationDeploymentPaths[i].HierarchieNumber;
       deploymentPaths[hierarchieNumber - 1] = application.DeploymentPaths[i];
     }
     if (sortStepNumber == true) {
-      for (let i = 0; i < deploymentPaths.length; i++) {
-        deploymentPaths[i].Environments = deploymentPaths[i].Environments.sort((a: Environment, b: Environment) => {
-          let stepA: DeploymentPathEnvironment = deploymentPaths[i].DeploymentPathEnvironments.find(e => e.Environment == a.Id);
-          let stepB: DeploymentPathEnvironment = deploymentPaths[i].DeploymentPathEnvironments.find(e => e.Environment == b.Id);
+      for (const deploymentPath of deploymentPaths) {
+        deploymentPath.Environments = deploymentPath.Environments.sort((a: Environment, b: Environment) => {
+          const stepA: DeploymentPathEnvironment = deploymentPath.DeploymentPathEnvironments.find(e => e.Environment == a.Id);
+          const stepB: DeploymentPathEnvironment = deploymentPath.DeploymentPathEnvironments.find(e => e.Environment == b.Id);
           return (stepA.StepNumber > stepB.StepNumber) ? 1 : -1;
         });
       }
@@ -114,8 +113,9 @@ export class ApplicationService {
     });
   }
 
-  public delete(id: number): Promise<void>{
-    return this.getStore().remove(id);
+  public setDeactivated(id: number, isDeactive: boolean): Promise<void> {
+    return Promise.resolve(this.getStore().update(id, { IsDeactive: isDeactive }))
+      .then(() => undefined);
   }
 
   public update(id: number, environment: Environment){

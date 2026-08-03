@@ -11,7 +11,7 @@
   [width]="'100%'"
   (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
 
->
+  >
   <dxo-sorting mode="multiple"></dxo-sorting>
   <dxo-sorting mode="multiple"></dxo-sorting>
   <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_History_GridState"></dxo-state-storing>
@@ -25,7 +25,7 @@
   <dxo-paging [pageSize]="20"></dxo-paging>
   <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
 
-  <dxi-column 
+  <dxi-column
     dataField="Name"
     [allowHeaderFiltering]="false"
     >
@@ -34,10 +34,10 @@
     dataField="Solution"
     caption="Solution"
     cellTemplate="solutionCellTemplate"
-  >
+    >
     <dxo-lookup
       [dataSource]="dataStoreSolutions"
-      valueExpr="Id" 
+      valueExpr="Id"
       displayExpr="Name">
     </dxo-lookup>
     <dxo-header-filter
@@ -49,6 +49,10 @@
           class="dx-icon-info clickable-icon"
           title="show details"
           (click)="onClickSolutionInfo(rowData)"
+          (keydown.enter)="onClickSolutionInfo(rowData)"
+          (keydown.space)="$event.preventDefault(); onClickSolutionInfo(rowData)"
+          tabindex="0"
+          role="button"
         ></i>
         {{ rowData.text }}
       </div>
@@ -57,24 +61,24 @@
   <dxi-column
     dataField="SolutionNavigation.Application"
     caption="Application"
-  >
+    >
     <dxo-lookup
       [dataSource]="dataStoreApplications"
-      valueExpr="Id" 
+      valueExpr="Id"
       displayExpr="Name">
     </dxo-lookup>
     <dxo-header-filter
       [dataSource]="headerFilterDataApplication">
     </dxo-header-filter>
-  </dxi-column>  
+  </dxi-column>
   <dxi-column
     dataField="TargetEnvironment"
     caption="Target Environment"
-  >
+    >
     <dxo-lookup
-        [dataSource]="dataStoreEnvironments"
-        valueExpr="Id" 
-        displayExpr="Name">
+      [dataSource]="dataStoreEnvironments"
+      valueExpr="Id"
+      displayExpr="Name">
     </dxo-lookup>
     <dxo-header-filter
       [dataSource]="headerFilterDataEnvironment">
@@ -119,7 +123,7 @@
     [allowEditing]="false">
     <dxo-lookup
       [dataSource]="dataStoreUsers"
-      valueExpr="Id" 
+      valueExpr="Id"
       [displayExpr]="createdByFullName">
     </dxo-lookup>
     <dxo-header-filter
@@ -130,45 +134,51 @@
     caption="Details"
     type="buttons"
     cellTemplate="actionCellTemplate"
-  >
+    >
     <div *dxTemplate="let rowData of 'actionCellTemplate'">
       <div id="action-detail">
         <i
           class="dx-icon-info clickable-icon"
           title="show details"
           (click)="onClickActionInfo(rowData)"
-        >
+          (keydown.enter)="onClickActionInfo(rowData)"
+          (keydown.space)="$event.preventDefault(); onClickActionInfo(rowData)"
+          tabindex="0"
+          role="button"
+          >
         </i>
       </div>
     </div>
   </dxi-column>
 </dx-data-grid>
 
-<dx-popup
-  *ngIf="isActionDetailPopupVisible"
-  [width]="700"
-  height="auto"
-  [showTitle]="true"
-  title="Action Details"
-  [hideOnOutsideClick]="true"
-  [(visible)]="this.isActionDetailPopupVisible"
->
-  <app-action-detail [actionId]="selectedActionId"></app-action-detail>
-</dx-popup>
+@if (isActionDetailPopupVisible) {
+  <dx-popup
+    [width]="700"
+    height="auto"
+    [showTitle]="true"
+    title="Action Details"
+    [hideOnOutsideClick]="true"
+    [(visible)]="this.isActionDetailPopupVisible"
+    >
+    <app-action-detail [actionId]="selectedActionId"></app-action-detail>
+  </dx-popup>
+}
 
-<dx-popup
-  *ngIf="isSolutionDetailPopupVisible"
-  [width]="700"
-  height="auto"
-  [showTitle]="true"
-  [title]="'Details: ' + this.selectedSolution?.Name"
-  [hideOnOutsideClick]="true"
-  [(visible)]="isSolutionDetailPopupVisible"
-  [dragEnabled]="false"
->
-  <app-solution-detail
-    [solution]="selectedSolution"
-    [application]="selectedApplication"
-    [isAddUpgrade]="false"
-  ></app-solution-detail>
-</dx-popup>
+@if (isSolutionDetailPopupVisible) {
+  <dx-popup
+    [width]="700"
+    height="auto"
+    [showTitle]="true"
+    [title]="'Details: ' + $safeNavigationMigration(this.selectedSolution?.Name)"
+    [hideOnOutsideClick]="true"
+    [(visible)]="isSolutionDetailPopupVisible"
+    [dragEnabled]="false"
+    >
+    <app-solution-detail
+      [solution]="selectedSolution"
+      [application]="selectedApplication"
+      [isAddUpgrade]="false"
+    ></app-solution-detail>
+  </dx-popup>
+}

@@ -1,11 +1,13 @@
-import { Component, Input, OnChanges, OnInit, SimpleChanges } from "@angular/core";
+import { Component, Input, OnChanges, ChangeDetectionStrategy } from "@angular/core";
 import { Action } from "src/app/shared/models/action.model";
 import { ActionService } from "src/app/shared/services/action.service";
 
 @Component({
-  selector: "app-action-detail",
-  templateUrl: "./action-detail.component.html",
-  styleUrls: ["./action-detail.component.css"],
+    selector: "app-action-detail",
+    templateUrl: "./action-detail.component.html",
+    styleUrls: ["./action-detail.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class ActionDetailComponent implements OnChanges {
   @Input() actionId: number;
@@ -15,7 +17,7 @@ export class ActionDetailComponent implements OnChanges {
     public actionService: ActionService
   ) {}
 
-  public ngOnChanges(changes: SimpleChanges): void {
+  public ngOnChanges(): void {
       this.actionService.getStore().byKey(this.actionId, {
         expand: [
           "CreatedByNavigation",

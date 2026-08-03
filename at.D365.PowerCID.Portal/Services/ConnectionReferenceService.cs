@@ -115,7 +115,7 @@ namespace at.D365.PowerCID.Portal.Services
                         connectionReference.Application = applicationId;
                         connectionReferences.Add(connectionReference);
                     }
-                    catch(FaultException e){
+                    catch(FaultException){
                         //TODO log not a connection reference, but this can be normal
                         continue;
                     }

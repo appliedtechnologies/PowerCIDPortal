@@ -1,23 +1,24 @@
 <h1>GitHub Connection</h1>
-<div *ngIf="!this.isGitHubConnected; else GitHubConnected">
-  <p>
-    In order to use all functions of Power CID Portal you need to establish a
-    connection to a GitHub repository. This will be used to save your exported
-    solutions. Click on the button below to install the "Power CID Portal GitHub
-    Connector" in your GitHub organization. Afterwards you are going to be
-    redircted back here to select the repositoy to use with Power CID Portal.
-  </p>
-  <dx-button
-    text="Connect to GitHub"
-    width="100%"
-    type="success"
-    stylingMode="contained"
-    icon="at-icon powercid-icon-github"
-    (onClick)="onClickConnectGitHub($event)"
-  >
-  </dx-button>
-</div>
-<ng-template #GitHubConnected>
+@if (!this.isGitHubConnected) {
+  <div>
+    <p>
+      In order to use all functions of Power CID Portal you need to establish a
+      connection to a GitHub repository. This will be used to save your exported
+      solutions. Click on the button below to install the "Power CID Portal GitHub
+      Connector" in your GitHub organization. Afterwards you are going to be
+      redircted back here to select the repositoy to use with Power CID Portal.
+    </p>
+    <dx-button
+      text="Connect to GitHub"
+      width="100%"
+      type="success"
+      stylingMode="contained"
+      icon="at-icon powercid-icon-github"
+      (onClick)="onClickConnectGitHub($event)"
+      >
+    </dx-button>
+  </div>
+} @else {
   <h5 id="github-connection-established">
     Connection to GitHub was successfully established!
   </h5>
@@ -31,7 +32,7 @@
     [dataSource]="dataSourceGitHubRepositories"
     placeholder="Select Repository..."
     [(value)]="valueSelectBoxRepositoryName"
-  >
+    >
   </dx-select-box>
   <dx-button
     id="save-repository-button"
@@ -41,9 +42,9 @@
     stylingMode="contained"
     icon="save"
     (onClick)="onClickSaveRepositoryName($event)"
-  >
+    >
   </dx-button>
-</ng-template>
+}
 
 <h1>Add Application Users</h1>
 <p>For using the PowerCID Portal in every environment of interest the PowerCID Portal application user with System Customizer role must exist. You can add these application user automatically with the button below. The environments must be added via the Environment-Page before. Alternativly you can add the application user with app id <i>{{appId}}</i> in every environemnt of interest by hand.</p>
@@ -54,12 +55,12 @@
   stylingMode="contained"
   icon="user"
   (onClick)="onClickSetupApplicationUsers($event)"
->
+  >
 </dx-button>
 
 <h1>Disable Patch Creation</h1>
 <p>Disable the creation of patches for all applications of this tenant. This can be helpful if you only want to work with updates, for example with unmanaged deployments. This setting has no effect on existing patches. These can continue to be delivered even if they have already been created.</p>
-<dx-switch 
+<dx-switch
   width="200"
   switchedOnText="patch creation is disabled"
   switchedOffText="patch creation is enabled"
@@ -68,16 +69,19 @@
 </dx-switch>
 
 
-<dx-popup
-  *ngIf="isSetupApplicationUser"
-  [width]="700"
-  height="auto"
-  [showTitle]="true"
-  title="Result: Add application user and assign role"
-  [(visible)]="isSetupApplicationUser"
-  [maxHeight]="'90%'"
->
-  <ul *ngFor="let environmentMessage of this.environmentMessages">
-    <li>{{ environmentMessage }}</li>
-  </ul>
-</dx-popup>
+@if (isSetupApplicationUser) {
+  <dx-popup
+    [width]="700"
+    height="auto"
+    [showTitle]="true"
+    title="Result: Add application user and assign role"
+    [(visible)]="isSetupApplicationUser"
+    [maxHeight]="'90%'"
+    >
+    @for (environmentMessage of this.environmentMessages; track environmentMessage) {
+      <ul>
+        <li>{{ environmentMessage }}</li>
+      </ul>
+    }
+  </dx-popup>
+}

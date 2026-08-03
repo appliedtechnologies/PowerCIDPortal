@@ -24,7 +24,7 @@ export class SolutionService {
         )
         .subscribe({
           next: (data) => resolve(data as Action),
-          error: (error) => reject(),
+          error: () => reject(),
         });
     });
   }
@@ -47,7 +47,7 @@ export class SolutionService {
     });
   }
 
-  public applyUpgrade(solutionId: number, targetEnvironmentId: any): Promise<Action> {
+  public applyUpgrade(solutionId: number, targetEnvironmentId: string | number): Promise<Action> {
     return new Promise<Action>((resolve, reject) => {
       this.http
         .post(`${AppConfig.settings.api.url}/Solutions(${solutionId})/ApplyUpgrade`, {
@@ -60,7 +60,7 @@ export class SolutionService {
     });
   }
 
-  public enableFlows(solutionId: number, targetEnvironmentId: any): Promise<Action> {
+  public enableFlows(solutionId: number, targetEnvironmentId: string | number): Promise<Action> {
     return new Promise<Action>((resolve, reject) => {
       this.http
         .post(`${AppConfig.settings.api.url}/Solutions(${solutionId})/EnableFlows`, {
@@ -82,7 +82,7 @@ export class SolutionService {
         )
         .subscribe({
           next: (data) => resolve(data as string),
-          error: (error) => reject(),
+          error: () => reject(),
         });
     });
   }

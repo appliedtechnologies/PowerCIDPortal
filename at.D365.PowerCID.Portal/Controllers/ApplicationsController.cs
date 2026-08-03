@@ -26,7 +26,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class ApplicationsController : BaseController
     {
         private readonly ILogger logger;
-        public ApplicationsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ApplicationsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public ApplicationsController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ApplicationsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }
@@ -63,11 +63,23 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == application.DevelopmentEnvironment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
+            var deactivatedApplication = await this.dbContext.Applications
+                .FirstOrDefaultAsync(a =>
+                    a.DevelopmentEnvironment == application.DevelopmentEnvironment &&
+                    a.IsDeactive &&
+                    (a.Name == application.Name || a.SolutionUniqueName == application.SolutionUniqueName));
+            if (deactivatedApplication != null)
+            {
+                deactivatedApplication.IsDeactive = false;
+                await this.dbContext.SaveChangesAsync();
+                return Ok(deactivatedApplication);
+            }
+
             if (base.dbContext.Applications.Any(a => (a.DevelopmentEnvironment == application.DevelopmentEnvironment) && (a.Name == application.Name || a.SolutionUniqueName == application.SolutionUniqueName)))
-                return BadRequest(new ODataError { ErrorCode =  "400", Message = "An Application with this name already exists." });
+                return BadRequest(new ODataError { Code = "400", Message = "An Application with this name already exists." });
 
             if (await solutionService.GetSolutionIdByUniqueName(application.SolutionUniqueName, dbContext.Environments.Find(application.DevelopmentEnvironment).BasicUrl) != Guid.Empty)
-                return BadRequest(new ODataError { ErrorCode =  "400", Message = "An application with this Solution Unique Name already exists on the Development Environment." });
+                return BadRequest(new ODataError { Code = "400", Message = "An application with this Solution Unique Name already exists on the Development Environment." });
 
             if (application.OrdinalNumber == null)
             {
@@ -118,7 +130,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Applications.FirstOrDefaultAsync(e => e.Id == key && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { nameof(Application.DevelopmentEnvironment), nameof(Application.OrdinalNumber), nameof(Application.Name), nameof(Application.MsId), nameof(Application.InternalDescription), nameof(Application.ForceManagedDeployment), nameof(Application.AfterDeploymentInformation) };
+            string[] propertyNamesAllowedToChange = { nameof(Application.DevelopmentEnvironment), nameof(Application.OrdinalNumber), nameof(Application.Name), nameof(Application.Group), nameof(Application.MsId), nameof(Application.InternalDescription), nameof(Application.ForceManagedDeployment), nameof(Application.AfterDeploymentInformation), nameof(Application.IsDeactive) };
             if (application.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() != 0)
             {
                 return BadRequest();
@@ -128,7 +140,12 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return NotFound();
             }
+            var wasDeactivated = entity.IsDeactive;
             application.Patch(entity);
+            if (!wasDeactivated && entity.IsDeactive)
+            {
+                await RemoveApplicationDeploymentPaths(entity.Id);
+            }
             try
             {
                 await base.dbContext.SaveChangesAsync();
@@ -149,28 +166,12 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Updated(entity);
         }
 
-        [Authorize(Roles = "atPowerCID.Admin")]
-        public async Task<IActionResult> Delete([FromODataUri] int key)
+        private async Task RemoveApplicationDeploymentPaths(int applicationId)
         {
-            logger.LogDebug($"Begin: ApplicationsController Delete(key: {key})");
-
-            var application = await this.dbContext.Applications.FindAsync(key);
-            
-            if (application == null)
-                return NotFound();
-
-            if (application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId != this.msIdTenantCurrentUser)
-                return Forbid();
-
-            if (application == null)
-                return NotFound();
-
-            application.IsDeactive = true;
-            await dbContext.SaveChangesAsync();
-
-            logger.LogDebug($"End: ApplicationsController Delete(key: {key})");
-
-            return Ok();
+            var applicationDeploymentPaths = await this.dbContext.ApplicationDeploymentPaths
+                .Where(e => e.Application == applicationId && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)
+                .ToListAsync();
+            this.dbContext.ApplicationDeploymentPaths.RemoveRange(applicationDeploymentPaths);
         }
 
         [HttpPost]
@@ -199,13 +200,13 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return Forbid();
 
             // Request solutions that are not patches
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{user.TenantNavigation.MsId}";
+                options.AcquireTokenOptions.Tenant = $"{user.TenantNavigation.MsId}";
                 options.BaseUrl = environment.BasicUrl + options.BaseUrl;
                 options.RelativePath = "/solutions?$filter=ismanaged%20eq%20false%20and%20_parentsolutionid_value%20eq%20null&$select=uniquename&$orderby=uniquename%20asc";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{environment.BasicUrl}/.default";
+                options.HttpMethod = HttpMethod.Get.Method;
+                options.Scopes = new[] { $"{environment.BasicUrl}/.default" };
             });
 
             if (!response.IsSuccessStatusCode)
@@ -259,13 +260,13 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
 
             // Request solution where uniquename = selected uniquename
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{user.TenantNavigation.MsId}";
+                options.AcquireTokenOptions.Tenant = $"{user.TenantNavigation.MsId}";
                 options.BaseUrl = environment.BasicUrl + options.BaseUrl;
                 options.RelativePath = $"/solutions?$filter=uniquename%20eq%20%27{applicationUniqueName}%27";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{environment.BasicUrl}/.default";
+                options.HttpMethod = HttpMethod.Get.Method;
+                options.Scopes = new[] { $"{environment.BasicUrl}/.default" };
             });
 
             if (!response.IsSuccessStatusCode)
@@ -356,13 +357,13 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             StringContent solutionContent = new StringContent(JsonConvert.SerializeObject(newSolution), Encoding.UTF8, mediaType: "application/json");
 
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{this.msIdTenantCurrentUser}";
+                options.AcquireTokenOptions.Tenant = $"{this.msIdTenantCurrentUser}";
                 options.BaseUrl = environmentUrl + options.BaseUrl;
                 options.RelativePath = "/solutions";
-                options.HttpMethod = HttpMethod.Post;
-                options.Scopes = $"{environmentUrl}/.default";
+                options.HttpMethod = HttpMethod.Post.Method;
+                options.Scopes = new[] { $"{environmentUrl}/.default" };
             }, content: solutionContent);
 
             if (!response.IsSuccessStatusCode)
@@ -395,13 +396,13 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: ApplicationsController CreateNewPublisher(newPublisherGuid: {newPublisherGuid.ToString()}, user TenantNavigation MsId: {user.TenantNavigation.MsId}, environment Id: {environment.Id})");
 
-            var response = await downstreamWebApi.CallWebApiForAppAsync("DataverseApi", options =>
+            var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
-                options.Tenant = $"{user.TenantNavigation.MsId}";
+                options.AcquireTokenOptions.Tenant = $"{user.TenantNavigation.MsId}";
                 options.BaseUrl = environment.BasicUrl + options.BaseUrl;
                 options.RelativePath = $"/publishers({newPublisherGuid})";
-                options.HttpMethod = HttpMethod.Get;
-                options.Scopes = $"{environment.BasicUrl}/.default";
+                options.HttpMethod = HttpMethod.Get.Method;
+                options.Scopes = new[] { $"{environment.BasicUrl}/.default" };
             });
 
             JObject responseData = await response.Content.ReadAsAsync<JObject>();

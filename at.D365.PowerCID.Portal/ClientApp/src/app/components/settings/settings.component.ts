@@ -1,6 +1,5 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnInit, ChangeDetectionStrategy } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
-import { Key } from "selenium-webdriver";
 import { AppConfig } from "src/app/shared/config/app.config";
 import {
   LayoutParameter,
@@ -11,16 +10,18 @@ import { TenantService } from "src/app/shared/services/tenant.service";
 import { UserService } from "src/app/shared/services/user.service";
 
 @Component({
-  selector: "app-settings",
-  templateUrl: "./settings.component.html",
-  styleUrls: ["./settings.component.css"],
+    selector: "app-settings",
+    templateUrl: "./settings.component.html",
+    styleUrls: ["./settings.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class SettingsComponent implements OnInit {
   public isGitHubConnected;
   public dataSourceGitHubRepositories;
   public valueSelectBoxRepositoryName: string;
   public valueDisablePatchCreation: boolean;
-  public isSetupApplicationUser: boolean = false;
+  public isSetupApplicationUser = false;
   public environmentMessages;
   public appId: string;
 
@@ -73,6 +74,7 @@ export class SettingsComponent implements OnInit {
   }
 
   public onClickSetupApplicationUsers(e) {
+    void e;
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.userService.setupApplicationUsers().then((d) => {
       this.environmentMessages = d.value;
@@ -82,10 +84,12 @@ export class SettingsComponent implements OnInit {
   }
 
   public onClickConnectGitHub(e): void {
+    void e;
     window.location.href = AppConfig.settings.github.installation_url;
   }
 
   public onClickSaveRepositoryName(e): void {
+    void e;
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.tenatService
       .setGitHubRepositoryName(this.valueSelectBoxRepositoryName)
@@ -107,6 +111,7 @@ export class SettingsComponent implements OnInit {
   }
 
   public onValueChangedDisablePatchCreation(e): void {
+    void e;
     if(this.userService.currentDbUserWithTenant.TenantNavigation.DisablePatchCreation == this.valueDisablePatchCreation)
       return;
       

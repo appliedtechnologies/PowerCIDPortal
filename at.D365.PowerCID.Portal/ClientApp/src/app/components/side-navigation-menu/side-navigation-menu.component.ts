@@ -1,25 +1,27 @@
-import { Component} from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { UserService } from "src/app/shared/services/user.service";
 import { AppConfig } from 'src/app/shared/config/app.config';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-side-navigation-menu',
-  templateUrl: './side-navigation-menu.component.html',
-  styleUrls: ['./side-navigation-menu.component.css']
+    selector: 'app-side-navigation-menu',
+    templateUrl: './side-navigation-menu.component.html',
+    styleUrls: ['./side-navigation-menu.component.css'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class SideNavigationMenuComponent {
 
   navigationEntries: NavigationEntry[];
   version: string = AppConfig.settings.version;
-  selectedItemRoute: String;
+  selectedItemRoute: string;
 
   constructor(private router: Router, private userService: UserService) {
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
-      .subscribe((event) => {
-        this.selectedItemRoute = this.router.url.split(/[\#\?]+/)[0];
+      .subscribe(() => {
+        this.selectedItemRoute = this.router.url.split(/[#?]+/)[0];
         this.setNavigationEntries();
       });
 
@@ -39,7 +41,7 @@ export class SideNavigationMenuComponent {
       this.setNavigationEntries(!e.itemData.expanded);
   }
 
-  onItemExpanded(e): void{
+  onItemExpanded(): void{
     this.setNavigationEntries();
   }
 

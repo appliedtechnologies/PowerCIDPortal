@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using at.D365.PowerCID.Portal.Data.Models;
 using Microsoft.Extensions.Configuration;
 using Octokit;
-using Octokit.GraphQL;
 using ProductHeaderValue = Octokit.ProductHeaderValue;
 using Microsoft.Extensions.Logging;
 
@@ -15,7 +14,6 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly int appId;
         private readonly string privateKey;
         private readonly string userAgend;
-        private readonly string version;
         private readonly ILogger logger;
 
         public GitHubService(IConfiguration config, ILogger<GitHubService> logger)
@@ -23,7 +21,6 @@ namespace at.D365.PowerCID.Portal.Services
             this.appId = config.GetValue<int>("GitHubApp:Id");
             this.privateKey = config["GitHubApp:PrivateKey"];
             this.userAgend = config["GitHubApp:UserAgend"];
-            this.version = GetType().Assembly.GetName().Version.ToString();
             this.logger = logger;
         }
 
@@ -59,22 +56,6 @@ namespace at.D365.PowerCID.Portal.Services
             return new Tuple<Installation, GitHubClient>(installation, installationClient);
         }
 
-        public async Task<Octokit.GraphQL.Connection> GetGraphQLConnetion(int installationId)
-        {
-            logger.LogDebug($"Begin: GitHubService GetGraphQLConnetion(installationId: {installationId})");
-
-            var appClient = this.GetAppClient();
-            var installation = await appClient.GitHubApps.GetInstallationForCurrent(installationId);
-            var installationTokenResponse = await appClient.GitHubApps.CreateInstallationToken(installationId);
-
-            var productInformation = new Octokit.GraphQL.ProductHeaderValue($"{userAgend}-Installation{installationId}", this.version);
-            var connection = new Octokit.GraphQL.Connection(productInformation, installationTokenResponse.Token);
-
-            logger.LogDebug($"End: GitHubService GetGraphQLConnetion(installationId: {installationId})");
-
-            return connection;
-        }
-
         public async Task<byte[]> GetSolutionFileAsByteArray(Tenant tenant, Solution solution, bool unmanaged= false)
         {
             logger.LogDebug($"Begin: GitHubService GetSolutionFileAsByteArray(tenant GitHubInstallationId: {tenant.GitHubInstallationId}, solution Name: {solution.Name})");
@@ -91,19 +72,13 @@ namespace at.D365.PowerCID.Portal.Services
             string repositoryName = gitHubRepositoryName[1];
             string owner = gitHubRepositoryName[0];
 
-            var connection = await this.GetGraphQLConnetion(tenant.GitHubInstallationId);
-            var query = new Query()
-                .RepositoryOwner(owner)
-                .Repository(repositoryName)
-                .Object($"HEAD:{path}")
-                .Select(x => new
-                {
-                    x.Oid
-                })
-                .Compile();
-            var reuslt = await connection.Run(query);
+            var repositoryContents = await installationClient.Repository.Content.GetAllContents(owner, repositoryName, path);
+            if (repositoryContents.Count != 1 || repositoryContents[0].Type != ContentType.File)
+            {
+                throw new InvalidOperationException($"GitHub path '{path}' in repository '{tenant.GitHubRepositoryName}' is not a file.");
+            }
 
-            var solutionZipFileBase64 = (await installationClient.Git.Blob.Get(owner, repositoryName, reuslt.Oid)).Content;
+            var solutionZipFileBase64 = (await installationClient.Git.Blob.Get(owner, repositoryName, repositoryContents[0].Sha)).Content;
 
             logger.LogDebug($"End: GitHubService GetSolutionFileAsByteArray(tenant GitHubInstallationId: {tenant.GitHubInstallationId}, solution Name: {solution.Name})");
 

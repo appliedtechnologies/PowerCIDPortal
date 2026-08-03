@@ -5,6 +5,7 @@ import {
   OnChanges,
   Output,
   ViewChild,
+  ChangeDetectionStrategy
 } from "@angular/core";
 import { DxTextBoxComponent } from "devextreme-angular";
 import { Application } from "src/app/shared/models/application.model";
@@ -18,25 +19,28 @@ import {
 import { PatchService } from "src/app/shared/services/patch.service";
 import { UpgradeService } from "src/app/shared/services/upgrade.service";
 import Validator from "devextreme/ui/validator";
+import { FocusOutEvent } from "devextreme/ui/text_box";
 
 @Component({
-  selector: "app-solution-detail",
-  templateUrl: "./solution-detail.component.html",
-  styleUrls: ["./solution-detail.component.css"],
+    selector: "app-solution-detail",
+    templateUrl: "./solution-detail.component.html",
+    styleUrls: ["./solution-detail.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class SolutionDetailComponent implements OnChanges {
   @Input() solution: Patch | Upgrade;
   @Input() application: Application;
   @Input() isAddUpgrade: boolean;
-  @Output() onSaveCompleted = new EventEmitter<void>();
-  @Output() onRenamed = new EventEmitter<void>();
+  @Output() saveCompleted = new EventEmitter<void>();
+  @Output() renamed = new EventEmitter<void>();
 
   @ViewChild("textBoxName") public textBoxName: DxTextBoxComponent;
   @ViewChild("textAreaDescription") public textAreaDescription: DxTextBoxComponent;
 
   public isUpgrade: boolean;
   public isAdd: boolean;
-  public buttonOptionsSaveAdd: any;
+  public buttonOptionsSaveAdd: Record<string, unknown>;
 
   constructor(
     private patchService: PatchService,
@@ -53,7 +57,7 @@ export class SolutionDetailComponent implements OnChanges {
   }
 
   public onClickSaveSolution(e) {
-    let validation = e.validationGroup.validate();
+    const validation = e.validationGroup.validate();
     if (validation.isValid) {
       this.layoutService.change(LayoutParameter.ShowLoading, true);
       this.solution.Application = this.application.Id;
@@ -76,7 +80,7 @@ export class SolutionDetailComponent implements OnChanges {
           })
           .then(() => {
             this.layoutService.change(LayoutParameter.ShowLoading, false);
-            this.onSaveCompleted.emit();
+            this.saveCompleted.emit();
           });
       } else {
         this.patchService
@@ -95,17 +99,17 @@ export class SolutionDetailComponent implements OnChanges {
           })
           .then(() => {
             this.layoutService.change(LayoutParameter.ShowLoading, false);
-            this.onSaveCompleted.emit();
+            this.saveCompleted.emit();
           });
       }
     }
   }
 
-  public onFocusOutSolutionName(e: any): void {
+  public onFocusOutSolutionName(e: FocusOutEvent): void {
     if(!this.isAdd)
     {
-      let newValue: string = this.textBoxName.value;
-      let validation = (Validator.getInstance(e.element) as Validator).validate();
+      const newValue: string = this.textBoxName.value;
+      const validation = (Validator.getInstance(e.element) as Validator).validate();
       if(validation.isValid && newValue && newValue != this.solution.Name){
         if (this.isUpgrade) {
           this.renameUpgrade(this.solution.Id, e.component.option("value"));
@@ -116,11 +120,11 @@ export class SolutionDetailComponent implements OnChanges {
     }
   }
 
-  public onFocusOutSolutionDescription(e: any): void {
+  public onFocusOutSolutionDescription(e: FocusOutEvent): void {
     if(!this.isAdd)
     {
-      let newValue: string = this.textAreaDescription.value;
-      let validation = (Validator.getInstance(e.element) as Validator).validate();
+      const newValue: string = this.textAreaDescription.value;
+      const validation = (Validator.getInstance(e.element) as Validator).validate();
       if(validation.isValid && newValue && newValue != this.solution.Description){
         if (this.isUpgrade) {
           this.changeDescriptionUpgrade(this.solution.Id, e.component.option("value"));
@@ -156,7 +160,7 @@ export class SolutionDetailComponent implements OnChanges {
         type: NotificationType.Success,
         message: "The Patch was successfully renamed.",
       });
-      this.onRenamed.emit();
+      this.renamed.emit();
     })
     .catch((error) => {
       if(error != null)
@@ -183,7 +187,7 @@ export class SolutionDetailComponent implements OnChanges {
         type: NotificationType.Success,
         message: "The Upgrade was successfully renamed.",
       });
-      this.onRenamed.emit();
+      this.renamed.emit();
     })
     .catch((error) => {
       if(error != null)
@@ -210,7 +214,7 @@ export class SolutionDetailComponent implements OnChanges {
         type: NotificationType.Success,
         message: "Description was successfully changed.",
       });
-      this.onRenamed.emit();
+      this.renamed.emit();
     })
     .catch((error) => {
       if(error != null)
@@ -237,7 +241,7 @@ export class SolutionDetailComponent implements OnChanges {
         type: NotificationType.Success,
         message: "Description was successfully renamed.",
       });
-      this.onRenamed.emit();
+      this.renamed.emit();
     })
     .catch((error) => {
       if(error != null)

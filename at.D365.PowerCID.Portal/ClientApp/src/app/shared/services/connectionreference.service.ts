@@ -1,11 +1,8 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import ODataStore from "devextreme/data/odata/store";
-import { Observable } from "rxjs";
 import { AppConfig } from "../config/app.config";
 import { ConnectionReference } from "../models/connectionreference.model";
-import { Environment } from "../models/environment.model";
-import { Publisher } from "../models/publisher.model";
 import { ODataService } from "./odata.service";
 
 @Injectable({
@@ -36,7 +33,7 @@ export class ConnectionReferenceService {
         )
         .subscribe({
           next: (data) => resolve(data as ConnectionReference[]),
-          error: (error) => reject(),
+          error: () => reject(),
         });
     });
   }

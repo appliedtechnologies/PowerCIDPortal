@@ -23,7 +23,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class ConnectionReferenceEnvironmentsController : BaseController
     {
         private readonly ILogger logger;
-        public ConnectionReferenceEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ConnectionReferenceEnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public ConnectionReferenceEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<ConnectionReferenceEnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }

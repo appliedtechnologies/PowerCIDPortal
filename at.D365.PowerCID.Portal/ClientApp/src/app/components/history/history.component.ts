@@ -1,9 +1,8 @@
-import { Component, Input, OnInit, ViewChild } from "@angular/core";
+import { Component, Input, OnInit, ViewChild, ChangeDetectionStrategy } from "@angular/core";
 import { DxDataGridComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import ODataStore from "devextreme/data/odata/store";
-import { filter } from "rxjs";
-import { TimeHelper } from "src/app/shared/helper/time.helper";
+import { ToolbarPreparingEvent } from "devextreme/ui/data_grid";
 import { Action } from "src/app/shared/models/action.model";
 import { ActionResult } from "src/app/shared/models/actionresult.model";
 import { ActionStatus } from "src/app/shared/models/actionstatus.model";
@@ -19,10 +18,18 @@ import { ODataService } from "src/app/shared/services/odata.service";
 import { SolutionService } from "src/app/shared/services/solution.service";
 import { UserService } from "src/app/shared/services/user.service";
 
+interface HistoryGridRowEvent {
+  row: {
+    data: Action;
+  };
+}
+
 @Component({
-  selector: "app-history",
-  templateUrl: "./history.component.html",
-  styleUrls: ["./history.component.css"],
+    selector: "app-history",
+    templateUrl: "./history.component.html",
+    styleUrls: ["./history.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class HistoryComponent implements OnInit {
   @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;
@@ -37,13 +44,13 @@ export class HistoryComponent implements OnInit {
   public isActionDetailPopupVisible: boolean;
   public isSolutionDetailPopupVisible: boolean;
 
-  public headerFilterDataUser: any;
-  public headerFilterDataSolution: any;
-  public headerFilterDataApplication: any;
-  public headerFilterDataEnvironment: any;
-  public headerFilterDataActionResult: any;
-  public headerFilterDataActionStatus: any;
-  public headerFilterDataActionType: any;
+  public headerFilterDataUser: unknown;
+  public headerFilterDataSolution: unknown;
+  public headerFilterDataApplication: unknown;
+  public headerFilterDataEnvironment: unknown;
+  public headerFilterDataActionResult: unknown;
+  public headerFilterDataActionStatus: unknown;
+  public headerFilterDataActionType: unknown;
 
   @Input() userId: number;
 
@@ -168,12 +175,12 @@ export class HistoryComponent implements OnInit {
     }
   }
 
-  public onClickActionInfo(rowAction: any): void {
+  public onClickActionInfo(rowAction: HistoryGridRowEvent): void {
     this.selectedActionId = rowAction.row.data.Id;
     this.isActionDetailPopupVisible = true;
   }
 
-  public onClickSolutionInfo(rowSolution: any): any {
+  public onClickSolutionInfo(rowSolution: HistoryGridRowEvent): void {
     this.solutionService
       .getStore()
       .load({
@@ -191,8 +198,8 @@ export class HistoryComponent implements OnInit {
       });
   }
 
-  public onToolbarPreparingDataGrid(e: any): void{
-    let toolbarItems = e.toolbarOptions.items;
+  public onToolbarPreparingDataGrid(e: ToolbarPreparingEvent<Action, number>): void{
+    const toolbarItems = e.toolbarOptions.items;
 
     toolbarItems.unshift({
       widget: "dxButton",

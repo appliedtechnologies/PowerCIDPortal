@@ -1,20 +1,15 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Router } from "@angular/router";
 import { MsalBroadcastService, MsalService } from "@azure/msal-angular";
 import {
-  AccountEntity,
   AccountInfo,
   EventMessage,
   EventType,
   InteractionStatus,
-  SilentRequest,
 } from "@azure/msal-browser";
-import { ThrottlingUtils } from "@azure/msal-common";
 import ODataStore from "devextreme/data/odata/store";
-import { firstValueFrom, forkJoin, from, merge, Observable, Subject } from "rxjs";
+import { merge, Observable, Subject } from "rxjs";
 import { filter, map, switchMap, takeUntil } from "rxjs/operators";
-import { isDebuggerStatement } from "typescript";
 import { AppConfig } from "../config/app.config";
 import { InitRedirctRequest } from "../config/auth-config";
 import { User } from "../models/user.model";
@@ -28,14 +23,18 @@ import { ODataService } from "./odata.service";
 import { AppRoleAssignment } from "../models/approleassignment.model";
 import { alert } from "devextreme/ui/dialog";
 
+interface SetupApplicationUsersResponse {
+  value: string[];
+}
+
 @Injectable()
 export class UserService {
-  public isLogggedIn: boolean = false;
+  public isLogggedIn = false;
   public currentUserRoles: string[];
   public currentIdentityUser: AccountInfo;
   public currentDbUserWithTenant: User;
 
-  private isPortalLogginInProgess: boolean = false;
+  private isPortalLogginInProgess = false;
 
   //observables
   private readonly _destroying$ = new Subject<void>();
@@ -82,10 +81,10 @@ export class UserService {
         }
       });
 
-    let login$ = this.msalBroadcastService.msalSubject$.pipe(
+    const login$ = this.msalBroadcastService.msalSubject$.pipe(
       filter((msg: EventMessage) => msg.eventType === EventType.LOGIN_SUCCESS),
       takeUntil(this._destroying$),
-      switchMap((data) => {
+      switchMap(() => {
         return this.doPortalLogin()
           .then(() => {
             this.checkUpdatedOwnership();
@@ -108,7 +107,7 @@ export class UserService {
       })
     );
 
-    let logout$ = this.msalBroadcastService.msalSubject$.pipe(
+    const logout$ = this.msalBroadcastService.msalSubject$.pipe(
       filter((msg: EventMessage) => msg.eventType === EventType.LOGOUT_SUCCESS),
       takeUntil(this._destroying$),
       map(() => {
@@ -195,12 +194,12 @@ export class UserService {
     });
   }
 
-  setupApplicationUsers() {
-    return new Promise<any>((resolve, reject) => {
+  setupApplicationUsers(): Promise<SetupApplicationUsersResponse> {
+    return new Promise<SetupApplicationUsersResponse>((resolve, reject) => {
       this.http
         .post(`${AppConfig.settings.api.url}/Users/SetupApplicationUsers`, {})
         .subscribe({
-          next: (data) => resolve(data as any),
+          next: (data) => resolve(data as SetupApplicationUsersResponse),
           error: () => reject(),
         });
     });
@@ -211,7 +210,7 @@ export class UserService {
       this.http
         .post(`${AppConfig.settings.api.url}/Users/SyncAdminRole`, {})
         .subscribe({
-          next: (data) => resolve(),
+          next: () => resolve(),
           error: () => reject(),
         });
     });
@@ -257,7 +256,7 @@ export class UserService {
     });
   }
 
-  private updateUserInformation(forceDbReload: boolean = false, forceIdentityReload: boolean = false): Promise<void> {
+  private updateUserInformation(forceDbReload = false, forceIdentityReload = false): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.isLogggedIn = this.isMSALLoggedIn() && this.isPortalLoggedIn();
       this.manualUpdate.next();
@@ -281,7 +280,7 @@ export class UserService {
 
   private callPortalLogin(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      let request = this.http
+      this.http
         .post(`${AppConfig.settings.api.url}/Users/Login`, {})
         .subscribe({
           next: () => resolve(),

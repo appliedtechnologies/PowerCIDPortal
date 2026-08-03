@@ -83,7 +83,7 @@ export function sendRequestFactory(httpClient: HttpClient) {
     } else {
         if (!upload && typeof data === 'object' && headers[CONTENT_TYPE].indexOf(URLENCODED) === 0) {
             body = new HttpParams();
-            // tslint:disable-next-line:forin
+
             for (const key in data) {
                 body = body.set(key, data[key]);
             }

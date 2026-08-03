@@ -7,6 +7,12 @@ import { ODataService } from "./odata.service";
 import { UserService } from "./user.service";
 import { Environment } from "../models/environment.model";
 
+export interface DataversePublisher {
+  isreadonly: boolean;
+  friendlyname: string;
+  publisherid: string;
+}
+
 @Injectable({
   providedIn: "root",
 })
@@ -26,7 +32,7 @@ export class EnvironmentService {
 
   public callPullEnvironments(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      let request = this.http
+      this.http
         .post(`${AppConfig.settings.api.url}/Environments/PullExisting`, {})
         .subscribe({
           next: () => resolve(),
@@ -37,17 +43,18 @@ export class EnvironmentService {
                 extraScopesToConsent: ["https://management.azure.com//user_impersonation"]
               });
             }
+            reject(e);
           },
         });
     });
   }
 
-  public getDataversePublishers(environmentId: number): Promise<any>{
-    return new Promise<any>((resolve, reject) => {
-      let request = this.http
+  public getDataversePublishers(environmentId: number): Promise<DataversePublisher[]>{
+    return new Promise<DataversePublisher[]>((resolve, reject) => {
+      this.http
         .post(`${AppConfig.settings.api.url}/Environments(${environmentId})/GetDataversePublishers`, {})
         .subscribe({
-          next: (data) => resolve(data),
+          next: (data) => resolve(data as DataversePublisher[]),
           error: () => reject(),
         });
     });  
@@ -55,5 +62,10 @@ export class EnvironmentService {
 
   public update(id: number, environment: Environment){
     return this.getStore().update(id, environment);
+  }
+
+  public setDeactivated(id: number, isDeactive: boolean): Promise<void> {
+    return Promise.resolve(this.getStore().update(id, { IsDeactive: isDeactive }))
+      .then(() => undefined);
   }
 }

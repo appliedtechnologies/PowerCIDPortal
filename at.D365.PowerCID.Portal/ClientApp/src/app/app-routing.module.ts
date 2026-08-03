@@ -1,18 +1,15 @@
-import { NgModule } from "@angular/core";
-import { Routes, RouterModule } from "@angular/router";
+import { Routes } from "@angular/router";
 import { MsalGuard } from "@azure/msal-angular";
 import { ApplicationComponent } from "./components/application/application.component";
 import { DeploymentpathComponent } from "./components/deploymentpath/deploymentpath.component";
 import { EnvironmentComponent } from "./components/environment/environment.component";
 import { HomeComponent } from "./components/home/home.component";
-import { SolutionDetailComponent } from "./components/solution-detail/solution-detail.component";
 import { ProfileComponent } from "./components/profile/profile.component";
 import { SolutionsOverviewComponent } from "./components/solutions-overview/solutions-overview.component";
 import { HistoryComponent } from "./components/history/history.component";
 import { SettingsComponent } from "./components/settings/settings.component";
 import { UserComponent } from "./components/user/user.component";
 import { RoleGuard } from "./shared/guards/role.guard";
-import { AppConfig } from "./shared/config/app.config";
 
 export const routes: Routes = [
   { path: "", component: HomeComponent, pathMatch: "full" },

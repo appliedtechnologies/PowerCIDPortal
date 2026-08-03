@@ -1,4 +1,4 @@
-import { Component, ViewChild } from "@angular/core";
+import { Component, ViewChild, ChangeDetectionStrategy } from "@angular/core";
 import { DxDataGridComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import { Environment } from "src/app/shared/models/environment.model";
@@ -12,13 +12,16 @@ import { UserService } from "src/app/shared/services/user.service";
 import { confirm } from 'devextreme/ui/dialog';
 
 @Component({
-  selector: "app-environment",
-  templateUrl: "./environment.component.html",
-  styleUrls: ["./environment.component.css"],
+    selector: "app-environment",
+    templateUrl: "./environment.component.html",
+    styleUrls: ["./environment.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class EnvironmentComponent {
   @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;
   public dataSource: DataSource;
+  public showDeactivatedEnvironments = false;
 
   constructor(
     private environmentService: EnvironmentService,
@@ -27,12 +30,16 @@ export class EnvironmentComponent {
   ) {
     this.dataSource = new DataSource({
       store: this.environmentService.getStore(),
+      filter: ["IsDeactive", "=", false],
       expand: [
         "CreatedByNavigation",
         "ModifiedByNavigation",
         "TenantNavigation",
       ],
     });
+    this.onClickDeactivateEnvironment = this.onClickDeactivateEnvironment.bind(this);
+    this.onClickActivateEnvironment = this.onClickActivateEnvironment.bind(this);
+    this.onClickToggleDeactivatedEnvironments = this.onClickToggleDeactivatedEnvironments.bind(this);
   }
 
   public modifiedByFullName(rowData): string {
@@ -49,7 +56,7 @@ export class EnvironmentComponent {
   }
 
   public onToolbarPreparingDataGrid(e): void {
-    let toolbarItems = e.toolbarOptions.items;
+    const toolbarItems = e.toolbarOptions.items;
 
     toolbarItems.unshift({
       widget: "dxButton",
@@ -59,6 +66,19 @@ export class EnvironmentComponent {
         type: "success",
         hint: "Refresh the grid.",
         onClick: this.onClickRefreshDataGrid.bind(this),
+      },
+      location: "after",
+    });
+
+    toolbarItems.unshift({
+      widget: "dxButton",
+      options: {
+        icon: "filter",
+        text: "Show deactivated",
+        stylingMode: "contained",
+        type: "normal",
+        hint: "Show deactivated environments.",
+        onClick: this.onClickToggleDeactivatedEnvironments,
       },
       location: "after",
     });
@@ -111,15 +131,96 @@ export class EnvironmentComponent {
     this.dataGrid.instance.refresh();
   }
 
+  public onClickDeactivateEnvironment(e): void {
+    const environment = e.row.data as Environment;
+    const result = confirm(
+      `Are you sure you want to deactivate the environment "${environment.Name}"?`,
+      "Confirm Deactivation"
+    );
+
+    result.then((dialogResult) => {
+      if (!dialogResult) {
+        return;
+      }
+
+      this.layoutService.change(LayoutParameter.ShowLoading, true);
+      this.environmentService
+        .setDeactivated(environment.Id, true)
+        .then(() => {
+          this.layoutService.notify({
+            type: NotificationType.Success,
+            message: "Environment was successfully deactivated.",
+          });
+        })
+        .catch((error: Error) => {
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: error.message || "The environment could not be deactivated.",
+          });
+        })
+        .finally(() => {
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+          this.dataGrid.instance.refresh();
+        });
+    });
+  }
+
+  public onClickActivateEnvironment(e): void {
+    const environment = e.row.data as Environment;
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.environmentService
+      .setDeactivated(environment.Id, false)
+      .then(() => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Environment was successfully activated.",
+        });
+      })
+      .catch((error: Error) => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: error.message || "The environment could not be activated.",
+        });
+      })
+      .finally(() => {
+        this.layoutService.change(LayoutParameter.ShowLoading, false);
+        this.dataGrid.instance.refresh();
+      });
+  }
+
+  public onClickToggleDeactivatedEnvironments(e): void {
+    this.showDeactivatedEnvironments = !this.showDeactivatedEnvironments;
+    this.dataSource.filter(["IsDeactive", "=", this.showDeactivatedEnvironments]);
+    this.dataSource.reload();
+    e.component.option(
+      "text",
+      this.showDeactivatedEnvironments ? "Show active" : "Show deactivated"
+    );
+    e.component.option(
+      "hint",
+      this.showDeactivatedEnvironments
+        ? "Show active environments."
+        : "Show deactivated environments."
+    );
+  }
+
+  public isActiveEnvironment(e): boolean {
+    return !e.row.data.IsDeactive;
+  }
+
+  public isDeactivatedEnvironment(e): boolean {
+    return e.row.data.IsDeactive === true;
+  }
+
   private onClickSaveSorting(): void {
-    let result = confirm("Are you sure you want to save the current sorting of the grid permanently as Ordinal Numbers?<br /> Existing Ordinal Numbers will be overwritten. Hidden rows (by filtering) are not included.", "Overwrite Ordinal Numbers");
+    const result = confirm("Are you sure you want to save the current sorting of the grid permanently as Ordinal Numbers?<br /> Existing Ordinal Numbers will be overwritten. Hidden rows (by filtering) are not included.", "Overwrite Ordinal Numbers");
     result.then((dialogResult) => {
       if (dialogResult) {
-        var loadOptions = this.dataGrid.instance.getDataSource().loadOptions();
-        var filterExpression = this.dataGrid.instance.getCombinedFilter(true);
+        const loadOptions = this.dataGrid.instance.getDataSource().loadOptions();
+        const filterExpression = this.dataGrid.instance.getCombinedFilter(true);
 
-        this.dataGrid.instance.getDataSource().store().load({filter: filterExpression, sort: loadOptions?.sort}).then((rows: any) => {
-          var updates = [];
+        this.dataGrid.instance.getDataSource().store().load({filter: filterExpression, sort: loadOptions?.sort}).then((rows: Environment[]) => {
+          const updates = [];
 
           rows.forEach((row, index) => { 
             updates.push(this.environmentService.update(row.Id, {OrdinalNumber: index}));

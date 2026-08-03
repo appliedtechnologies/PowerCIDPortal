@@ -23,14 +23,32 @@
 ::ng-deep #header-toolbar.dx-toolbar {
     background-color: rgba(4,100,148);
     color: white;
+    min-height: 46px;
 }
 
 ::ng-deep .dx-toolbar {
     padding: 5px 10px;
 }
 
+::ng-deep #header-toolbar .dx-toolbar-items-container {
+    min-height: 46px;
+}
+
+::ng-deep #header-toolbar .dx-toolbar-item {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
 ::ng-deep .dx-toolbar:not(#header-toolbar) {
     background-color: rgba(191,191,191,.15);
+    min-height: 44px;
+    padding: 8px 12px;
+}
+
+:host ::ng-deep h1 {
+    margin: 10px 0 16px;
+    font-size: 28px;
+    font-weight: 400;
 }
 
 ::ng-deep .dx-drawer-expand.dx-drawer-right .panel-list {

@@ -15,6 +15,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public int Id { get; set; }
         public int? OrdinalNumber { get; set; }
         public string Name { get; set; }
+        public string Group { get; set; }
         public Guid? MsId { get; set; }
         public string SolutionUniqueName { get; set; }
         public int DevelopmentEnvironment { get; set; }

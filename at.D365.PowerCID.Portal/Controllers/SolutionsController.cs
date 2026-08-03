@@ -29,7 +29,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     {
         private readonly ILogger logger;
 
-        public SolutionsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<SolutionsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public SolutionsController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<SolutionsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }

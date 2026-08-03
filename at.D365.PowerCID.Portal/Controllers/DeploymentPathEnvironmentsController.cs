@@ -24,7 +24,7 @@ namespace at.D365.PowerCID.Portal.Controllers
     public class DeploymentPathEnvironmentsController : BaseController
     {
         private readonly ILogger logger;
-        public DeploymentPathEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamWebApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<DeploymentPathEnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
+        public DeploymentPathEnvironmentsController(atPowerCIDContext atPowerCIDContext, IDownstreamApi downstreamWebApi, IHttpContextAccessor httpContextAccessor, ILogger<DeploymentPathEnvironmentsController> logger) : base(atPowerCIDContext, downstreamWebApi, httpContextAccessor)
         {
             this.logger = logger;
         }
@@ -109,7 +109,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             int toIndex = (int)parametersAsJObject["ToIndex"];
 
             if(toIndex > dbContext.DeploymentPathEnvironments.Count(e => e.DeploymentPath == keyDeploymentPath))
-                return BadRequest(new ODataError { ErrorCode =  "400", Message = "ToIndex is out of range." });
+                return BadRequest(new ODataError { Code = "400", Message = "ToIndex is out of range." });
 
             sortWhenUpdated(keyDeploymentPath, fromIndex, toIndex);
 

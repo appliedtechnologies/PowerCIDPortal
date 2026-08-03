@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from "@angular/core";
+import { Component, ViewChild, ChangeDetectionStrategy } from "@angular/core";
 import DataSource from "devextreme/data/data_source";
 import { UserService } from "src/app/shared/services/user.service";
 import {
@@ -10,23 +10,34 @@ import { AppConfig } from "src/app/shared/config/app.config";
 import { User } from "src/app/shared/models/user.model";
 import { EnvironmentService } from "src/app/shared/services/environment.service";
 import { Environment } from "src/app/shared/models/environment.model";
-import { environment } from "src/environments/environment";
 import { UserEnvironmentService } from "src/app/shared/services/userenvironment.service";
 import { UserEnvironment } from "src/app/shared/models/userenvironment.model";
-import { DxDataGridComponent, DxListComponent, DxPopupComponent } from "devextreme-angular";
+import { DxDataGridComponent, DxPopupComponent } from "devextreme-angular";
 import { AppRoleAssignment } from "src/app/shared/models/approleassignment.model";
 import { confirm } from 'devextreme/ui/dialog';
+import { ToolbarPreparingEvent } from "devextreme/ui/data_grid";
+import { ContentReadyEvent, SelectionChangedEvent } from "devextreme/ui/list";
+import { ValueChangedEvent } from "devextreme/ui/check_box";
+import { IAppConfig } from "src/app/shared/config/app-config.model";
+
+interface UserGridRowEvent {
+  row: {
+    data: User;
+  };
+}
 
 @Component({
-  selector: "app-user",
-  templateUrl: "./user.component.html",
-  styleUrls: ["./user.component.css"],
+    selector: "app-user",
+    templateUrl: "./user.component.html",
+    styleUrls: ["./user.component.css"],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class UserComponent {
   @ViewChild(DxPopupComponent, { static: false }) popupPermissionEnvironments: DxPopupComponent;
   @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;
 
-  public appRoleNames: any = AppConfig.settings.azure.appRoleNames;
+  public appRoleNames: IAppConfig["azure"]["appRoleNames"] = AppConfig.settings.azure.appRoleNames;
   public dataSourceUsers: DataSource;
   public dataSourceEnvironments: DataSource;
   public isEditRolesVisible: boolean;
@@ -51,6 +62,7 @@ export class UserComponent {
 
     this.dataSourceEnvironments = new DataSource({
       store: this.environmentService.getStore(),
+      filter: ["IsDeactive", "=", false],
       paginate: false,
       sort: "Name",
     });
@@ -60,8 +72,8 @@ export class UserComponent {
     this.onClickDeactivateUser = this.onClickDeactivateUser.bind(this);
   }
   
-  public onToolbarPreparingDataGrid(e: any): void{
-    let toolbarItems = e.toolbarOptions.items;
+  public onToolbarPreparingDataGrid(e: ToolbarPreparingEvent<User, number>): void{
+    const toolbarItems = e.toolbarOptions.items;
 
     toolbarItems.unshift({
       widget: "dxButton",
@@ -94,12 +106,13 @@ export class UserComponent {
     this.dataSourceEnvironments.reload();
   }
 
-  public onContentReadyPermissionEnvironmentList(e: any): void {
+  public onContentReadyPermissionEnvironmentList(e: ContentReadyEvent<Environment, number>): void {
+    void e;
     this.popupPermissionEnvironments?.instance.repaint();
   }
 
-  public onClickDeactivateUser(e: any){
-    let result = confirm("Are you sure you want to disable this user?<br /> This will NOT delete potential ownership in Azure Entra ID.", "Confirm Deactivation");
+  public onClickDeactivateUser(e: UserGridRowEvent){
+    const result = confirm("Are you sure you want to disable this user?<br /> This will NOT delete potential ownership in Azure Entra ID.", "Confirm Deactivation");
     result.then((dialogResult) => {
       if (dialogResult) {
         this.layoutService.change(LayoutParameter.ShowLoading, true);
@@ -124,14 +137,14 @@ export class UserComponent {
     });
   }
 
-  public onSelectionChangedPermissionEnvironments(e: any): void {
+  public onSelectionChangedPermissionEnvironments(e: SelectionChangedEvent<Environment, number>): void {
     if (!this.isInitPermissionEnvironmentSelection) {
-      (e.addedItems as Array<Environment>).forEach((environment) => {
+      (e.addedItems as Environment[]).forEach((environment) => {
         this.userEnvironmentService
           .addEnvironmentPermission(this.currentSelectedUser.Id, environment.Id)
           .then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
       });
-      (e.removedItems as Array<Environment>).forEach((environment) => {
+      (e.removedItems as Environment[]).forEach((environment) => {
         this.userEnvironmentService
           .removeEnvironmentPermission(
             this.currentSelectedUser.Id,
@@ -142,7 +155,7 @@ export class UserComponent {
     } else this.isInitPermissionEnvironmentSelection = false;
   }
 
-  public onClickEditPermissions(e: any): void {
+  public onClickEditPermissions(e: UserGridRowEvent): void {
     this.currentSelectedUser = e.row.data;
 
     this.layoutService.change(LayoutParameter.ShowLoading, true);
@@ -165,7 +178,7 @@ export class UserComponent {
       });
   }
 
-  public onClickEditRoles(e: any) {
+  public onClickEditRoles(e: UserGridRowEvent) {
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.currentSelectedUser = e.row.data;
 
@@ -183,7 +196,7 @@ export class UserComponent {
     });;
   }
 
-  public onClickSyncAdminRole(e: any): void {
+  public onClickSyncAdminRole(): void {
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.userService
       .syncAdminRole()
@@ -204,9 +217,10 @@ export class UserComponent {
       });
   }
 
-  public onValueChangedRoleAssignment(e: any, roleNameKey: any): void {
+  public onValueChangedRoleAssignment(e: ValueChangedEvent, roleNameKey: string | number | symbol): void {
     this.layoutService.change(LayoutParameter.ShowLoading, true);
-    let appRoleId: string = AppConfig.settings.azure.appRoleIds[roleNameKey];
+    const appRoleIds = AppConfig.settings.azure.appRoleIds as Record<string, string>;
+    const appRoleId: string = appRoleIds[String(roleNameKey)];
     if (e.value) {
       this.userService
         .assignRole(this.currentSelectedUser.Id, appRoleId)

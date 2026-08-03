@@ -1,5 +1,4 @@
 import { Injectable } from "@angular/core";
-import { DxExtendedPromise } from "devextreme/core/utils/deferred";
 import ODataStore from "devextreme/data/odata/store";
 import { Upgrade } from "../models/upgrade.model";
 import { ODataService } from "./odata.service";

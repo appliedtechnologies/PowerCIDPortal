@@ -21,7 +21,7 @@ export class ActionService {
       this.http
         .post(`${AppConfig.settings.api.url}/Actions(${actionId})/CancelImport`, {})
         .subscribe({
-          next: (data) => resolve(),
+          next: () => resolve(),
           error: (error) => reject(error),
         });
     });
@@ -29,7 +29,7 @@ export class ActionService {
 
   public getDurationString(action: Action): string{
     if(action?.FinishTime != null && action?.StartTime != null){
-      let duration = action?.FinishTime.valueOf() - action?.StartTime.valueOf();
+      const duration = action?.FinishTime.valueOf() - action?.StartTime.valueOf();
       return TimeHelper.millisecondsToString(duration);
     }
     else
