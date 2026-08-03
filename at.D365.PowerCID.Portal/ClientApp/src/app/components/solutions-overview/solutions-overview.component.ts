@@ -54,7 +54,6 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   public addPatchButtonInstance: dxButton;
   public addUpgradeButtonInstance: dxButton;
   public dataSourceSolutions: DataSource;
-  public dataSourceApplications: DataSource;
   public showSolutionsGrid = true;
   public applicationGroups: string[] = [];
   public selectedApplicationGroup = ungroupedApplicationLabel;
@@ -91,14 +90,6 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     private layoutService: LayoutService,
     private patchService: PatchService
   ) {
-    this.dataSourceApplications = new DataSource({
-      store: this.applicationService.getStore(),
-      sort: [
-        { selector: "OrdinalNumber", desc: false },
-        { selector: "Name", desc: false },
-      ],
-      filter: [ "IsDeactive", "=", false ]
-    });
     this.selectionToolbarItems = this.createSelectionToolbarItems();
     this.applicationService.getStore().load({
       filter: ["IsDeactive", "=", false],
