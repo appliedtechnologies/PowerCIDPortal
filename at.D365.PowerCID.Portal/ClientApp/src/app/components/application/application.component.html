@@ -48,6 +48,7 @@
       [groupIndex]="0"
       [showWhenGrouped]="true"
       [allowSearch]="true"
+      groupCellTemplate="groupCellTemplate"
     >
       <dxi-validation-rule type="stringLength" [max]="100" message="Must not be longer than 100 characters"></dxi-validation-rule>
     </dxi-column>
@@ -154,6 +155,10 @@
 
       <div *dxTemplate="let cellInfo of 'publisherTemplate'">
         {{ cellInfo.data.PublisherNavigation.Name }}
+      </div>
+
+      <div *dxTemplate="let cellInfo of 'groupCellTemplate'">
+        Group: {{ cellInfo.value === null || cellInfo.value === '' ? 'empty' : cellInfo.value }}
       </div>
 
       <div *dxTemplate="let cellInfo of 'publishersDropdownTemplate'">
