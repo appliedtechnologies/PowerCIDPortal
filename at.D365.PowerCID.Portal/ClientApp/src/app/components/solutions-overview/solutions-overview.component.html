@@ -19,13 +19,13 @@
   height="100%"
 >
   <div *dxTemplate="let cellInfo of 'typeCellTemplate'">
-    <div class="card name-cell dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
+    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
       {{ cellInfo.value }}
     </div>
   </div>
 
   <div *dxTemplate="let cellInfo of 'versionCellTemplate'">
-    <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
+    <div class="card name-cell dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">
       {{ cellInfo.value }}
     </div>
   </div>
