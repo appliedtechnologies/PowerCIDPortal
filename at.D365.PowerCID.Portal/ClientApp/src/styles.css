@@ -12,11 +12,11 @@ html, body{
 }
 
 .dx-popup-title {
-  padding: 16px 24px !important;
+  padding: 16px 12px !important;
 }
 
 .dx-popup-title .dx-closebutton {
-  right: 16px;
+  right: 8px;
 }
 
 #init-loading-screen {
