@@ -11,6 +11,14 @@ html, body{
   min-height: 0;
 }
 
+.dx-popup-title.dx-toolbar {
+  padding: 8px 20px !important;
+}
+
+.dx-popup-title.dx-toolbar .dx-closebutton {
+  inset-inline-start: 0 !important;
+}
+
 #init-loading-screen {
   font-family: "Helvetica Neue","Segoe UI",helvetica,verdana,sans-serif;
   display: flex;

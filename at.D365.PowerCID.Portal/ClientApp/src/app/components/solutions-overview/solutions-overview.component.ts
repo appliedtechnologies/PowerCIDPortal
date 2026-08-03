@@ -737,17 +737,6 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           location: "after",
           widget: "dxButton",
           options: {
-            icon: "refresh",
-            stylingMode: "contained",
-            type: "success",
-            hint: "Refresh the table.",
-            onClick: this.onClickRefreshSolutionsGrid.bind(this),
-          },
-        },
-        {
-          location: "after",
-          widget: "dxButton",
-          options: {
             icon: "assets/animations/loading.gif",
             text: "auto-refresh is active",
             stylingMode: "text",
@@ -770,6 +759,17 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
             onInitialized: (args: ButtonInitializedEvent) => {
               this.autoRefreshCancelButtonInstance = args.component;
             },
+          },
+        },
+        {
+          location: "after",
+          widget: "dxButton",
+          options: {
+            icon: "refresh",
+            stylingMode: "contained",
+            type: "success",
+            hint: "Refresh the table.",
+            onClick: this.onClickRefreshSolutionsGrid.bind(this),
           },
         }
       );
