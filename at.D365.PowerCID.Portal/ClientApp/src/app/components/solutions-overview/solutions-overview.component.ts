@@ -29,6 +29,8 @@ type SolutionRowData = Solution & {
   ApplyManually?: unknown;
 };
 
+const ungroupedApplicationLabel = "ungruppiert";
+
 interface SolutionCellInfo {
   data: SolutionRowData;
   column: {
@@ -53,6 +55,11 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   public addUpgradeButtonInstance: dxButton;
   public dataSourceSolutions: DataSource;
   public dataSourceApplications: DataSource;
+  public showSolutionsGrid = true;
+  public applicationGroups: string[] = [];
+  public selectedApplicationGroup = ungroupedApplicationLabel;
+  public groupSelectBoxInstance: dxSelectBox;
+  public selectionToolbarItems: unknown[] = [];
   public dataGridColumns: Column[] = [
     {
       caption: "Please select an application",
@@ -92,6 +99,20 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
       ],
       filter: [ "IsDeactive", "=", false ]
     });
+    this.selectionToolbarItems = this.createSelectionToolbarItems();
+    this.applicationService.getStore().load({
+      filter: ["IsDeactive", "=", false],
+      select: ["Group"],
+      sort: "Group",
+    }).then((applications: Application[]) => {
+      this.applicationGroups = [...new Set(
+        applications
+          .map((application) => application.Group)
+          .filter((group): group is string => !!group)
+      )];
+      this.applicationGroups.unshift(ungroupedApplicationLabel);
+      this.groupSelectBoxInstance?.option("items", this.applicationGroups);
+    });
     this.environmentService
       .getStore()
       .load()
@@ -109,112 +130,6 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
 
   public ngOnDestroy(): void {
     this.cancelAutoRefresh();
-  }
-
-  public onToolbarPreparingSolutionsGrid(e): void {
-    const toolbarItems = e.toolbarOptions.items;
-
-    toolbarItems.unshift(
-      {
-        location: "after",
-        widget: "dxButton",
-        options: {
-          icon: "assets/animations/loading.gif",
-          text: "auto-refresh is active",
-          stylingMode: "text",
-          disabled: true,
-          visible: this.autoRefreshInterval != undefined,
-          onInitialized: (args: ButtonInitializedEvent) => {
-            this.autoRefreshHintButtonInstance = args.component;
-          },
-        },
-      },
-      {
-        location: "after",
-        widget: "dxButton",
-        options: {
-          icon: "clear",
-          stylingMode: "contained",
-          type: "success",
-          onClick: this.onClickCancelAutoRefresh.bind(this),
-          visible: this.autoRefreshInterval != undefined,
-          onInitialized: (args: ButtonInitializedEvent) => {
-            this.autoRefreshCancelButtonInstance = args.component;
-          },
-        },
-      },
-      {
-        widget: "dxButton",
-        options: {
-          icon: "refresh",
-          stylingMode: "contained",
-          type: "success",
-          hint: "Refresh the table.",
-          onClick: this.onClickRefreshSolutionsGrid.bind(this),
-        },
-        location: "after",
-      }
-    );
-
-    toolbarItems.push(
-      {
-        widget: "dxSelectBox",
-        options: {
-          placeholder: "Select Application",
-          value: this.selectedApplication?.Id,
-          hint: "Select an application from which solutions should be displayed.",
-          displayExpr: "Name",
-          onInitialized: (args: SelectBoxInitializedEvent) => {
-            this.applicationSelectBoxInstance = args.component;
-          },
-          onValueChanged: (e) => {
-            this.setSelectedApplicationId(e.value);
-          },
-          valueExpr: "Id",
-          width: "300",
-          dataSource: this.dataSourceApplications,
-        },
-        location: "before",
-      }
-    );
-
-    if(!this.userService.currentDbUserWithTenant.TenantNavigation.DisablePatchCreation){
-      toolbarItems.push(
-        {
-          location: "before",
-          widget: "dxButton",
-          options: {
-            text: "Add Patch",
-            icon: "add",
-            stylingMode: "contained",
-            type: "success",
-            disabled: this.selectedApplication == null ? true : false,
-            onClick: this.onClickAddPatch.bind(this),
-            onInitialized: (args: ButtonInitializedEvent) => {
-              this.addPatchButtonInstance = args.component;
-            },
-          },
-        }
-      );
-    }
-
-    toolbarItems.push(
-      {
-        location: "before",
-        widget: "dxButton",
-        options: {
-          text: "Add Upgrade",
-          icon: "add",
-          stylingMode: "contained",
-          type: "success",
-          disabled: this.selectedApplication == null ? true : false,
-          onClick: this.onClickAddUpgrade.bind(this),
-          onInitialized: (args: ButtonInitializedEvent) => {
-            this.addUpgradeButtonInstance = args.component;
-          },
-        },
-      }
-    );
   }
 
   public onClickConfigureDeployment(environment: Environment) {
@@ -664,6 +579,11 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
 
       this.applicationService.getApplicationById(id).then((application) => {
         this.selectedApplication = application;
+        this.selectedApplicationGroup = this.selectedApplication.Group ?? ungroupedApplicationLabel;
+        this.groupSelectBoxInstance?.option(
+          "value",
+          this.selectedApplicationGroup
+        );
         this.applicationSelectBoxInstance.option(
           "value",
           this.selectedApplication.Id
@@ -689,8 +609,179 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
       });
     } else if (id == null){
       localStorage.removeItem("atPowerCIDPortal_SolutionOverview_SelectedId");
+      this.clearSolutionsGrid();
       this.addPatchButtonInstance?.option("disabled", true);
       this.addUpgradeButtonInstance?.option("disabled", true);
     }
+  }
+
+  private createApplicationDataSource(group: string): DataSource {
+      const filter = group === ungroupedApplicationLabel
+        ? [
+          ["IsDeactive", "=", false],
+          "and",
+          [["Group", "=", null], "or", ["Group", "=", ""]],
+        ]
+        : group == null
+          ? ["IsDeactive", "=", false]
+          : [["IsDeactive", "=", false], "and", ["Group", "=", group]];
+
+      return new DataSource({
+        store: this.applicationService.getStore(),
+        sort: [
+          { selector: "OrdinalNumber", desc: false },
+          { selector: "Name", desc: false },
+        ],
+        filter,
+      });
+    }
+
+    private createSelectionToolbarItems(): unknown[] {
+      const items: unknown[] = [
+        {
+          widget: "dxSelectBox",
+          location: "before",
+          options: {
+            placeholder: "Select Group",
+            hint: "Select an application group.",
+            items: this.applicationGroups,
+            value: this.selectedApplicationGroup,
+            width: "220",
+            onInitialized: (args: SelectBoxInitializedEvent) => {
+              this.groupSelectBoxInstance = args.component;
+            },
+            onValueChanged: (e) => {
+              const selectedApplicationGroup = this.selectedApplication?.Group ?? ungroupedApplicationLabel;
+              if (this.selectedApplication != null && e.value === selectedApplicationGroup) {
+                return;
+              }
+              this.selectedApplicationGroup = e.value;
+              this.clearSolutionsGrid();
+              this.addPatchButtonInstance?.option("disabled", true);
+              this.addUpgradeButtonInstance?.option("disabled", true);
+              this.applicationSelectBoxInstance?.option("value", null);
+              this.applicationSelectBoxInstance?.option(
+                "dataSource",
+                this.createApplicationDataSource(e.value)
+              );
+            },
+          },
+        },
+        {
+          widget: "dxSelectBox",
+          location: "before",
+          options: {
+            placeholder: "Select Application",
+            value: this.selectedApplication?.Id,
+            hint: "Select an application from which solutions should be displayed.",
+            displayExpr: "Name",
+            onInitialized: (args: SelectBoxInitializedEvent) => {
+              this.applicationSelectBoxInstance = args.component;
+            },
+            onValueChanged: (e) => {
+              this.setSelectedApplicationId(e.value);
+            },
+            valueExpr: "Id",
+            width: "300",
+            dataSource: this.createApplicationDataSource(this.selectedApplicationGroup),
+          },
+        },
+      ];
+
+      if (!this.userService.currentDbUserWithTenant.TenantNavigation.DisablePatchCreation) {
+        items.push({
+          location: "before",
+          widget: "dxButton",
+          options: {
+            text: "Add Patch",
+            icon: "add",
+            stylingMode: "contained",
+            type: "success",
+            disabled: true,
+            onClick: this.onClickAddPatch.bind(this),
+            onInitialized: (args: ButtonInitializedEvent) => {
+              this.addPatchButtonInstance = args.component;
+            },
+          },
+        });
+      }
+
+      items.push(
+        {
+          location: "before",
+          widget: "dxButton",
+          options: {
+            text: "Add Upgrade",
+            icon: "add",
+            stylingMode: "contained",
+            type: "success",
+            disabled: true,
+            onClick: this.onClickAddUpgrade.bind(this),
+            onInitialized: (args: ButtonInitializedEvent) => {
+              this.addUpgradeButtonInstance = args.component;
+            },
+          },
+        },
+        {
+          location: "after",
+          widget: "dxButton",
+          options: {
+            icon: "refresh",
+            stylingMode: "contained",
+            type: "success",
+            hint: "Refresh the table.",
+            onClick: this.onClickRefreshSolutionsGrid.bind(this),
+          },
+        },
+        {
+          location: "after",
+          widget: "dxButton",
+          options: {
+            icon: "assets/animations/loading.gif",
+            text: "auto-refresh is active",
+            stylingMode: "text",
+            disabled: true,
+            visible: false,
+            onInitialized: (args: ButtonInitializedEvent) => {
+              this.autoRefreshHintButtonInstance = args.component;
+            },
+          },
+        },
+        {
+          location: "after",
+          widget: "dxButton",
+          options: {
+            icon: "clear",
+            stylingMode: "contained",
+            type: "success",
+            visible: false,
+            onClick: this.onClickCancelAutoRefresh.bind(this),
+            onInitialized: (args: ButtonInitializedEvent) => {
+              this.autoRefreshCancelButtonInstance = args.component;
+            },
+          },
+        }
+      );
+
+      return items;
+    }
+
+    private clearSolutionsGrid(): void {
+    this.selectedApplication = null;
+    this.cancelAutoRefresh();
+    this.showSolutionsGrid = false;
+    this.dataSourceSolutions = new DataSource({
+      store: this.solutionService.getStore(),
+      filter: ["Id", "=", -1],
+    });
+    this.dataGridColumns = [
+      {
+        caption: "Please select an application",
+        name: "no_data",
+      },
+    ];
+    setTimeout(() => {
+      this.showSolutionsGrid = true;
+    });
   }
 }

@@ -353,6 +353,10 @@ namespace at.D365.PowerCID.Portal.Data.Models
 
                 entity.Property(e => e.DevelopmentEnvironment).HasColumnName("Development Environment");
 
+                entity.Property(e => e.Group)
+                    .HasMaxLength(100)
+                    .IsUnicode(false);
+
                 entity.Property(e => e.ModifiedBy).HasColumnName("Modified By");
 
                 entity.Property(e => e.ModifiedOn).HasColumnName("Modified On");

@@ -2,6 +2,10 @@
   min-width: 180px;
 }
 
+.solutions-selection-toolbar {
+  margin-bottom: 8px;
+}
+
 .card {
   position: relative;
   background-color: white;

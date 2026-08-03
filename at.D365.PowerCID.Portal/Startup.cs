@@ -45,6 +45,7 @@ namespace at.D365.PowerCID.Portal
             builder.EntityType<Data.Models.Environment>().Property(e => e.IsDeactive);
             builder.EntitySet<Application>("Applications");
             builder.EntityType<Application>().Property(e => e.IsDeactive);
+            builder.EntityType<Application>().Property(e => e.Group);
             builder.EntitySet<Solution>("Solutions");
             builder.EntitySet<Publisher>("Publishers");
             builder.EntitySet<DeploymentPath>("DeploymentPaths");

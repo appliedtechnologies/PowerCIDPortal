@@ -1,7 +1,11 @@
 <h1>Solutions Overview</h1>
+<dx-toolbar
+  [items]="selectionToolbarItems"
+  class="solutions-selection-toolbar"
+></dx-toolbar>
 <dx-data-grid
   #solutionsGrid
-  *ngIf="this.userService.currentDbUserWithTenant"
+  *ngIf="this.userService.currentDbUserWithTenant && showSolutionsGrid"
   [dataSource]="dataSourceSolutions"
   [columns]="dataGridColumns"
   [showBorders]="true"
@@ -13,7 +17,6 @@
   [allowColumnReordering]="false"
   [scrolling]="{ mode: 'infinite' }"
   height="100%"
-  (onToolbarPreparing)="onToolbarPreparingSolutionsGrid($event)"
 >
   <div *dxTemplate="let cellInfo of 'typeCellTemplate'">
     <div class="card dx-card dx-theme-text-color" [ngClass]="cellInfo.data.WasDeleted === true ? 'deleted-patch' : ''">

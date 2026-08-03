@@ -9,6 +9,7 @@ export interface Application {
   Id?: number;
   OrdinalNumber?: number | null;
   Name?: string;
+  Group?: string;
   MsId?: string;
   SolutionUniqueName?: string;
   DevelopmentEnvironment?: number;
