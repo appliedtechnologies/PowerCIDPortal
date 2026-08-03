@@ -14,9 +14,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azureblue.ApplicationInsights.RequestLogging" Version="2.4.0" />
     <PackageReference Include="GitHubJwt" Version="0.0.6" />
-    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="3.1.2" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OData" Version="9.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="10.0.10" />

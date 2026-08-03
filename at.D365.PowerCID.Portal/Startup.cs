@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.OData.Extensions;
 using Microsoft.OData.Edm;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.Identity.Web;
-using Azureblue.ApplicationInsights.RequestLogging;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
 
@@ -41,6 +40,7 @@ namespace at.D365.PowerCID.Portal
             builder.EntitySet<User>("Users");
             builder.EntitySet<Tenant>("Tenants");
             builder.EntitySet<Data.Models.Environment>("Environments");
+            builder.EntityType<Data.Models.Environment>().Property(e => e.IsDeactive);
             builder.EntitySet<Application>("Applications");
             builder.EntitySet<Solution>("Solutions");
             builder.EntitySet<Publisher>("Publishers");
@@ -115,8 +115,7 @@ namespace at.D365.PowerCID.Portal
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-             //logger
-            services.AddApplicationInsightsTelemetry();
+             services.AddApplicationInsightsTelemetry();
 
             services.AddHttpContextAccessor();
             services.AddMicrosoftIdentityWebApiAuthentication(Configuration, "AzureAd")
@@ -150,8 +149,6 @@ namespace at.D365.PowerCID.Portal
             services.AddHostedService<AsyncJobBackgroundService>();
             services.AddHostedService<ActionBackgroundService>();
 
-            //log request/response body to application insights
-            services.AddAppInsightsHttpBodyLogging();
         }
 
 
@@ -170,9 +167,6 @@ namespace at.D365.PowerCID.Portal
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
 
-                //enable log request/response body to application insights
-                if(bool.Parse(Configuration.GetSection("LogRequestResponseBodys").Value))
-                    app.UseAppInsightsHttpBodyLogging();     
             }
 
             app.UseHttpsRedirection();
