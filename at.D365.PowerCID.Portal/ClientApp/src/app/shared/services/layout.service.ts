@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { Subject } from "rxjs";
+import { BehaviorSubject, Subject } from "rxjs";
 import { custom } from "devextreme/ui/dialog";
 import { LogService } from "./log.service";
 
@@ -8,8 +8,8 @@ import { LogService } from "./log.service";
 export class LayoutService {
 
   //subjects
-  private showLoadingSource = new Subject<boolean>();
-  private loadingMessageSource = new Subject<string>();
+  private showLoadingSource = new BehaviorSubject<boolean>(false);
+  private loadingMessageSource = new BehaviorSubject<string>("Loading...");
   private notificationsSource = new Subject<Notification>();
 
   //observables
@@ -18,26 +18,19 @@ export class LayoutService {
   public notifications$ = this.notificationsSource.asObservable();
 
   constructor(private logService: LogService) {
-    //set default values
-    this.change(LayoutParameter.ShowLoading, false);
-    this.change(LayoutParameter.LoadingMessage, "Loading...");
   }
 
   public change(valueToChange: LayoutParameter, value: boolean | string): void {
-    Promise.resolve(null).then(() => {
-      switch (valueToChange) {
-        case LayoutParameter.ShowLoading:
-          this.showLoadingSource.next(value as boolean);
-          break;
-        case LayoutParameter.LoadingMessage:
-          this.loadingMessageSource.next(value as string);
-          if (value === false)
-            this.change(LayoutParameter.LoadingMessage, "Loding...");
-          break;
-        default:
-          this.logService.error("unknow layout parameter");
-      }
-    });
+    switch (valueToChange) {
+      case LayoutParameter.ShowLoading:
+        this.showLoadingSource.next(value as boolean);
+        break;
+      case LayoutParameter.LoadingMessage:
+        this.loadingMessageSource.next(value as string);
+        break;
+      default:
+        this.logService.error("unknow layout parameter");
+    }
   }
 
   public notify(notification: Notification) {

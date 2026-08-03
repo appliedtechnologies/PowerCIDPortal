@@ -62,6 +62,7 @@ export class UserComponent {
 
     this.dataSourceEnvironments = new DataSource({
       store: this.environmentService.getStore(),
+      filter: ["IsDeactive", "=", false],
       paginate: false,
       sort: "Name",
     });

@@ -491,6 +491,9 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("Is Development Environment");
 
+                    b.Property<bool>("IsDeactive")
+                        .HasColumnType("bit");
+
                     b.Property<int>("ModifiedBy")
                         .HasColumnType("int")
                         .HasColumnName("Modified By");

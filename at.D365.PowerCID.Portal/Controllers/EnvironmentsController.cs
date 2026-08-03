@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
+using Microsoft.OData;
 using Newtonsoft.Json.Linq;
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -44,7 +45,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { "OrdinalNumber", "IsDevelopmentEnvironment", "ConnectionsOwner", "DeployUnmanaged", "BasicUrl" };
+            string[] propertyNamesAllowedToChange = { "OrdinalNumber", "IsDevelopmentEnvironment", "ConnectionsOwner", "DeployUnmanaged", "BasicUrl", "IsDeactive" };
             if (environment.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() == 0)
             {
                 if (!ModelState.IsValid)
@@ -56,7 +57,23 @@ namespace at.D365.PowerCID.Portal.Controllers
                 {
                     return NotFound();
                 }
+                var wasDeactive = entity.IsDeactive;
                 environment.Patch(entity);
+                var deploymentPathName = await this.dbContext.DeploymentPathEnvironments
+                    .Where(e => e.Environment == key)
+                    .Select(e => e.DeploymentPathNavigation.Name)
+                    .FirstOrDefaultAsync();
+                if (!wasDeactive && entity.IsDeactive && deploymentPathName != null)
+                {
+                    return BadRequest(new
+                    {
+                        error = new
+                        {
+                            code = "EnvironmentInDeploymentPath",
+                            message = $"The environment is used in deployment path '{deploymentPathName}'."
+                        }
+                    });
+                }
                 try
                 {
                     await base.dbContext.SaveChangesAsync();
@@ -93,12 +110,17 @@ namespace at.D365.PowerCID.Portal.Controllers
                 IEnumerable<Environment> pulledEnvironments = await this.GetExistingEnvironments();
 
                 //update existing environments
-                var pulledAlreadyExistingEnvironments = pulledEnvironments.Where(e => this.dbContext.Environments.Select(t => t.MsId).Contains(e.MsId));
-                foreach (Environment pulledEnvironment in pulledAlreadyExistingEnvironments)
+                Tenant currentUsersTenant = this.dbContext.Tenants.First(e => e.MsId == this.msIdTenantCurrentUser);
+                var existingEnvironmentIds = this.dbContext.Environments
+                    .Where(e => e.Tenant == currentUsersTenant.Id)
+                    .Select(e => e.MsId)
+                    .ToHashSet();
+
+                foreach (Environment pulledEnvironment in pulledEnvironments.Where(e => existingEnvironmentIds.Contains(e.MsId)))
                     this.UpdateEnvironmentIfNeeded(pulledEnvironment);
 
                 //add NOT existing environments
-                var pulledNotExisting = pulledEnvironments.Except(pulledAlreadyExistingEnvironments);
+                var pulledNotExisting = pulledEnvironments.Where(e => !existingEnvironmentIds.Contains(e.MsId));
                 await this.dbContext.Environments.AddRangeAsync(pulledNotExisting);
 
                 await this.dbContext.SaveChangesAsync();
@@ -116,7 +138,11 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 this.tokenAcquisition.ReplyForbiddenWithWwwAuthenticateHeader(new string[] {"https://management.azure.com//user_impersonation"}, ex);
                 return Forbid();
-            }   
+            }
+            catch (System.UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
         }
 
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
@@ -163,7 +189,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: EnvironmentsController UpdateEnvironmentIfNeeded(pulledEnvironment Name: {pulledEnvironment.Name})");
 
-            Environment currentDbEnvironment = this.dbContext.Environments.First(e => e.MsId == pulledEnvironment.MsId);
+            Environment currentDbEnvironment = this.dbContext.Environments.First(e => e.MsId == pulledEnvironment.MsId && e.TenantNavigation.MsId == this.msIdTenantCurrentUser);
 
             if (currentDbEnvironment.Name != pulledEnvironment.Name)
                 currentDbEnvironment.Name = pulledEnvironment.Name;
@@ -179,14 +205,35 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug("Begin: EnvironmentsController GetExistingEnvironments()");
 
 
-            var environmentsRepsonse = await this.downstreamWebApi.CallApiForUserAsync(
+            var environmentsResponse = await this.downstreamWebApi.CallApiForUserAsync(
                 "AzureManagementApi",
                 options =>
                 {
                     options.RelativePath = "providers/Microsoft.ProcessSimple/environments?api-version=2016-11-01";
                 });
 
-            JToken remoteEnvironments = (await environmentsRepsonse.Content.ReadAsAsync<JObject>())["value"];
+            if (!environmentsResponse.IsSuccessStatusCode)
+            {
+                var responseBody = await environmentsResponse.Content.ReadAsStringAsync();
+                logger.LogError(
+                    "Could not pull environments from Azure. Status: {StatusCode}, Response: {ResponseBody}",
+                    environmentsResponse.StatusCode,
+                    responseBody);
+                if (environmentsResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    throw new System.UnauthorizedAccessException("The Azure Management API token is missing or expired.");
+                }
+                throw new System.InvalidOperationException(
+                    $"Could not pull environments from Azure. The service returned {(int)environmentsResponse.StatusCode}.");
+            }
+
+            var responseData = await environmentsResponse.Content.ReadAsAsync<JObject>();
+            JToken remoteEnvironments = responseData["value"];
+            if (remoteEnvironments == null)
+            {
+                throw new System.InvalidOperationException("The Azure environments response did not contain a value array.");
+            }
+
             List<Environment> environments = new List<Environment>();
             Tenant currentUsersTenant = this.dbContext.Tenants.First(e => e.MsId == this.msIdTenantCurrentUser);
 

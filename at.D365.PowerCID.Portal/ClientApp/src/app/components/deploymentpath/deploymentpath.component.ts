@@ -54,6 +54,7 @@ export class DeploymentpathComponent {
     this.loadDeploymentPaths();
     this.dataSourceEnvironments = new DataSource({
       store: this.environmentService.getStore(),
+      filter: ["IsDeactive", "=", false],
       sort: [{ selector: "OrdinalNumber", desc: true }, { selector: "Name", desc: false }],
     });
   }
