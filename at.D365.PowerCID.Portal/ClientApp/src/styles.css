@@ -11,12 +11,12 @@ html, body{
   min-height: 0;
 }
 
-.dx-popup-title {
-  padding: 8px 24px !important;
+.dx-popup-title.dx-toolbar {
+  padding: 8px 20px !important;
 }
 
-.dx-popup-title .dx-closebutton {
-  right: 24px;
+.dx-popup-title.dx-toolbar .dx-closebutton {
+  inset-inline-start: 0;
 }
 
 #init-loading-screen {
