@@ -15,6 +15,11 @@
   margin: 0px;
 }
 
+.name-cell {
+  display: flex;
+  align-items: center;
+}
+
 .card-priority {
   position: absolute;
   top: 10px;
@@ -61,7 +66,7 @@
 
 .at-icon {
   padding-right: 5px;
-  vertical-align: bottom;
+  vertical-align: middle;
   width: 20px;
   margin-right: 5px;
 }
