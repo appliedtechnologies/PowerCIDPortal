@@ -21,12 +21,14 @@ namespace at.D365.PowerCID.Portal
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public Startup(IConfiguration configuration, IWebHostEnvironment environment)
         {
             Configuration = configuration;
+            Environment = environment;
         }
 
         public IConfiguration Configuration { get; }
+        private IWebHostEnvironment Environment { get; }
 
         private static IEdmModel GetEdmModel()
         {
@@ -115,7 +117,10 @@ namespace at.D365.PowerCID.Portal
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-             services.AddApplicationInsightsTelemetry();
+            if (!Environment.IsDevelopment())
+            {
+                services.AddApplicationInsightsTelemetry();
+            }
 
             services.AddHttpContextAccessor();
             services.AddMicrosoftIdentityWebApiAuthentication(Configuration, "AzureAd")

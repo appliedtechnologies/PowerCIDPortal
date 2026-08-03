@@ -31,7 +31,7 @@ export class EnvironmentService {
   }
 
   public callPullEnvironments(): Promise<void> {
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       this.http
         .post(`${AppConfig.settings.api.url}/Environments/PullExisting`, {})
         .subscribe({
@@ -43,6 +43,7 @@ export class EnvironmentService {
                 extraScopesToConsent: ["https://management.azure.com//user_impersonation"]
               });
             }
+            reject(e);
           },
         });
     });
@@ -64,6 +65,7 @@ export class EnvironmentService {
   }
 
   public setDeactivated(id: number, isDeactive: boolean): Promise<void> {
-    return this.getStore().update(id, { IsDeactive: isDeactive }).then(() => undefined);
+    return Promise.resolve(this.getStore().update(id, { IsDeactive: isDeactive }))
+      .then(() => undefined);
   }
 }

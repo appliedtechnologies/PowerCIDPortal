@@ -59,12 +59,19 @@ namespace at.D365.PowerCID.Portal.Controllers
                 }
                 var wasDeactive = entity.IsDeactive;
                 environment.Patch(entity);
-                if (!wasDeactive && entity.IsDeactive && this.dbContext.DeploymentPathEnvironments.Any(e => e.Environment == key))
+                var deploymentPathName = await this.dbContext.DeploymentPathEnvironments
+                    .Where(e => e.Environment == key)
+                    .Select(e => e.DeploymentPathNavigation.Name)
+                    .FirstOrDefaultAsync();
+                if (!wasDeactive && entity.IsDeactive && deploymentPathName != null)
                 {
-                    return BadRequest(new ODataError
+                    return BadRequest(new
                     {
-                        Code = "400",
-                        Message = $"The environment is used in deployment path '{this.dbContext.DeploymentPathEnvironments.Where(e => e.Environment == key).Select(e => e.DeploymentPathNavigation.Name).First()}'."
+                        error = new
+                        {
+                            code = "EnvironmentInDeploymentPath",
+                            message = $"The environment is used in deployment path '{deploymentPathName}'."
+                        }
                     });
                 }
                 try
@@ -131,7 +138,11 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 this.tokenAcquisition.ReplyForbiddenWithWwwAuthenticateHeader(new string[] {"https://management.azure.com//user_impersonation"}, ex);
                 return Forbid();
-            }   
+            }
+            catch (System.UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
         }
 
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
@@ -194,14 +205,35 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug("Begin: EnvironmentsController GetExistingEnvironments()");
 
 
-            var environmentsRepsonse = await this.downstreamWebApi.CallApiForUserAsync(
+            var environmentsResponse = await this.downstreamWebApi.CallApiForUserAsync(
                 "AzureManagementApi",
                 options =>
                 {
                     options.RelativePath = "providers/Microsoft.ProcessSimple/environments?api-version=2016-11-01";
                 });
 
-            JToken remoteEnvironments = (await environmentsRepsonse.Content.ReadAsAsync<JObject>())["value"];
+            if (!environmentsResponse.IsSuccessStatusCode)
+            {
+                var responseBody = await environmentsResponse.Content.ReadAsStringAsync();
+                logger.LogError(
+                    "Could not pull environments from Azure. Status: {StatusCode}, Response: {ResponseBody}",
+                    environmentsResponse.StatusCode,
+                    responseBody);
+                if (environmentsResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    throw new System.UnauthorizedAccessException("The Azure Management API token is missing or expired.");
+                }
+                throw new System.InvalidOperationException(
+                    $"Could not pull environments from Azure. The service returned {(int)environmentsResponse.StatusCode}.");
+            }
+
+            var responseData = await environmentsResponse.Content.ReadAsAsync<JObject>();
+            JToken remoteEnvironments = responseData["value"];
+            if (remoteEnvironments == null)
+            {
+                throw new System.InvalidOperationException("The Azure environments response did not contain a value array.");
+            }
+
             List<Environment> environments = new List<Environment>();
             Tenant currentUsersTenant = this.dbContext.Tenants.First(e => e.MsId == this.msIdTenantCurrentUser);
 
