@@ -102,18 +102,26 @@
       </dxi-column>
 
       <dxi-column [width]="150" type="buttons">
-        <dxi-button name="edit"> </dxi-button>
-        <dxi-button icon="folder" text="Open in make.powerapps.com" [onClick]="onClickOpenMakerPortal"> </dxi-button>
-        <dxi-button icon="globe" text="Go to page" [onClick]="onClickOpenPage"></dxi-button>
+        <dxi-button name="edit" [visible]="isActiveApplication"></dxi-button>
+        <dxi-button icon="folder" text="Open in make.powerapps.com" [visible]="isActiveApplication" [onClick]="onClickOpenMakerPortal"> </dxi-button>
+        <dxi-button icon="globe" text="Go to page" [visible]="isActiveApplication" [onClick]="onClickOpenPage"></dxi-button>
         <dxi-button
           icon="at-icon powercid-icon-route"
           text="Assign deploymentpaths"
+          [visible]="isActiveApplication"
           [onClick]="onClickAssignDeploymentPaths"
         ></dxi-button>
         <dxi-button
-          icon="dx-icon-trash at-icon"
+          icon="eyeclose"
           text="Disable application"
+          [visible]="isActiveApplication"
           [onClick]="onClickDisableApplication"
+        ></dxi-button>
+        <dxi-button
+          icon="eyeopen"
+          text="Activate application"
+          [visible]="isDeactivatedApplication"
+          [onClick]="onClickActivateApplication"
         ></dxi-button>
       </dxi-column>
 
