@@ -18,6 +18,13 @@
 .name-cell {
   display: flex;
   align-items: center;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.name-cell .at-icon {
+  padding-right: 2px;
+  margin-right: 2px;
 }
 
 .card-priority {
