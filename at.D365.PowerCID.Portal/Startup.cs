@@ -134,7 +134,7 @@ namespace at.D365.PowerCID.Portal
             // In production, the Angular files will be served from this directory
             services.AddSpaStaticFiles(configuration =>
             {
-                configuration.RootPath = "ClientApp/dist";
+                configuration.RootPath = "ClientApp/dist/browser";
             });
             services.AddDbContext<atPowerCIDContext>(options =>
                 options.UseLazyLoadingProxies().UseSqlServer(Configuration.GetConnectionString("atPowerCIDPortal")));
