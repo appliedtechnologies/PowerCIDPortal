@@ -140,9 +140,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return NotFound();
             }
-            var wasDeactive = entity.IsDeactive;
+            var wasDeactivated = entity.IsDeactive;
             application.Patch(entity);
-            if (!wasDeactive && entity.IsDeactive)
+            if (!wasDeactivated && entity.IsDeactive)
             {
                 await RemoveApplicationDeploymentPaths(entity.Id);
             }
