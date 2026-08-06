@@ -214,6 +214,58 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Ok(createdAction);
         }
 
+        [Authorize(Roles = "atPowerCID.Admin, atPowerCID.ExternalReleaseManager")]
+        [CrossTenantDeliveryGate]
+        [HttpPost]
+        public async Task<IActionResult> SetExternalRelease([FromODataUri] int key, ODataActionParameters parameters)
+        {
+            logger.LogDebug($"Begin: SolutionsController SetExternalRelease(key: {key})");
+
+            var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if (solution == null)
+                return Forbid();
+
+            solution.IsReleasedExternally = (bool)parameters["released"];
+            await this.dbContext.SaveChangesAsync();
+
+            logger.LogDebug($"End: SolutionsController SetExternalRelease(key: {key})");
+
+            return Ok(solution);
+        }
+
+        [Authorize(Roles = "atPowerCID.Admin, atPowerCID.ExternalDeployer")]
+        [CrossTenantDeliveryGate]
+        [HttpPost]
+        public async Task<IActionResult> ExternalImport([FromODataUri] int key, ODataActionParameters parameters, [FromServices] SolutionService solutionService)
+        {
+            logger.LogDebug($"Begin: SolutionsController ExternalImport(key: {key})");
+
+            var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if (solution == null)
+                return Forbid();
+
+            if (!ExportExists(key))
+                return BadRequest("This solution version has not been exported yet. Export or import it internally at least once before delivering it externally.");
+
+            int externalEnvironmentId = (int)parameters["externalEnvironmentId"];
+            int externalDeploymentPathId = (int)parameters["externalDeploymentPathId"];
+
+            Data.Models.Action createdAction;
+
+            try
+            {
+                createdAction = await solutionService.AddExternalImportAction(key, externalEnvironmentId, externalDeploymentPathId, this.msIdCurrentUser);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
+            logger.LogDebug($"End: SolutionsController ExternalImport(key: {key})");
+
+            return Ok(createdAction);
+        }
+
         private bool IsPreviousDeploymentEnvironmentResultSuccessful(int deploymentPathId, int targetEnvironmentId, int solutionId)
         {
             logger.LogDebug($"Begin: SolutionsController IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId: {deploymentPathId}, targetEnvironmentId: {targetEnvironmentId}, solutionId: {solutionId} )");

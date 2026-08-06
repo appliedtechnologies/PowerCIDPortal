@@ -21,4 +21,5 @@ export interface Solution {
 	Actions?: Action[];
 	OverwriteUnmanagedCustomizations?: boolean;
 	EnableWorkflows?: boolean;
+	IsReleasedExternally?: boolean;
 }

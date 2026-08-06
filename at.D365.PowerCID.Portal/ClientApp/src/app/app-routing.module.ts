@@ -10,6 +10,10 @@ import { HistoryComponent } from "./components/history/history.component";
 import { SettingsComponent } from "./components/settings/settings.component";
 import { UserComponent } from "./components/user/user.component";
 import { RoleGuard } from "./shared/guards/role.guard";
+import { CrossTenantGuard } from "./shared/guards/cross-tenant.guard";
+import { ExternalEnvironmentComponent } from "./components/external-environment/external-environment.component";
+import { ExternalDeploymentpathComponent } from "./components/external-deploymentpath/external-deploymentpath.component";
+import { ExternalDeliveryComponent } from "./components/external-delivery/external-delivery.component";
 
 export const routes: Routes = [
   { path: "", component: HomeComponent, pathMatch: "full" },
@@ -75,6 +79,30 @@ export const routes: Routes = [
     canActivate: [MsalGuard, RoleGuard],
     data: {
       expectedRoles: ["atPowerCID.Admin"],
+    },
+  },
+  {
+    path: "external-environments",
+    component: ExternalEnvironmentComponent,
+    canActivate: [MsalGuard, RoleGuard, CrossTenantGuard],
+    data: {
+      expectedRoles: ["atPowerCID.Admin", "atPowerCID.ExternalReleaseManager"],
+    },
+  },
+  {
+    path: "external-deploymentpaths",
+    component: ExternalDeploymentpathComponent,
+    canActivate: [MsalGuard, RoleGuard, CrossTenantGuard],
+    data: {
+      expectedRoles: ["atPowerCID.Admin", "atPowerCID.ExternalReleaseManager"],
+    },
+  },
+  {
+    path: "external-delivery",
+    component: ExternalDeliveryComponent,
+    canActivate: [MsalGuard, RoleGuard, CrossTenantGuard],
+    data: {
+      expectedRoles: ["atPowerCID.Admin", "atPowerCID.ExternalReleaseManager", "atPowerCID.ExternalDeployer"],
     },
   },
 ];

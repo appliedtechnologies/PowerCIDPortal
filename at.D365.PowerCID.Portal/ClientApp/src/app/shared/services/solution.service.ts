@@ -86,4 +86,35 @@ export class SolutionService {
         });
     });
   }
+
+  public setExternalRelease(solutionId: number, released: boolean): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.http
+        .post(`${AppConfig.settings.api.url}/Solutions(${solutionId})/SetExternalRelease`, {
+          released: released,
+        })
+        .subscribe({
+          next: () => resolve(),
+          error: (error) => reject(error),
+        });
+    });
+  }
+
+  public externalImport(
+    solutionId: number,
+    externalEnvironmentId: number,
+    externalDeploymentPathId: number
+  ): Promise<Action> {
+    return new Promise<Action>((resolve, reject) => {
+      this.http
+        .post(`${AppConfig.settings.api.url}/Solutions(${solutionId})/ExternalImport`, {
+          externalEnvironmentId: externalEnvironmentId,
+          externalDeploymentPathId: externalDeploymentPathId,
+        })
+        .subscribe({
+          next: (data) => resolve(data as Action),
+          error: (error) => reject(error),
+        });
+    });
+  }
 }

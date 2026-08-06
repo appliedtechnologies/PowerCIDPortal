@@ -51,6 +51,13 @@
       icon="key"
       [onClick]="onClickEditPermissions"
     ></dxi-button>
+    @if (userService.isCrossTenantDeliveryEnabled) {
+      <dxi-button
+        hint="Manage external tenant permissions"
+        icon="globe"
+        [onClick]="onClickEditExternalPermissions"
+      ></dxi-button>
+    }
     <dxi-button
       hint="Delete user"
       icon="trash"
@@ -137,3 +144,42 @@
       </div>
     </dx-popup>
   }
+
+  @if (isEditExternalPermissionsPopupVisible) {
+    <dx-popup
+      [width]="480"
+      height="auto"
+      [showTitle]="true"
+  [title]="
+    'Manage External Tenant Permissions (' +
+    currentSelectedUser.Firstname +
+    ' ' +
+    currentSelectedUser.Lastname +
+    ')'
+  "
+      [hideOnOutsideClick]="false"
+      [(visible)]="isEditExternalPermissionsPopupVisible"
+      [maxHeight]="'90%'"
+      >
+      <div id="hint-permissions">
+        Select which external (customer) tenants
+        <i
+          >{{ currentSelectedUser.Firstname }} {{ currentSelectedUser.Lastname }}</i
+          >
+          could deploy externally released solutions to. Only tenants with at least one registered external environment are listed.
+        </div>
+        <dx-list
+          [dataSource]="dataSourceExternalTenants"
+          [height]="'100%'"
+          selectionMode="all"
+          selectAllMode="allPages"
+          [showSelectionControls]="true"
+          [selectedItemKeys]="selectedItemKeysPermissionExternalTenants"
+          displayExpr="Name"
+          keyExpr="Id"
+          (onSelectionChanged)="onSelectionChangedPermissionExternalTenants($event)"
+          (onContentReady)="onContentReadyPermissionExternalTenantList($event)"
+          >
+        </dx-list>
+      </dx-popup>
+    }

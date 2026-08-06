@@ -131,7 +131,7 @@ namespace at.D365.PowerCID.Portal.Services
                                 if(queuedAction.SolutionNavigation.ApplicationNavigation.ForceManagedDeployment)
                                     unmanaged = false;
 
-                                byte[] exportSolutionFile = await gitHubService.GetSolutionFileAsByteArray(queuedAction.TargetEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation, unmanaged);
+                                byte[] exportSolutionFile = await gitHubService.GetSolutionFileAsByteArray(queuedAction.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation, queuedAction.SolutionNavigation, unmanaged);
                                 AsyncJob asyncJob;
 
                                 Solution solution = dbContext.Solutions.FirstOrDefault(s => s.Id == queuedAction.Solution);

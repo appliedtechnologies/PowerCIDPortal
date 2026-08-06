@@ -19,11 +19,20 @@ import { ToolbarPreparingEvent } from "devextreme/ui/data_grid";
 import { ContentReadyEvent, SelectionChangedEvent } from "devextreme/ui/list";
 import { ValueChangedEvent } from "devextreme/ui/check_box";
 import { IAppConfig } from "src/app/shared/config/app-config.model";
+import { ExternalEnvironmentService } from "src/app/shared/services/externalenvironment.service";
+import { UserExternalTenantService } from "src/app/shared/services/userexternaltenant.service";
+import { ExternalEnvironment } from "src/app/shared/models/externalenvironment.model";
+import { UserExternalTenant } from "src/app/shared/models/userexternaltenant.model";
 
 interface UserGridRowEvent {
   row: {
     data: User;
   };
+}
+
+interface ExternalTenantOption {
+  Id: number;
+  Name: string;
 }
 
 @Component({
@@ -46,13 +55,20 @@ export class UserComponent {
   public currentSelectedUser: User;
   public currentSelectedUserRoles: AppRoleAssignment[];
 
+  public isEditExternalPermissionsPopupVisible: boolean;
+  public selectedItemKeysPermissionExternalTenants: number[];
+  public dataSourceExternalTenants: ExternalTenantOption[] = [];
+
   private isInitPermissionEnvironmentSelection: boolean;
+  private isInitPermissionExternalTenantSelection: boolean;
 
   constructor(
-    private userService: UserService,
+    public userService: UserService,
     private layoutService: LayoutService,
     private environmentService: EnvironmentService,
-    private userEnvironmentService: UserEnvironmentService
+    private userEnvironmentService: UserEnvironmentService,
+    private externalEnvironmentService: ExternalEnvironmentService,
+    private userExternalTenantService: UserExternalTenantService
   ) {
     this.dataSourceUsers = new DataSource({
       store: this.userService.getStore(),
@@ -69,6 +85,7 @@ export class UserComponent {
 
     this.onClickEditRoles = this.onClickEditRoles.bind(this);
     this.onClickEditPermissions = this.onClickEditPermissions.bind(this);
+    this.onClickEditExternalPermissions = this.onClickEditExternalPermissions.bind(this);
     this.onClickDeactivateUser = this.onClickDeactivateUser.bind(this);
   }
   
@@ -176,6 +193,63 @@ export class UserComponent {
         this.isEditPermissionsPopupVisible = true;
         this.layoutService.change(LayoutParameter.ShowLoading, false);
       });
+  }
+
+  public onContentReadyPermissionExternalTenantList(e: ContentReadyEvent<ExternalTenantOption, number>): void {
+    void e;
+  }
+
+  public onSelectionChangedPermissionExternalTenants(e: SelectionChangedEvent<ExternalTenantOption, number>): void {
+    if (!this.isInitPermissionExternalTenantSelection) {
+      (e.addedItems as ExternalTenantOption[]).forEach((tenant) => {
+        this.userExternalTenantService
+          .addTenantPermission(this.currentSelectedUser.Id, tenant.Id)
+          .then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+      });
+      (e.removedItems as ExternalTenantOption[]).forEach((tenant) => {
+        this.userExternalTenantService
+          .removeTenantPermission(this.currentSelectedUser.Id, tenant.Id)
+          .then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+      });
+    } else this.isInitPermissionExternalTenantSelection = false;
+  }
+
+  public onClickEditExternalPermissions(e: UserGridRowEvent): void {
+    this.currentSelectedUser = e.row.data;
+
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+
+    const promiseExternalTenants = this.externalEnvironmentService
+      .getStore()
+      .load({ expand: ["EnvironmentNavigation.TenantNavigation"] })
+      .then((externalEnvironments: ExternalEnvironment[]) => {
+        const tenantsById = new Map<number, ExternalTenantOption>();
+        externalEnvironments.forEach((externalEnvironment) => {
+          const tenant = externalEnvironment.EnvironmentNavigation?.TenantNavigation;
+          if (tenant && !tenantsById.has(tenant.Id))
+            tenantsById.set(tenant.Id, { Id: tenant.Id, Name: tenant.Name });
+        });
+        this.dataSourceExternalTenants = Array.from(tenantsById.values());
+      });
+
+    const promiseUserExternalTenants = this.userExternalTenantService
+      .getStore()
+      .load({ filter: ["User", "=", this.currentSelectedUser.Id] })
+      .then((userExternalTenants: UserExternalTenant[]) => {
+        if (
+          this.selectedItemKeysPermissionExternalTenants === undefined &&
+          userExternalTenants.length > 0
+        )
+          this.isInitPermissionExternalTenantSelection = true;
+        this.selectedItemKeysPermissionExternalTenants = userExternalTenants.map(
+          (e) => e.Tenant
+        );
+      });
+
+    Promise.all([promiseExternalTenants, promiseUserExternalTenants]).finally(() => {
+      this.isEditExternalPermissionsPopupVisible = true;
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
+    });
   }
 
   public onClickEditRoles(e: UserGridRowEvent) {

@@ -17,6 +17,10 @@ import {
 import { PublisherService } from "src/app/shared/services/publisher.service";
 import { ApplicationdeploymentpathService } from "src/app/shared/services/applicationdeploymentpath.service";
 import { confirm } from 'devextreme/ui/dialog';
+import { ExternalDeploymentPath } from "src/app/shared/models/externaldeploymentpath.model";
+import { ExternalDeploymentPathService } from "src/app/shared/services/externaldeploymentpath.service";
+import { ApplicationExternalDeploymentPathService } from "src/app/shared/services/applicationexternaldeploymentpath.service";
+import { UserService } from "src/app/shared/services/user.service";
 
 @Component({
     selector: "app-application",
@@ -45,18 +49,29 @@ export class ApplicationComponent {
   applicationDeploymentPaths;
   currentApplicationName: string;
 
+  isAssignExternalDeploymentPaths = false;
+  externalDeploymentPaths: ExternalDeploymentPath[];
+  applicationExternalDeploymentPaths;
+
   constructor(
+    public userService: UserService,
     private applicationService: ApplicationService,
     private environmentService: EnvironmentService,
     private publisherService: PublisherService,
     private deploymentPathService: DeploymentpathService,
     private applicationDeploymentPathService: ApplicationdeploymentpathService,
+    private externalDeploymentPathService: ExternalDeploymentPathService,
+    private applicationExternalDeploymentPathService: ApplicationExternalDeploymentPathService,
     private layoutService: LayoutService
   ) {
     this.onAdd = this.onAdd.bind(this);
     this.onRemove = this.onRemove.bind(this);
     this.onReorder = this.onReorder.bind(this);
+    this.onAddExternal = this.onAddExternal.bind(this);
+    this.onRemoveExternal = this.onRemoveExternal.bind(this);
+    this.onReorderExternal = this.onReorderExternal.bind(this);
     this.onClickAssignDeploymentPaths = this.onClickAssignDeploymentPaths.bind(this);
+    this.onClickAssignExternalDeploymentPaths = this.onClickAssignExternalDeploymentPaths.bind(this);
     this.onClickDisableApplication = this.onClickDisableApplication.bind(this);
     this.onClickActivateApplication = this.onClickActivateApplication.bind(this);
     this.onClickToggleDeactivatedApplications = this.onClickToggleDeactivatedApplications.bind(this);
@@ -230,6 +245,83 @@ export class ApplicationComponent {
       });
 
     this.isAssignDevelopmentPaths = true;
+  }
+
+  onAddExternal(e) {
+    if (this.applicationExternalDeploymentPaths.some((x) => x.Id == e.itemData.Id)) {
+      e.cancel = true;
+    } else {
+      e.toData.splice(e.toIndex, 0, e.itemData);
+      const itemDataId = e.itemData.Id;
+      const toIndex = e.toIndex + 1;
+
+      this.applicationExternalDeploymentPathService.getStore().insert({
+        Application: this.currentApplicationId,
+        ExternalDeploymentPath: itemDataId,
+        HierarchieNumber: toIndex,
+      }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+    }
+  }
+
+  onRemoveExternal(e) {
+    e.fromData.splice(e.fromIndex, 1);
+    const itemDataId = e.itemData.Id;
+
+    this.applicationExternalDeploymentPathService.getStore().remove({
+      Application: this.currentApplicationId,
+      ExternalDeploymentPath: itemDataId,
+    }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+  }
+
+  onReorderExternal(e) {
+    const itemDataId = e.itemData.Id;
+    const fromIndex = e.fromIndex + 1;
+    const toIndex = e.toIndex + 1;
+
+    this.applicationExternalDeploymentPathService
+      .getStore()
+      .update(
+        {
+          Application: this.currentApplicationId,
+          ExternalDeploymentPath: itemDataId,
+        },
+        { ToIndex: toIndex, FromIndex: fromIndex }
+      )
+      .then(() => {
+        e.toData.splice(e.fromIndex, 1);
+        e.toData.splice(e.toIndex, 0, e.itemData);
+        this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000});
+      });
+  }
+
+  onClickAssignExternalDeploymentPaths(e) {
+    this.currentApplicationName = e.row.data.Name;
+    this.currentApplicationId = e.row.data.Id;
+    this.externalDeploymentPathService
+      .getStore()
+      .load()
+      .then((d) => {
+        this.externalDeploymentPaths = d;
+      });
+
+    this.applicationService
+      .getStore()
+      .load({
+        filter: "Id eq " + this.currentApplicationId,
+        expand: ["ExternalDeploymentPaths", "ApplicationExternalDeploymentPaths"],
+        select: "ExternalDeploymentPaths",
+      })
+      .then((ad) => {
+        const application = ad[0];
+        const sorted: ExternalDeploymentPath[] = [];
+        for (let i = 0; i < (application?.ApplicationExternalDeploymentPaths.length ?? 0); i++) {
+          const hierarchieNumber = application.ApplicationExternalDeploymentPaths[i].HierarchieNumber;
+          sorted[hierarchieNumber - 1] = application.ExternalDeploymentPaths[i];
+        }
+        this.applicationExternalDeploymentPaths = sorted;
+      });
+
+    this.isAssignExternalDeploymentPaths = true;
   }
 
   onClickDisableApplication(e) {

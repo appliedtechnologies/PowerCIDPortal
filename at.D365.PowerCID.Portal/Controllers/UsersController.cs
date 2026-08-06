@@ -298,6 +298,20 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Lets the frontend check whether cross-tenant delivery is enabled for the current tenant, so it can
+        /// conditionally show the related navigation entries and screens.
+        /// </summary>
+        [HttpPost]
+        public IActionResult GetCrossTenantDeliveryStatus()
+        {
+            logger.LogDebug("Begin & End: UsersController GetCrossTenantDeliveryStatus()");
+
+            bool isEnabled = at.D365.PowerCID.Portal.Helpers.CrossTenantDeliveryHelper.IsTenantAllowed(this.configuration, this.msIdTenantCurrentUser);
+
+            return Ok(new { IsEnabled = isEnabled });
+        }
+
         private User UpdateUserIfNeeded(User currentUser)
         {
             logger.LogDebug($"Begin: UsersController UpdateUserIfNeeded(currentUser MsId: {currentUser.MsId})");

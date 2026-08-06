@@ -52,12 +52,17 @@ namespace at.D365.PowerCID.Portal
             builder.EntitySet<ConnectionReference>("ConnectionReferences");
             builder.EntitySet<EnvironmentVariable>("EnvironmentVariables");
             builder.EntitySet<AsyncJob>("AsyncJobs");
+            builder.EntitySet<ExternalEnvironment>("ExternalEnvironments");
+            builder.EntitySet<ExternalDeploymentPath>("ExternalDeploymentPaths");
 
             builder.EntitySet<EnvironmentVariableEnvironment>("EnvironmentVariableEnvironments").EntityType.HasKey(e => new { e.EnvironmentVariable, e.Environment });
             builder.EntitySet<ConnectionReferenceEnvironment>("ConnectionReferenceEnvironments").EntityType.HasKey(e => new { e.ConnectionReference, e.Environment });
             builder.EntitySet<DeploymentPathEnvironment>("DeploymentPathEnvironments").EntityType.HasKey(e => new { e.DeploymentPath, e.Environment }).Property(e => e.Id);
             builder.EntitySet<ApplicationDeploymentPath>("ApplicationDeploymentPaths").EntityType.HasKey(ad => new { ad.Application, ad.DeploymentPath });
             builder.EntitySet<UserEnvironment>("UserEnvironments").EntityType.HasKey(e => new { e.User, e.Environment });
+            builder.EntitySet<ExternalDeploymentPathEnvironment>("ExternalDeploymentPathEnvironments").EntityType.HasKey(e => new { e.ExternalDeploymentPath, e.ExternalEnvironment }).Property(e => e.Id);
+            builder.EntitySet<ApplicationExternalDeploymentPath>("ApplicationExternalDeploymentPaths").EntityType.HasKey(ad => new { ad.Application, ad.ExternalDeploymentPath });
+            builder.EntitySet<UserExternalTenant>("UserExternalTenants").EntityType.HasKey(e => new { e.User, e.Tenant });
 
             builder.EntityType<User>().Collection.Action("Login");
 
@@ -112,6 +117,17 @@ namespace at.D365.PowerCID.Portal
             builder.EntityType<Action>().Action("CancelImport");
 
             builder.EntityType<Tenant>().Action("GetGitHubRepositories");
+
+            builder.EntityType<ExternalEnvironment>().Collection.Action("GetRegistrableEnvironments");
+
+            var setExternalRelease = builder.EntityType<Solution>().Action("SetExternalRelease");
+            setExternalRelease.Parameter<bool>("released");
+
+            var externalImport = builder.EntityType<Solution>().Action("ExternalImport").ReturnsFromEntitySet<Action>("Actions");
+            externalImport.Parameter<int>("externalEnvironmentId");
+            externalImport.Parameter<int>("externalDeploymentPathId");
+
+            builder.EntityType<User>().Collection.Action("GetCrossTenantDeliveryStatus");
 
             return builder.GetEdmModel();
         }

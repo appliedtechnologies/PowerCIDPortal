@@ -115,6 +115,35 @@ export class ODataService {
             Environment: "Int32",
           },
         },
+        ExternalEnvironments: {
+          key: "Id",
+          keyType: "Int32",
+        },
+        ExternalDeploymentPaths: {
+          key: "Id",
+          keyType: "Int32",
+        },
+        ExternalDeploymentPathEnvironments: {
+          key: ["ExternalDeploymentPath", "ExternalEnvironment"],
+          keyType: {
+            ExternalDeploymentPath: "Int32",
+            ExternalEnvironment: "Int32",
+          },
+        },
+        ApplicationExternalDeploymentPaths: {
+          key: ["Application", "ExternalDeploymentPath"],
+          keyType: {
+            Application: "Int32",
+            ExternalDeploymentPath: "Int32",
+          },
+        },
+        UserExternalTenants: {
+          key: ["User", "Tenant"],
+          keyType: {
+            User: "Int32",
+            Tenant: "Int32",
+          },
+        },
       },
     });
   }

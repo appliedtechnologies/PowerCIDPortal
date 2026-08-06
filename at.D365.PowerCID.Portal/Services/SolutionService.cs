@@ -102,6 +102,34 @@ namespace at.D365.PowerCID.Portal.Services
             return newAction;
         }
 
+        public async Task<Data.Models.Action> AddExternalImportAction(int key, int externalEnvironmentId, int externalDeploymentPathId, Guid msIdCurrentUser)
+        {
+            logger.LogDebug($"Begin: SolutionService AddExternalImportAction(key: {key}, externalEnvironmentId: {externalEnvironmentId}, externalDeploymentPathId: {externalDeploymentPathId}, msIdCurrentUser: {msIdCurrentUser.ToString()})");
+
+            Solution solution = dbContext.Solutions.First(e => e.Id == key);
+            User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
+
+            ExternalEnvironment externalEnvironment = await this.CheckExternalImportPermission(user.Id, solution, externalEnvironmentId, externalDeploymentPathId);
+
+            Data.Models.Action newAction = new Data.Models.Action
+            {
+                Name = $"{solution.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
+                TargetEnvironment = externalEnvironment.Environment,
+                Type = 2,
+                Status = 1,
+                StartTime = DateTime.Now,
+                Solution = solution.Id,
+                IsExternalDelivery = true
+            };
+
+            dbContext.Add(newAction);
+            await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
+
+            logger.LogDebug($"End: SolutionService AddExternalImportAction(key: {key}, externalEnvironmentId: {externalEnvironmentId}, externalDeploymentPathId: {externalDeploymentPathId}, msIdCurrentUser: {msIdCurrentUser.ToString()})");
+
+            return newAction;
+        }
+
         public async Task<Data.Models.Action> AddApplyUpgradeAction(int solutionId, int targetEnvironmentId, Guid msIdCurrentUser)
         {
             logger.LogDebug($"Begin: SolutionService  AddApplyUpgradeAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
@@ -402,6 +430,45 @@ namespace at.D365.PowerCID.Portal.Services
                 throw new Exception("User does not have permission within PowerCID Portal to import/apply upgrade on target environment. Your administrator can assign the permission via Power CID Portal user management.");
 
             logger.LogDebug($"End: SolutionService CheckImportPermission(userId: {userId}, environmentId: {environmentId})");
+        }
+
+        private async Task<ExternalEnvironment> CheckExternalImportPermission(int userId, Solution solution, int externalEnvironmentId, int externalDeploymentPathId)
+        {
+            logger.LogDebug($"Begin: SolutionService CheckExternalImportPermission(userId: {userId}, solution Id: {solution.Id}, externalEnvironmentId: {externalEnvironmentId}, externalDeploymentPathId: {externalDeploymentPathId})");
+
+            if (!solution.IsReleasedExternally)
+                throw new Exception("This solution version is not released for external delivery.");
+
+            ExternalEnvironment externalEnvironment = await this.dbContext.ExternalEnvironments.FirstOrDefaultAsync(e => e.Id == externalEnvironmentId);
+            if (externalEnvironment == null)
+                throw new Exception("The external environment does not exist.");
+
+            ExternalDeploymentPathEnvironment step = await this.dbContext.ExternalDeploymentPathEnvironments.FirstOrDefaultAsync(e => e.ExternalDeploymentPath == externalDeploymentPathId && e.ExternalEnvironment == externalEnvironmentId);
+            if (step == null)
+                throw new Exception("The external environment is not part of the selected external deployment path.");
+
+            Guid targetTenantMsId = await this.dbContext.Environments
+                .Where(e => e.Id == externalEnvironment.Environment)
+                .Select(e => e.TenantNavigation.MsId)
+                .FirstAsync();
+
+            bool hasPermission = await this.dbContext.UserExternalTenants.AnyAsync(x => x.User == userId && x.TenantNavigation.MsId == targetTenantMsId);
+            if (!hasPermission)
+                throw new Exception("User does not have permission within PowerCID Portal to deploy into this external tenant. Your administrator can assign the permission via Power CID Portal user management.");
+
+            if (step.StepNumber > 1)
+            {
+                int previousExternalEnvironmentId = (await this.dbContext.ExternalDeploymentPathEnvironments.FirstAsync(x => x.ExternalDeploymentPath == externalDeploymentPathId && x.StepNumber == step.StepNumber - 1)).ExternalEnvironment;
+                int previousEnvironmentId = (await this.dbContext.ExternalEnvironments.FirstAsync(e => e.Id == previousExternalEnvironmentId)).Environment;
+
+                bool previousStepSucceeded = this.dbContext.Actions.Any(x => x.Solution == solution.Id && x.TargetEnvironment == previousEnvironmentId && x.Result == 1 && x.IsExternalDelivery);
+                if (!previousStepSucceeded)
+                    throw new Exception("Can't skip a previous external deployment environment.");
+            }
+
+            logger.LogDebug($"End: SolutionService CheckExternalImportPermission(userId: {userId}, solution Id: {solution.Id}, externalEnvironmentId: {externalEnvironmentId}, externalDeploymentPathId: {externalDeploymentPathId})");
+
+            return externalEnvironment;
         }
 
         private async Task CheckIsConnectionOwerSet(int environmentId)

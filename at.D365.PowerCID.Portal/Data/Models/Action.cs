@@ -23,6 +23,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public bool? ExportOnly { get; set; }
         public int? ImportTargetEnvironment { get; set; }
         public double? Progress { get; set; }
+        public bool IsExternalDelivery { get; set; }
 
         public virtual User CreatedByNavigation { get; set; }
         public virtual Solution SolutionNavigation { get; set; }

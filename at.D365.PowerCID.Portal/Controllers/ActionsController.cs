@@ -29,7 +29,10 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: ActionsController Get(key: {key})");
 
-            return base.dbContext.Actions.Where(e => e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser && e.Id == key);
+            return base.dbContext.Actions.Where(e =>
+                (e.IsExternalDelivery && e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                    || !e.IsExternalDelivery && e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)
+                && e.Id == key);
         }
 
         // GET: odata/Actions
@@ -38,7 +41,12 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: ActionsController Get()");
 
-            return base.dbContext.Actions.Where(e => e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            // Internal deliveries are scoped by the target environment's tenant. External deliveries must instead
+            // be scoped by the solution (vendor) tenant, otherwise they would leak into the customer tenant's
+            // history and be invisible to the vendor tenant that actually performed the delivery.
+            return base.dbContext.Actions.Where(e =>
+                e.IsExternalDelivery && e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                || !e.IsExternalDelivery && e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]

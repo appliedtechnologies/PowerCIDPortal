@@ -1,0 +1,27 @@
+#gridContainer {
+  margin-top: 20px;
+}
+
+#info {
+  text-align: center;
+  margin-top: 5px;
+}
+
+.header {
+  display: flex;
+}
+.header p {
+  font-weight: bold;
+  text-align: center;
+  width: 50%;
+}
+
+::ng-deep .widget-container {
+  min-height: 0;
+  display: flex;
+}
+
+::ng-deep .widget-container > * {
+  width: 50%;
+  padding: 10px;
+}

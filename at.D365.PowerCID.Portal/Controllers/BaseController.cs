@@ -7,7 +7,7 @@ using Microsoft.Identity.Web;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {    
-    [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager, atPowerCID.User")]
+    [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager, atPowerCID.User, atPowerCID.ExternalReleaseManager, atPowerCID.ExternalDeployer")]
     public abstract class BaseController : ODataController
     {
         protected atPowerCIDContext dbContext;

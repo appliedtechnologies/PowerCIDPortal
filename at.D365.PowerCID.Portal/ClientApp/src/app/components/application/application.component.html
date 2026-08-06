@@ -122,6 +122,14 @@
           [visible]="isActiveApplication"
           [onClick]="onClickAssignDeploymentPaths"
         ></dxi-button>
+        @if (userService.isCrossTenantDeliveryEnabled) {
+          <dxi-button
+            icon="globe"
+            text="Assign external deployment paths"
+            [visible]="isActiveApplication"
+            [onClick]="onClickAssignExternalDeploymentPaths"
+          ></dxi-button>
+        }
         <dxi-button
           icon="eyeclose"
           text="Disable application"
@@ -272,6 +280,63 @@
               <dxo-item-dragging
                 group="deploymentPaths"
                 [data]="deploymentPaths"
+                [allowReordering]="false"
+                [onDragStart]="onDragStart"
+                >
+              </dxo-item-dragging>
+              <div *dxTemplate="let data of 'item'">
+                <div title="{{data.Name}}">{{data.Name}}</div>
+              </div>
+            </dx-list>
+          </div>
+        </dx-popup>
+      }
+
+      @if (isAssignExternalDeploymentPaths) {
+        <dx-popup
+          [width]="700"
+          height="auto"
+          [showTitle]="true"
+          [title]="'Assign and prioritize External Deployment Paths'"
+          [hideOnOutsideClick]="true"
+          [(visible)]="isAssignExternalDeploymentPaths"
+          [maxHeight]="'90%'"
+          >
+          <p id="info">Drag and drop one or multiple external deployment paths to the application for assigning them. The priority decreases from top to bottom.</p>
+          <div class="header">
+            <p>Application: <i>{{ this.currentApplicationName }}</i></p>
+            <p>External Deployment Paths</p>
+          </div>
+          <div class="widget-container">
+            <dx-list
+              [dataSource]="applicationExternalDeploymentPaths"
+              [repaintChangesOnly]="true"
+              keyExpr="Id"
+              displayExpr="Name"
+              noDataText="No external deployment path assigned "
+              >
+              <dxo-item-dragging
+                group="externalDeploymentPaths"
+                [data]="applicationExternalDeploymentPaths"
+                [allowReordering]="true"
+                [onDragStart]="onDragStart"
+                [onAdd]="onAddExternal"
+                [onRemove]="onRemoveExternal"
+                [onReorder]="onReorderExternal"
+                >
+              </dxo-item-dragging>
+              <div *dxTemplate="let data of 'item'">
+                <div title="{{data.Name}}">{{data.Name}}</div>
+              </div>
+            </dx-list>
+            <dx-list
+              [dataSource]="externalDeploymentPaths"
+              [repaintChangesOnly]="true"
+              keyExpr="Id"
+              >
+              <dxo-item-dragging
+                group="externalDeploymentPaths"
+                [data]="externalDeploymentPaths"
                 [allowReordering]="false"
                 [onDragStart]="onDragStart"
                 >

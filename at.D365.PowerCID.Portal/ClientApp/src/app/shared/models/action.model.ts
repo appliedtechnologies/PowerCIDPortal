@@ -28,4 +28,5 @@ export interface Action {
   AsyncOperationId?: string;
   JobId?: string;
   Progress?: number;
+  IsExternalDelivery?: boolean;
 }

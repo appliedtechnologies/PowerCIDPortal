@@ -1,0 +1,77 @@
+<h1>External Environments</h1>
+<p>Register environments belonging to foreign (customer) tenants as valid targets for cross-tenant solution delivery.</p>
+
+<dx-data-grid
+  id="gridContainer"
+  [dataSource]="dataSourceExternalEnvironments"
+  [showRowLines]="true"
+  [showBorders]="true"
+  [allowColumnResizing]="true"
+  [columnAutoWidth]="true"
+  [width]="'100%'"
+  (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
+  >
+  <dxo-sorting mode="multiple"></dxo-sorting>
+  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_ExternalEnvironments_GridState"></dxo-state-storing>
+  <dxo-header-filter [visible]="true"></dxo-header-filter>
+  <dxo-search-panel
+    [visible]="true"
+    [highlightCaseSensitive]="false"
+    placeholder="Search..."
+  ></dxo-search-panel>
+  <dxo-paging [pageSize]="20"></dxo-paging>
+  <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
+
+  <dxi-column dataField="Alias" caption="Alias"></dxi-column>
+  <dxi-column dataField="EnvironmentNavigation.Name" caption="Environment"></dxi-column>
+  <dxi-column dataField="EnvironmentNavigation.TenantNavigation.Name" caption="Tenant"></dxi-column>
+  <dxi-column dataField="EnvironmentNavigation.BasicUrl" caption="URL"></dxi-column>
+  <dxi-column dataField="IsDeactive" caption="Deactivated" dataType="boolean"></dxi-column>
+
+  <dxi-column type="buttons" [width]="180">
+    <dxi-button icon="eyeclose" hint="Deactivate" [visible]="isActive" [onClick]="onClickDeactivate"></dxi-button>
+    <dxi-button icon="eyeopen" hint="Activate" [visible]="isDeactivated" [onClick]="onClickActivate"></dxi-button>
+    <dxi-button icon="trash" hint="Remove registration" [onClick]="onClickDelete"></dxi-button>
+  </dxi-column>
+</dx-data-grid>
+
+@if (isRegisterPopupVisible) {
+  <dx-popup
+    [width]="480"
+    height="auto"
+    [showTitle]="true"
+    title="Register environment for external delivery"
+    [hideOnOutsideClick]="true"
+    [(visible)]="isRegisterPopupVisible"
+    >
+    <div class="dx-fieldset">
+      <div class="dx-field">
+        <div class="dx-field-label">Environment</div>
+        <div class="dx-field-value">
+          <dx-select-box
+            [dataSource]="registrableEnvironments"
+            displayExpr="Name"
+            [grouped]="true"
+            groupExpr="TenantName"
+            placeholder="Select an environment"
+            noDataText="No unregistered environments found."
+            (onValueChanged)="onValueChangedRegistrableEnvironment($event)"
+          ></dx-select-box>
+        </div>
+      </div>
+      <div class="dx-field">
+        <div class="dx-field-label">Alias (optional)</div>
+        <div class="dx-field-value">
+          <dx-text-box [(value)]="newAlias" placeholder="e.g. Contoso - Production"></dx-text-box>
+        </div>
+      </div>
+    </div>
+    <dx-button
+      text="Register"
+      type="success"
+      icon="save"
+      [width]="'100%'"
+      (onClick)="onClickRegisterEnvironment()"
+    ></dx-button>
+  </dx-popup>
+}

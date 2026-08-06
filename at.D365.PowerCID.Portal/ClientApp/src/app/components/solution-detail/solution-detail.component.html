@@ -103,3 +103,17 @@
     </dxi-item>
   }
 </dx-form>
+
+@if (!this.isAdd && this.canManageExternalRelease) {
+  <div id="external-release-section">
+    <div class="dx-field">
+      <div class="dx-field-label">Released for external delivery</div>
+      <div class="dx-field-value">
+        <dx-check-box
+          [value]="this.isReleasedExternally"
+          (onValueChanged)="onValueChangedIsReleasedExternally($event)"
+        ></dx-check-box>
+      </div>
+    </div>
+  </div>
+}

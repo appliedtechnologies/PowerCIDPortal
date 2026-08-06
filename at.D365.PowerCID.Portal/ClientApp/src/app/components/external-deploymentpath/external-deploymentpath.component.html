@@ -1,0 +1,139 @@
+<h1>External Deployment Paths</h1>
+<p>Manage deployment paths used to ship externally released solutions into environments of foreign (customer) tenants.</p>
+
+<dx-data-grid
+  id="gridContainer"
+  [dataSource]="dataSourceExternalDeploymentPaths"
+  [showRowLines]="true"
+  [showBorders]="true"
+  [allowColumnResizing]="true"
+  [columnAutoWidth]="true"
+  [width]="'100%'"
+  (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
+  >
+  <dxo-sorting mode="multiple"></dxo-sorting>
+  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_ExternalDeploymentPaths_GridState"></dxo-state-storing>
+  <dxo-search-panel
+    [visible]="true"
+    [highlightCaseSensitive]="false"
+    placeholder="Search..."
+  ></dxo-search-panel>
+  <dxo-paging [pageSize]="20"></dxo-paging>
+  <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
+
+  <dxi-column dataField="Name" caption="Name" sortOrder="asc"></dxi-column>
+  <dxi-column dataField="CreatedOn" caption="Created on" dataType="datetime" format="dd.MM.yyyy HH:mm:ss"></dxi-column>
+
+  <dxi-column type="buttons" [width]="200">
+    <dxi-button icon="at-icon powercid-icon-route" hint="Manage steps" [onClick]="onClickManageSteps"></dxi-button>
+    <dxi-button icon="rename" hint="Rename" [onClick]="onClickOpenRename"></dxi-button>
+    <dxi-button icon="trash" hint="Delete" [onClick]="onClickDelete"></dxi-button>
+  </dxi-column>
+</dx-data-grid>
+
+@if (isAddPopupVisible) {
+  <dx-popup
+    [width]="480"
+    height="auto"
+    [showTitle]="true"
+    title="Add external deployment path"
+    [hideOnOutsideClick]="true"
+    [(visible)]="isAddPopupVisible"
+    >
+    <div class="dx-field">
+      <div class="dx-field-label">Name</div>
+      <div class="dx-field-value">
+        <dx-text-box [(value)]="newExternalDeploymentPath.Name"></dx-text-box>
+      </div>
+    </div>
+    <dx-button
+      text="Save"
+      type="success"
+      icon="save"
+      [width]="'100%'"
+      (onClick)="onClickSaveAdd()"
+    ></dx-button>
+  </dx-popup>
+}
+
+@if (isRenamePopupVisible) {
+  <dx-popup
+    [width]="480"
+    height="auto"
+    [showTitle]="true"
+    title="Rename external deployment path"
+    [hideOnOutsideClick]="true"
+    [(visible)]="isRenamePopupVisible"
+    >
+    <div class="dx-field">
+      <div class="dx-field-label">Name</div>
+      <div class="dx-field-value">
+        <dx-text-box [(value)]="externalDeploymentPathToEdit.Name"></dx-text-box>
+      </div>
+    </div>
+    <dx-button
+      text="Save"
+      type="success"
+      icon="save"
+      [width]="'100%'"
+      (onClick)="onClickSaveRename()"
+    ></dx-button>
+  </dx-popup>
+}
+
+@if (isManageStepsPopupVisible) {
+  <dx-popup
+    [width]="700"
+    height="auto"
+    [showTitle]="true"
+    [title]="'Manage Steps: ' + currentExternalDeploymentPathName"
+    [hideOnOutsideClick]="true"
+    [(visible)]="isManageStepsPopupVisible"
+    [maxHeight]="'90%'"
+    >
+    <p id="info">Drag and drop one or multiple external environments to the path for assigning them as steps. All environments of one path must belong to the same foreign tenant. The order decreases from top to bottom.</p>
+    <div class="header">
+      <p>Assigned steps</p>
+      <p>Available external environments</p>
+    </div>
+    <div class="widget-container">
+      <dx-list
+        [dataSource]="assignedSteps"
+        [repaintChangesOnly]="true"
+        keyExpr="Id"
+        noDataText="No environment assigned yet"
+        >
+        <dxo-item-dragging
+          group="externalDeploymentPathSteps"
+          [data]="assignedSteps"
+          [allowReordering]="true"
+          [onDragStart]="onDragStart"
+          [onAdd]="onAddStep"
+          [onRemove]="onRemoveStep"
+          [onReorder]="onReorderStep"
+          >
+        </dxo-item-dragging>
+        <div *dxTemplate="let data of 'item'">
+          <div title="{{displayName(data)}}">{{displayName(data)}}</div>
+        </div>
+      </dx-list>
+      <dx-list
+        [dataSource]="availableExternalEnvironments"
+        [repaintChangesOnly]="true"
+        keyExpr="Id"
+        noDataText="No further environments available"
+        >
+        <dxo-item-dragging
+          group="externalDeploymentPathSteps"
+          [data]="availableExternalEnvironments"
+          [allowReordering]="false"
+          [onDragStart]="onDragStart"
+          >
+        </dxo-item-dragging>
+        <div *dxTemplate="let data of 'item'">
+          <div title="{{displayName(data)}}">{{displayName(data)}}</div>
+        </div>
+      </dx-list>
+    </div>
+  </dx-popup>
+}

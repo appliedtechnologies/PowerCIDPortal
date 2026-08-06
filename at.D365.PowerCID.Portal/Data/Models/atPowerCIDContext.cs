@@ -43,6 +43,12 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public virtual DbSet<Publisher> Publishers { get; set; }
         public virtual DbSet<AsyncJob> AsyncJobs { get; set; }
         public virtual DbSet<UserEnvironment> UserEnvironments { get; set; }
+
+        public virtual DbSet<ExternalEnvironment> ExternalEnvironments { get; set; }
+        public virtual DbSet<ExternalDeploymentPath> ExternalDeploymentPaths { get; set; }
+        public virtual DbSet<ExternalDeploymentPathEnvironment> ExternalDeploymentPathEnvironments { get; set; }
+        public virtual DbSet<ApplicationExternalDeploymentPath> ApplicationExternalDeploymentPaths { get; set; }
+        public virtual DbSet<UserExternalTenant> UserExternalTenants { get; set; }
         public Guid MsIdCurrentUser { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -216,6 +222,96 @@ namespace at.D365.PowerCID.Portal.Data.Models
 
 
             });
+
+            modelBuilder.Entity<ExternalEnvironment>(entity =>
+            {
+                entity.ToTable("ExternalEnvironment");
+
+                entity.Property(e => e.Alias)
+                    .HasMaxLength(250)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedBy).HasColumnName("Created By");
+
+                entity.Property(e => e.CreatedOn).HasColumnName("Created On");
+
+                entity.Property(e => e.ModifiedBy).HasColumnName("Modified By");
+
+                entity.Property(e => e.ModifiedOn).HasColumnName("Modified On");
+
+                entity.HasIndex(e => e.Environment).IsUnique();
+
+                entity.HasOne(d => d.EnvironmentNavigation)
+                    .WithOne(e => e.ExternalEnvironmentNavigation)
+                    .HasForeignKey<ExternalEnvironment>(d => d.Environment)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_ExternalEnvironment_Environment");
+
+                entity.HasOne(d => d.CreatedByNavigation)
+                    .WithMany(p => p.ExternalEnvironmentCreatedByNavigations)
+                    .HasForeignKey(d => d.CreatedBy)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_ExternalEnvironment_Created_By");
+
+                entity.HasOne(d => d.ModifiedByNavigation)
+                    .WithMany(p => p.ExternalEnvironmentModifiedByNavigations)
+                    .HasForeignKey(d => d.ModifiedBy)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_ExternalEnvironment_Modified_By");
+            });
+
+            modelBuilder.Entity<ExternalDeploymentPath>(entity =>
+            {
+                entity.ToTable("ExternalDeploymentPath");
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(250)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.CreatedBy).HasColumnName("Created By");
+
+                entity.Property(e => e.CreatedOn).HasColumnName("Created On");
+
+                entity.Property(e => e.ModifiedBy).HasColumnName("Modified By");
+
+                entity.Property(e => e.ModifiedOn).HasColumnName("Modified On");
+
+                entity.HasOne(d => d.TenantNavigation)
+                    .WithMany(p => p.ExternalDeploymentPaths)
+                    .HasForeignKey(d => d.Tenant)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_ExternalDeploymentPath_Tenant");
+
+                entity.HasOne(d => d.CreatedByNavigation)
+                    .WithMany(p => p.ExternalDeploymentPathCreatedByNavigations)
+                    .HasForeignKey(d => d.CreatedBy)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_ExternalDeploymentPath_Created_By");
+
+                entity.HasOne(d => d.ModifiedByNavigation)
+                    .WithMany(p => p.ExternalDeploymentPathModifiedByNavigations)
+                    .HasForeignKey(d => d.ModifiedBy)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_ExternalDeploymentPath_Modified_By");
+
+                entity
+                    .HasMany(d => d.ExternalEnvironments)
+                    .WithMany(e => e.ExternalDeploymentPaths)
+                    .UsingEntity<ExternalDeploymentPathEnvironment>(
+                        j => j.HasOne(de => de.ExternalEnvironmentNavigation).WithMany(e => e.ExternalDeploymentPathEnvironments).HasForeignKey(e => e.ExternalEnvironment).HasConstraintName("FK_ExternalDeploymentPathEnvironment_ExternalEnvironment"),
+                        j => j.HasOne(de => de.ExternalDeploymentPathNavigation).WithMany(d => d.ExternalDeploymentPathEnvironments).HasForeignKey(e => e.ExternalDeploymentPath).HasConstraintName("FK_ExternalDeploymentPathEnvironment_ExternalDeploymentPath")
+                    ).ToTable("ExternalDeploymentPathEnvironment").Ignore(e => e.Id).HasKey(de => new { de.ExternalDeploymentPath, de.ExternalEnvironment });
+
+                entity
+                    .HasMany(d => d.Applications)
+                    .WithMany(a => a.ExternalDeploymentPaths)
+                    .UsingEntity<ApplicationExternalDeploymentPath>(
+                        j => j.HasOne(ad => ad.ApplicationNavigation).WithMany(a => a.ApplicationExternalDeploymentPaths).HasForeignKey(ad => ad.Application).HasConstraintName("FK_ApplicationExternalDeploymentPath_Application"),
+                        j => j.HasOne(ad => ad.ExternalDeploymentPathNavigation).WithMany(d => d.ApplicationExternalDeploymentPaths).HasForeignKey(ad => ad.ExternalDeploymentPath).HasConstraintName("FK_ApplicationExternalDeploymentPath_ExternalDeploymentPath").OnDelete(DeleteBehavior.Restrict)
+                    ).ToTable("ApplicationExternalDeploymentPath").HasKey(ad => new { ad.Application, ad.ExternalDeploymentPath });
+            });
+
             modelBuilder.Entity<Action>(entity =>
             {
                 entity.ToTable("Action");
@@ -620,6 +716,14 @@ namespace at.D365.PowerCID.Portal.Data.Models
                         j => j.HasOne(de => de.EnvironmentNavigation).WithMany(e => e.UserEnvironments).HasForeignKey(e => e.Environment).HasConstraintName("FK_UserEnvironment_Environment"),
                         j => j.HasOne(de => de.UserNavigation).WithMany(d => d.UserEnvironments).HasForeignKey(e => e.User).HasConstraintName("FK_UserEnvironment_User")
                     ).ToTable("UserEnvironment").HasKey(de => new { de.User, de.Environment });
+
+                entity
+                    .HasMany(d => d.ExternalTenants)
+                    .WithMany()
+                    .UsingEntity<UserExternalTenant>(
+                        j => j.HasOne(de => de.TenantNavigation).WithMany(t => t.UserExternalTenants).HasForeignKey(e => e.Tenant).HasConstraintName("FK_UserExternalTenant_Tenant"),
+                        j => j.HasOne(de => de.UserNavigation).WithMany(d => d.UserExternalTenants).HasForeignKey(e => e.User).HasConstraintName("FK_UserExternalTenant_User")
+                    ).ToTable("UserExternalTenant").HasKey(de => new { de.User, de.Tenant });
             });
 
             OnModelCreatingPartial(modelBuilder);

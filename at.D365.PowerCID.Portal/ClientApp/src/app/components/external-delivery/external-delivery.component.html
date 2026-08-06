@@ -1,0 +1,92 @@
+<h1>External Delivery</h1>
+<p>Solution versions that have been released for external delivery. Deploy them into a registered external environment.</p>
+
+<dx-data-grid
+  id="gridContainer"
+  [dataSource]="dataSourceReleasedSolutions"
+  [showRowLines]="true"
+  [showBorders]="true"
+  [allowColumnResizing]="true"
+  [columnAutoWidth]="true"
+  [width]="'100%'"
+  (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
+  >
+  <dxo-sorting mode="multiple"></dxo-sorting>
+  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_ExternalDelivery_GridState"></dxo-state-storing>
+  <dxo-search-panel
+    [visible]="true"
+    [highlightCaseSensitive]="false"
+    placeholder="Search..."
+  ></dxo-search-panel>
+  <dxo-paging [pageSize]="20"></dxo-paging>
+  <dxo-pager [visible]="true" [showNavigationButtons]="true"></dxo-pager>
+
+  <dxi-column dataField="Name" caption="Solution"></dxi-column>
+  <dxi-column dataField="Version" caption="Version"></dxi-column>
+  <dxi-column dataField="ApplicationNavigation.Name" caption="Application"></dxi-column>
+  <dxi-column dataField="Description" caption="Description"></dxi-column>
+  <dxi-column dataField="ModifiedOn" caption="Released/modified on" dataType="datetime" format="dd.MM.yyyy HH:mm:ss"></dxi-column>
+
+  <dxi-column type="buttons" [width]="120">
+    <dxi-button icon="upload" hint="Deploy" [onClick]="onClickDeploy"></dxi-button>
+  </dxi-column>
+</dx-data-grid>
+
+@if (isDeployPopupVisible) {
+  <dx-popup
+    [width]="480"
+    height="auto"
+    [showTitle]="true"
+    [title]="'Deploy: ' + selectedSolution.Name"
+    [hideOnOutsideClick]="true"
+    [(visible)]="isDeployPopupVisible"
+    >
+    <div class="dx-fieldset">
+      <div class="dx-field">
+        <div class="dx-field-label">External deployment path</div>
+        <div class="dx-field-value">
+          <dx-select-box
+            [dataSource]="availableExternalDeploymentPaths"
+            displayExpr="Name"
+            placeholder="Select a deployment path"
+            noDataText="No external deployment path is assigned to this application."
+            (onValueChanged)="onValueChangedExternalDeploymentPath($event)"
+          ></dx-select-box>
+        </div>
+      </div>
+      <div class="dx-field">
+        <div class="dx-field-label">Target environment</div>
+        <div class="dx-field-value">
+          <dx-select-box
+            [dataSource]="availableSteps"
+            [displayExpr]="stepDisplayName"
+            [disabled]="!selectedExternalDeploymentPath"
+            placeholder="Select an environment"
+            noDataText="No environment is assigned to this deployment path."
+            (onValueChanged)="onValueChangedStep($event)"
+          ></dx-select-box>
+        </div>
+      </div>
+    </div>
+    <dx-button
+      text="Deploy"
+      type="success"
+      icon="upload"
+      [width]="'100%'"
+      (onClick)="onClickStartDeployment()"
+    ></dx-button>
+  </dx-popup>
+}
+
+@if (isActionDetailPopupVisible) {
+  <dx-popup
+    [width]="700"
+    height="auto"
+    [showTitle]="true"
+    title="Action Details"
+    [hideOnOutsideClick]="true"
+    [(visible)]="isActionDetailPopupVisible"
+    >
+    <app-action-detail [actionId]="lastActionId"></app-action-detail>
+  </dx-popup>
+}

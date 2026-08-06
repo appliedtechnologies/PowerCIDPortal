@@ -18,8 +18,12 @@ import {
 } from "src/app/shared/services/layout.service";
 import { PatchService } from "src/app/shared/services/patch.service";
 import { UpgradeService } from "src/app/shared/services/upgrade.service";
+import { SolutionService } from "src/app/shared/services/solution.service";
+import { UserService } from "src/app/shared/services/user.service";
+import { AppConfig } from "src/app/shared/config/app.config";
 import Validator from "devextreme/ui/validator";
 import { FocusOutEvent } from "devextreme/ui/text_box";
+import { ValueChangedEvent } from "devextreme/ui/check_box";
 
 @Component({
     selector: "app-solution-detail",
@@ -41,10 +45,13 @@ export class SolutionDetailComponent implements OnChanges {
   public isUpgrade: boolean;
   public isAdd: boolean;
   public buttonOptionsSaveAdd: Record<string, unknown>;
+  public isReleasedExternally: boolean;
 
   constructor(
     private patchService: PatchService,
     private upgradeService: UpgradeService,
+    private solutionService: SolutionService,
+    public userService: UserService,
     private layoutService: LayoutService
   ) {
     this.buttonOptionsSaveAdd = {
@@ -55,6 +62,49 @@ export class SolutionDetailComponent implements OnChanges {
       width: '100%'
     };
   }
+
+  public get canManageExternalRelease(): boolean {
+    return (
+      this.userService.isCrossTenantDeliveryEnabled &&
+      this.userService.currentUserRoles &&
+      this.userService.currentUserRoles.some((e) =>
+        [
+          AppConfig.settings.azure.appRoleNames.admin,
+          AppConfig.settings.azure.appRoleNames.externalReleaseManager,
+        ].includes(e)
+      )
+    );
+  }
+
+  public onValueChangedIsReleasedExternally(e: ValueChangedEvent): void {
+    if (e.value === e.previousValue) return;
+
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.solutionService
+      .setExternalRelease(this.solution.Id, e.value)
+      .then(() => {
+        this.solution.IsReleasedExternally = e.value;
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: e.value
+            ? "The solution version was successfully released for external delivery."
+            : "The solution version's external release was successfully revoked.",
+        });
+      })
+      .catch((error: Error) => {
+        this.isReleasedExternally = !e.value;
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: error?.message
+            ? `An error occurred while changing the external release: ${error.message}`
+            : "An error occurred while changing the external release.",
+        });
+      })
+      .finally(() => {
+        this.layoutService.change(LayoutParameter.ShowLoading, false);
+      });
+  }
+
 
   public onClickSaveSolution(e) {
     const validation = e.validationGroup.validate();
@@ -143,6 +193,7 @@ export class SolutionDetailComponent implements OnChanges {
         this.solution.OverwriteUnmanagedCustomizations = false;
       if(this.solution.EnableWorkflows === null)
         this.solution.EnableWorkflows = true;
+      this.isReleasedExternally = this.solution.IsReleasedExternally === true;
     } else {
       this.isAdd = true;
       this.solution = {
