@@ -12,13 +12,15 @@ export class CrossTenantGuard {
 
     constructor(private userService: UserService, private router: Router, private layoutService: LayoutService) {}
 
-    canActivate(): boolean {
-      if (!this.userService.isCrossTenantDeliveryEnabled) {
-        this.router.navigate(['/']);
-        this.layoutService.notify({type: NotificationType.Error, message: "Cross-tenant delivery is not enabled for your tenant."});
-        return false;
-      }
+    canActivate(): Promise<boolean> {
+      return this.userService.ensureUserInformationLoaded().then(() => {
+        if (!this.userService.isCrossTenantDeliveryEnabled) {
+          this.router.navigate(['/']);
+          this.layoutService.notify({type: NotificationType.Error, message: "Cross-tenant delivery is not enabled for your tenant."});
+          return false;
+        }
 
-      return true;
+        return true;
+      });
     }
   }

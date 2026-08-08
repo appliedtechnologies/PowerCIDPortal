@@ -1,5 +1,4 @@
 <h1>External Environments</h1>
-<p>Register environments belonging to foreign (customer) tenants as valid targets for cross-tenant solution delivery.</p>
 
 <dx-data-grid
   id="gridContainer"
@@ -12,7 +11,8 @@
   (onToolbarPreparing)="onToolbarPreparingDataGrid($event)"
   >
   <dxo-sorting mode="multiple"></dxo-sorting>
-  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_ExternalEnvironments_GridState"></dxo-state-storing>
+  <dxo-state-storing [enabled]="true" storageKey="atPowerCIDPortal_ExternalEnvironments_GridState_v2"></dxo-state-storing>
+  <dxo-grouping [autoExpandAll]="true"></dxo-grouping>
   <dxo-header-filter [visible]="true"></dxo-header-filter>
   <dxo-search-panel
     [visible]="true"
@@ -24,7 +24,12 @@
 
   <dxi-column dataField="Alias" caption="Alias"></dxi-column>
   <dxi-column dataField="EnvironmentNavigation.Name" caption="Environment"></dxi-column>
-  <dxi-column dataField="EnvironmentNavigation.TenantNavigation.Name" caption="Tenant"></dxi-column>
+  <dxi-column
+    dataField="EnvironmentNavigation.TenantNavigation.Name"
+    caption="Tenant"
+    [groupIndex]="0"
+    [showWhenGrouped]="true"
+  ></dxi-column>
   <dxi-column dataField="EnvironmentNavigation.BasicUrl" caption="URL"></dxi-column>
   <dxi-column dataField="IsDeactive" caption="Deactivated" dataType="boolean"></dxi-column>
 
@@ -43,18 +48,32 @@
     title="Register environment for external delivery"
     [hideOnOutsideClick]="true"
     [(visible)]="isRegisterPopupVisible"
+    [wrapperAttr]="{ class: 'register-environment-popup' }"
     >
     <div class="dx-fieldset">
+      <div class="dx-field">
+        <div class="dx-field-label">Tenant</div>
+        <div class="dx-field-value">
+          <dx-select-box
+            [dataSource]="registrableTenants"
+            displayExpr="tenantName"
+            valueExpr="tenantId"
+            placeholder="Select a tenant"
+            noDataText="No foreign tenants with unregistered environments found."
+            (onValueChanged)="onValueChangedRegistrableTenant($event)"
+          ></dx-select-box>
+        </div>
+      </div>
       <div class="dx-field">
         <div class="dx-field-label">Environment</div>
         <div class="dx-field-value">
           <dx-select-box
-            [dataSource]="registrableEnvironments"
-            displayExpr="Name"
-            [grouped]="true"
-            groupExpr="TenantName"
+            [dataSource]="environmentsOfSelectedTenant"
+            [disabled]="!selectedTenantId"
+            displayExpr="name"
+            valueExpr="id"
             placeholder="Select an environment"
-            noDataText="No unregistered environments found."
+            noDataText="No unregistered environments found for this tenant."
             (onValueChanged)="onValueChangedRegistrableEnvironment($event)"
           ></dx-select-box>
         </div>

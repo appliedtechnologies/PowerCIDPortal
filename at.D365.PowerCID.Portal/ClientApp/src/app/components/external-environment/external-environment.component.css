@@ -1,3 +1,16 @@
 #gridContainer {
   margin-top: 20px;
 }
+
+/* This popup has fixed, short content and does not need scrolling. DevExtreme applies `overflow: auto`
+   directly to `.dx-popup-content.dx-popup-content-scrollable`; there is no nested scrollable container
+   to target here. Scope the rule to this popup so other popups can still scroll when needed. */
+::ng-deep .register-environment-popup .dx-popup-content {
+  overflow: hidden !important;
+}
+
+::ng-deep .register-environment-popup .dx-popup-content > .dx-button {
+  display: inline-flex !important;
+  width: calc(100% - 40px) !important;
+  margin: 0 20px !important;
+}

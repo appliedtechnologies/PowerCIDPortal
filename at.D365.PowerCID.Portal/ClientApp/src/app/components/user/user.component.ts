@@ -307,11 +307,13 @@ export class UserComponent {
             });
           });
         })
-        .catch(() => {
+        .catch((error) => {
           this.isEditRolesVisible = false;
           this.layoutService.notify({
             type: NotificationType.Error,
-            message: "An error occurred during role assignment",
+            message: error?.error?.value
+              ? `An error occurred during role assignment: ${error.error.value}`
+              : "An error occurred during role assignment",
           });
         })
         .finally(() => {
@@ -326,11 +328,13 @@ export class UserComponent {
             message: "Role was successfully withdrawn",
           });
         })
-        .catch(() => {
+        .catch((error) => {
           this.isEditRolesVisible = false;
           this.layoutService.notify({
             type: NotificationType.Error,
-            message: "An error occurred during role withdrawment",
+            message: error?.error?.value
+              ? `An error occurred during role withdrawment: ${error.error.value}`
+              : "An error occurred during role withdrawment",
           });
         })
         .finally(() => {

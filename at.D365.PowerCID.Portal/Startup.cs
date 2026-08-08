@@ -145,6 +145,7 @@ namespace at.D365.PowerCID.Portal
                 .EnableTokenAcquisitionToCallDownstreamApi()
                 .AddInMemoryTokenCaches();
             services.AddDownstreamApi("AzureManagementApi", Configuration.GetSection("DownstreamApis:AzureManagementApi"));
+            services.AddDownstreamApi("AzureResourceManagerApi", Configuration.GetSection("DownstreamApis:AzureResourceManagerApi"));
             services.AddDownstreamApi("DataverseApi", Configuration.GetSection("DownstreamApis:DataverseApi"));
             services.AddDownstreamApi("GraphApi", Configuration.GetSection("DownstreamApis:GraphApi"));
             // In production, the Angular files will be served from this directory

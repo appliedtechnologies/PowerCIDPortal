@@ -86,7 +86,7 @@ namespace at.D365.PowerCID.Portal.Services
                 });
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception("Could not get application owner");
+                throw await this.CreateApiCallException(response, "Could not get application owner");
 
             JToken owners = (await response.Content.ReadAsAsync<JObject>())["value"];
 
@@ -126,7 +126,7 @@ namespace at.D365.PowerCID.Portal.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception("Could not get AppRoleAssignments");
+                throw await this.CreateApiCallException(response, "Could not get AppRoleAssignments");
             }
 
             JToken appRoleAssignments = (await response.Content.ReadAsAsync<JObject>())["value"];
@@ -170,7 +170,7 @@ namespace at.D365.PowerCID.Portal.Services
                 }, null, roleContent);
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception("Could not assign role");
+                throw await this.CreateApiCallException(response, "Could not assign role");
 
             logger.LogDebug($"End: AzureService AssignAppRole()");
         }
@@ -188,7 +188,7 @@ namespace at.D365.PowerCID.Portal.Services
                 });
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception("Could not remove role");
+                throw await this.CreateApiCallException(response, "Could not remove role");
 
             logger.LogDebug($"End: AzureService RemoveAssignedRole()");
         }
@@ -198,11 +198,14 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"Begin: AzureService GetTenantName(msId: {msId.ToString()})");
 
             var tenantResponse = await webApi.CallApiForUserAsync(
-                "AzureManagementApi",
+                "AzureResourceManagerApi",
                 options =>
                 {
                     options.RelativePath = "tenants?api-version=2020-01-01";
                 });
+
+            if (!tenantResponse.IsSuccessStatusCode)
+                throw await this.CreateApiCallException(tenantResponse, "Could not determine the tenant name");
 
             JToken tenants = (await tenantResponse.Content.ReadAsAsync<JObject>())["value"];
 
@@ -238,12 +241,54 @@ namespace at.D365.PowerCID.Portal.Services
                     options.RelativePath = $"/servicePrincipals?$filter=appId eq '{appId}'";
                     options.HttpMethod = HttpMethod.Get.Method;
                 });
-            JToken enterpriseApp = (await response.Content.ReadAsAsync<JObject>())["value"][0];
+
+            if (!response.IsSuccessStatusCode)
+                throw await this.CreateApiCallException(response, "Could not get enterprise application");
+
+            JToken enterpriseAppResults = (await response.Content.ReadAsAsync<JObject>())["value"];
+            if (enterpriseAppResults == null || !enterpriseAppResults.Any())
+                throw new Exception($"No enterprise application (service principal) for this app was found in tenant '{tenantMsId}'. The app may not be consented/installed in this tenant yet.");
+
+            JToken enterpriseApp = enterpriseAppResults[0];
             Guid enterpriseAppId = Guid.Parse((string)enterpriseApp["id"]);
 
             logger.LogDebug($"End: AzureService GetEnterpriseAppId(enterpriseAppId: {enterpriseAppId.ToString()})");
 
             return enterpriseAppId;
+        }
+
+        /// <summary>
+        /// Builds an exception that includes the actual error returned by the called API (Microsoft Graph or
+        /// Azure Resource Manager - status code and error message/body), instead of a generic message or an
+        /// unhandled NullReferenceException that hides the real cause (e.g. an appRoleId that does not exist on
+        /// the resource service principal, a role assignment that already exists, missing admin consent in a
+        /// foreign tenant, etc.).
+        /// </summary>
+        private async Task<Exception> CreateApiCallException(HttpResponseMessage response, string friendlyMessage)
+        {
+            string responseBody = null;
+            try
+            {
+                responseBody = await response.Content.ReadAsStringAsync();
+            }
+            catch
+            {
+                // ignore - fall back to status code only if the body can't be read
+            }
+
+            string graphErrorMessage = responseBody;
+            try
+            {
+                graphErrorMessage = (string)JObject.Parse(responseBody)["error"]?["message"] ?? responseBody;
+            }
+            catch
+            {
+                // response body wasn't JSON (or didn't have the expected shape) - fall back to the raw body
+            }
+
+            logger.LogError($"Error: AzureService Graph call failed with status {(int)response.StatusCode} ({response.StatusCode}): {responseBody}");
+
+            return new Exception($"{friendlyMessage} ({(int)response.StatusCode} {response.StatusCode}): {graphErrorMessage}");
         }
     }
 }

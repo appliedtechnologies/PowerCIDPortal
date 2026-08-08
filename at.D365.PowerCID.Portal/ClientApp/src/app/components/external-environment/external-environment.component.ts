@@ -26,6 +26,9 @@ export class ExternalEnvironmentComponent {
   public dataSourceExternalEnvironments: DataSource;
   public isRegisterPopupVisible = false;
   public registrableEnvironments: RegistrableEnvironment[] = [];
+  public registrableTenants: { tenantId: number; tenantName: string }[] = [];
+  public environmentsOfSelectedTenant: RegistrableEnvironment[] = [];
+  public selectedTenantId: number;
   public selectedRegistrableEnvironment: RegistrableEnvironment;
   public newAlias: string;
 
@@ -81,12 +84,21 @@ export class ExternalEnvironmentComponent {
 
   public onClickOpenRegisterPopup(): void {
     this.newAlias = undefined;
+    this.selectedTenantId = undefined;
     this.selectedRegistrableEnvironment = undefined;
+    this.environmentsOfSelectedTenant = [];
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.externalEnvironmentService
       .getRegistrableEnvironments()
       .then((environments) => {
         this.registrableEnvironments = environments;
+        this.registrableTenants = environments
+          .reduce((tenants, environment) => {
+            if (!tenants.some((tenant) => tenant.tenantId === environment.tenantId)) {
+              tenants.push({ tenantId: environment.tenantId, tenantName: environment.tenantName });
+            }
+            return tenants;
+          }, [] as { tenantId: number; tenantName: string }[]);
         this.isRegisterPopupVisible = true;
       })
       .catch(() =>
@@ -98,8 +110,18 @@ export class ExternalEnvironmentComponent {
       .finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
   }
 
+  public onValueChangedRegistrableTenant(e): void {
+    this.selectedTenantId = e.value;
+    this.selectedRegistrableEnvironment = undefined;
+    this.environmentsOfSelectedTenant = this.registrableEnvironments.filter(
+      (environment) => environment.tenantId === this.selectedTenantId
+    );
+  }
+
   public onValueChangedRegistrableEnvironment(e): void {
-    this.selectedRegistrableEnvironment = e.value;
+    this.selectedRegistrableEnvironment = this.environmentsOfSelectedTenant.find(
+      (environment) => environment.id === e.value
+    );
   }
 
   public onClickRegisterEnvironment(): void {
@@ -113,7 +135,7 @@ export class ExternalEnvironmentComponent {
 
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.externalEnvironmentService
-      .add({ Environment: this.selectedRegistrableEnvironment.Id, Alias: this.newAlias })
+      .add({ Environment: this.selectedRegistrableEnvironment.id, Alias: this.newAlias })
       .then(() => {
         this.layoutService.notify({
           type: NotificationType.Success,

@@ -125,8 +125,9 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         /// <summary>
-        /// Deliberate, tightly-scoped exception to normal tenant isolation: lists environments across ALL tenants
-        /// (excluding ones already registered) so the vendor tenant can pick a customer's environment to register.
+        /// Deliberate, tightly-scoped exception to normal tenant isolation: lists environments belonging to
+        /// customer/foreign tenants (excluding the vendor tenant's own environments and ones already registered)
+        /// so the vendor tenant can pick a customer's environment to register.
         /// Only Admin/ExternalReleaseManager of the vendor tenant can reach this (see class-level attributes).
         /// </summary>
         [HttpPost]
@@ -135,7 +136,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug("Begin: ExternalEnvironmentsController GetRegistrableEnvironments()");
 
             var registrableEnvironments = await this.dbContext.Environments
-                .Where(e => !e.IsDeactive && !this.dbContext.ExternalEnvironments.Any(ee => ee.Environment == e.Id))
+                .Where(e => !e.IsDeactive
+                    && e.TenantNavigation.MsId != this.msIdTenantCurrentUser
+                    && !this.dbContext.ExternalEnvironments.Any(ee => ee.Environment == e.Id))
                 .OrderBy(e => e.TenantNavigation.Name).ThenBy(e => e.Name)
                 .Select(e => new
                 {

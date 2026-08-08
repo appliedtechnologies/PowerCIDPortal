@@ -6,12 +6,12 @@ import { ExternalEnvironment } from "../models/externalenvironment.model";
 import { ODataService } from "./odata.service";
 
 export interface RegistrableEnvironment {
-  Id: number;
-  Name: string;
-  BasicUrl: string;
-  TenantId: number;
-  TenantName: string;
-  TenantMsId: string;
+  id: number;
+  name: string;
+  basicUrl: string;
+  tenantId: number;
+  tenantName: string;
+  tenantMsId: string;
 }
 
 @Injectable({
@@ -25,19 +25,39 @@ export class ExternalEnvironmentService {
   }
 
   public add(externalEnvironment: ExternalEnvironment): Promise<void> {
-    return this.getStore().insert(externalEnvironment).then(() => undefined);
+    return new Promise<void>((resolve, reject) => {
+      this.getStore()
+        .insert(externalEnvironment)
+        .then(() => resolve())
+        .catch((error: Error) => reject(error));
+    });
   }
 
   public update(id: number, externalEnvironment: ExternalEnvironment): Promise<void> {
-    return this.getStore().update(id, externalEnvironment).then(() => undefined);
+    return new Promise<void>((resolve, reject) => {
+      this.getStore()
+        .update(id, externalEnvironment)
+        .then(() => resolve())
+        .catch((error: Error) => reject(error));
+    });
   }
 
   public setDeactivated(id: number, isDeactive: boolean): Promise<void> {
-    return this.getStore().update(id, { IsDeactive: isDeactive }).then(() => undefined);
+    return new Promise<void>((resolve, reject) => {
+      this.getStore()
+        .update(id, { IsDeactive: isDeactive })
+        .then(() => resolve())
+        .catch((error: Error) => reject(error));
+    });
   }
 
   public remove(id: number): Promise<void> {
-    return this.getStore().remove(id).then(() => undefined);
+    return new Promise<void>((resolve, reject) => {
+      this.getStore()
+        .remove(id)
+        .then(() => resolve())
+        .catch((error: Error) => reject(error));
+    });
   }
 
   public getRegistrableEnvironments(): Promise<RegistrableEnvironment[]> {

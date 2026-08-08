@@ -102,7 +102,7 @@ export const routes: Routes = [
     component: ExternalDeliveryComponent,
     canActivate: [MsalGuard, RoleGuard, CrossTenantGuard],
     data: {
-      expectedRoles: ["atPowerCID.Admin", "atPowerCID.ExternalReleaseManager", "atPowerCID.ExternalDeployer"],
+      expectedRoles: ["atPowerCID.Admin", "atPowerCID.ExternalDeployer"],
     },
   },
 ];

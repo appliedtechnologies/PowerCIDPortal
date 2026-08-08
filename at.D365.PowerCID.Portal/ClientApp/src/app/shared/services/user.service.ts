@@ -154,7 +154,8 @@ export class UserService {
 
   public async logout(): Promise<void> {
     await this.authService.logoutRedirect({
-      account: this.currentIdentityUser
+      account: this.currentIdentityUser,
+      postLogoutRedirectUri: location.origin,
     });
   }
 
@@ -175,6 +176,14 @@ export class UserService {
         })
         .catch(() => reject());
     });
+  }
+
+  public ensureUserInformationLoaded(): Promise<void> {
+    if (!this.isMSALLoggedIn() || !this.isPortalLoggedIn()) {
+      return Promise.resolve();
+    }
+
+    return this.updateUserInformation();
   }
 
   private getDbUserWithTenant(): Promise<void> {
@@ -200,8 +209,8 @@ export class UserService {
       this.http
         .post(`${AppConfig.settings.api.url}/Users/GetCrossTenantDeliveryStatus`, {})
         .subscribe({
-          next: (data: { IsEnabled: boolean }) => {
-            this.isCrossTenantDeliveryEnabled = data.IsEnabled;
+          next: (data: { isEnabled: boolean }) => {
+            this.isCrossTenantDeliveryEnabled = data.isEnabled;
             resolve();
           },
           error: () => {
@@ -253,7 +262,7 @@ export class UserService {
         })
         .subscribe({
           next: () => resolve(),
-          error: () => reject(),
+          error: (e) => reject(e),
         });
     });
   }
@@ -269,7 +278,7 @@ export class UserService {
         )
         .subscribe({
           next: () => resolve(),
-          error: () => reject(),
+          error: (e) => reject(e),
         });
     });
   }
