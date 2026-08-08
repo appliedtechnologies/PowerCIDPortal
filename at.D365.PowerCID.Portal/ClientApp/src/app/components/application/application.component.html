@@ -312,7 +312,6 @@
               [dataSource]="applicationExternalDeploymentPaths"
               [repaintChangesOnly]="true"
               keyExpr="Id"
-              displayExpr="Name"
               noDataText="No external deployment path assigned "
               >
               <dxo-item-dragging
@@ -326,7 +325,7 @@
                 >
               </dxo-item-dragging>
               <div *dxTemplate="let data of 'item'">
-                <div title="{{data.Name}}">{{data.Name}}</div>
+                <div title="{{externalDeploymentPathDisplayName(data)}}">{{externalDeploymentPathDisplayName(data)}}</div>
               </div>
             </dx-list>
             <dx-list
@@ -342,7 +341,7 @@
                 >
               </dxo-item-dragging>
               <div *dxTemplate="let data of 'item'">
-                <div title="{{data.Name}}">{{data.Name}}</div>
+                <div title="{{externalDeploymentPathDisplayName(data)}}">{{externalDeploymentPathDisplayName(data)}}</div>
               </div>
             </dx-list>
           </div>

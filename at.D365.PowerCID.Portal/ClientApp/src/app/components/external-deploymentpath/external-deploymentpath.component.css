@@ -1,27 +1,67 @@
-#gridContainer {
+.tenant-filter {
+  display: flex;
+  align-items: center;
+  gap: 15px;
   margin-top: 20px;
 }
 
-#info {
-  text-align: center;
-  margin-top: 5px;
-}
-
-.header {
-  display: flex;
-}
-.header p {
+.tenant-filter-label {
   font-weight: bold;
-  text-align: center;
-  width: 50%;
 }
 
-::ng-deep .widget-container {
-  min-height: 0;
+.tenant-filter dx-select-box {
+  width: 350px;
+}
+
+#addButton {
+  margin-top: 20px;
+}
+
+.treeview-entry {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 5px;
 }
 
-::ng-deep .widget-container > * {
+:host ::ng-deep .form .button-wrapper {
+  display: flex;
+  justify-content: space-between;
+  width: 75px;
+}
+
+:host ::ng-deep .form .button-wrapper dx-button {
+  margin-left: auto;
+}
+
+:host ::ng-deep .form .dx-button-has-icon .dx-button-content {
+  padding: 4px !important;
+}
+
+:host ::ng-deep .drive-panel dx-button {
+  min-height: unset !important;
+}
+
+.form {
+  margin-top: 20px;
+  flex-direction: row;
+}
+
+.drive-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 30px;
+  font-size: 115%;
+  font-weight: bold;
+  border-right: 1px solid rgba(165, 165, 165, 0.4);
+  height: 100%;
   width: 50%;
-  padding: 10px;
+}
+
+.drive-panel:last-of-type {
+  border-right: none;
+}
+
+.drive-header {
+  margin-bottom: 10px;
 }

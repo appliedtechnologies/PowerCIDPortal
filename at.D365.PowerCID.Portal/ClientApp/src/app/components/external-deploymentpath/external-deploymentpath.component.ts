@@ -1,8 +1,9 @@
-import { Component, ViewChild, ChangeDetectionStrategy } from "@angular/core";
-import { DxDataGridComponent } from "devextreme-angular";
-import DataSource from "devextreme/data/data_source";
+import { AfterViewInit, ChangeDetectorRef, Component, ChangeDetectionStrategy, NgZone, ViewChild } from "@angular/core";
+import { DxTreeViewComponent } from "devextreme-angular";
 import { confirm } from "devextreme/ui/dialog";
+import dxTreeView from "devextreme/ui/tree_view";
 import { ExternalDeploymentPath } from "src/app/shared/models/externaldeploymentpath.model";
+import { ExternalDeploymentPathEnvironment } from "src/app/shared/models/externaldeploymentpathenvironment.model";
 import { ExternalEnvironment } from "src/app/shared/models/externalenvironment.model";
 import { ExternalDeploymentPathService } from "src/app/shared/services/externaldeploymentpath.service";
 import { ExternalDeploymentPathEnvironmentService } from "src/app/shared/services/externaldeploymentpathenvironment.service";
@@ -13,95 +14,74 @@ import {
   NotificationType,
 } from "src/app/shared/services/layout.service";
 
+type ExternalDeploymentPathTreeItem = ExternalDeploymentPath & ExternalDeploymentPathEnvironment;
+
 @Component({
-    selector: "app-external-deploymentpath",
-    templateUrl: "./external-deploymentpath.component.html",
-    styleUrls: ["./external-deploymentpath.component.css"],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: "app-external-deploymentpath",
+  templateUrl: "./external-deploymentpath.component.html",
+  styleUrls: ["./external-deploymentpath.component.css"],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
-export class ExternalDeploymentpathComponent {
-  @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;
+export class ExternalDeploymentpathComponent implements AfterViewInit {
+  @ViewChild("treeViewExternalDeploymentPath") public treeViewExternalDeploymentPath: DxTreeViewComponent;
+  @ViewChild("treeViewExternalEnvironment") public treeViewExternalEnvironment: DxTreeViewComponent;
 
-  public dataSourceExternalDeploymentPaths: DataSource;
-  public isAddPopupVisible = false;
-  public newExternalDeploymentPath: ExternalDeploymentPath = {};
-  public isRenamePopupVisible = false;
-  public externalDeploymentPathToEdit: ExternalDeploymentPath = {};
+  public dataSourceExternalEnvironments: ExternalEnvironment[] = [];
+  public externalDeploymentPaths: ExternalDeploymentPath[] = [];
+  public externalEnvironments: ExternalEnvironment[] = [];
+  public externalTenants: { MsId: string; Name: string }[] = [];
+  public selectedTenantMsId: string;
 
-  public isManageStepsPopupVisible = false;
-  public currentExternalDeploymentPathId: number;
-  public currentExternalDeploymentPathName: string;
-  public assignedSteps: ExternalEnvironment[] = [];
-  public availableExternalEnvironments: ExternalEnvironment[] = [];
+  public isAddDeploymentPathVisible = false;
+  public isRenameDeploymentPathVisible = false;
+  public deploymentPathToEdit: ExternalDeploymentPath = {};
+  public newDeploymentPath: ExternalDeploymentPath = {};
+
+  private allExternalDeploymentPaths: ExternalDeploymentPath[] = [];
+  private allExternalEnvironments: ExternalEnvironment[] = [];
 
   constructor(
     private externalDeploymentPathService: ExternalDeploymentPathService,
     private externalDeploymentPathEnvironmentService: ExternalDeploymentPathEnvironmentService,
     private externalEnvironmentService: ExternalEnvironmentService,
-    private layoutService: LayoutService
+    private layoutService: LayoutService,
+    private changeDetectorRef: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {
-    this.onDragStart = this.onDragStart.bind(this);
-    this.onAddStep = this.onAddStep.bind(this);
-    this.onRemoveStep = this.onRemoveStep.bind(this);
-    this.onReorderStep = this.onReorderStep.bind(this);
-    this.onClickManageSteps = this.onClickManageSteps.bind(this);
-    this.onClickOpenRename = this.onClickOpenRename.bind(this);
-    this.onClickDelete = this.onClickDelete.bind(this);
+    this.onAdd = this.onAdd.bind(this);
+    this.onReorder = this.onReorder.bind(this);
+    this.onDragChange = this.onDragChange.bind(this);
+    this.onDragEnd = this.onDragEnd.bind(this);
+    this.onClickDeleteDeploymentPathOrStep = this.onClickDeleteDeploymentPathOrStep.bind(this);
+    this.onClickOpenRenameDeploymentPath = this.onClickOpenRenameDeploymentPath.bind(this);
     this.displayName = this.displayName.bind(this);
 
-    this.dataSourceExternalDeploymentPaths = new DataSource({
-      store: this.externalDeploymentPathService.getStore(),
-      sort: [{ selector: "Name", desc: false }],
-      expand: ["CreatedByNavigation"],
-    });
+
   }
 
-  public onToolbarPreparingDataGrid(e): void {
-    const toolbarItems = e.toolbarOptions.items;
-
-    toolbarItems.unshift({
-      widget: "dxButton",
-      options: {
-        icon: "refresh",
-        stylingMode: "contained",
-        type: "success",
-        hint: "Refresh",
-        onClick: this.onClickRefresh.bind(this),
-      },
-      location: "after",
-    });
-
-    toolbarItems.unshift({
-      widget: "dxButton",
-      options: {
-        icon: "add",
-        text: "Add external deployment path",
-        stylingMode: "contained",
-        type: "success",
-        onClick: this.onClickOpenAdd.bind(this),
-      },
-      location: "after",
-    });
+  public ngAfterViewInit(): void {
+    void this.loadData();
   }
 
-  public onClickRefresh(): void {
-    this.dataGrid.instance.refresh();
+  public onValueChangedTenant(e): void {
+    this.selectedTenantMsId = e.value;
+    this.applyTenantFilter();
   }
 
-  public onClickOpenAdd(): void {
-    this.newExternalDeploymentPath = {};
-    this.isAddPopupVisible = true;
+  public onClickOpenAddDeploymentPath(): void {
+    this.newDeploymentPath = {};
+    this.isAddDeploymentPathVisible = true;
   }
 
-  public onClickSaveAdd(): void {
+  public onClickSaveDeploymentPath(): void {
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.externalDeploymentPathService
-      .add(this.newExternalDeploymentPath)
+      .add(this.newDeploymentPath)
       .then(() =>
         this.layoutService.notify({
           type: NotificationType.Success,
-          message: "The external deployment path has been created successfully.",
+          message: "The new external deployment path has been created successfully.",
         })
       )
       .catch((error: Error) =>
@@ -113,22 +93,23 @@ export class ExternalDeploymentpathComponent {
         })
       )
       .finally(() => {
-        this.isAddPopupVisible = false;
-        this.newExternalDeploymentPath = {};
+        this.isAddDeploymentPathVisible = false;
+        this.newDeploymentPath = {};
+        this.loadData();
         this.layoutService.change(LayoutParameter.ShowLoading, false);
-        this.dataGrid.instance.refresh();
       });
   }
 
-  public onClickOpenRename(e): void {
-    this.externalDeploymentPathToEdit = { Id: e.row.data.Id, Name: e.row.data.Name };
-    this.isRenamePopupVisible = true;
+  public onClickOpenRenameDeploymentPath(e: unknown, entry: ExternalDeploymentPathTreeItem): void {
+    void e;
+    this.deploymentPathToEdit = { Id: entry.Id, Name: entry.Name };
+    this.isRenameDeploymentPathVisible = true;
   }
 
-  public onClickSaveRename(): void {
+  public onClickSaveRenameDeploymentPath(): void {
     this.layoutService.change(LayoutParameter.ShowLoading, true);
     this.externalDeploymentPathService
-      .update(this.externalDeploymentPathToEdit.Id, { Name: this.externalDeploymentPathToEdit.Name })
+      .update(this.deploymentPathToEdit.Id, { Name: this.deploymentPathToEdit.Name })
       .then(() =>
         this.layoutService.notify({
           type: NotificationType.Success,
@@ -138,171 +119,267 @@ export class ExternalDeploymentpathComponent {
       .catch((error: Error) =>
         this.layoutService.notify({
           type: NotificationType.Error,
-          message: error?.message ? `The name change could not be saved: ${error.message}` : "The name change could not be saved.",
+          message: error?.message
+            ? `The name change could not be saved: ${error.message}`
+            : "The name change could not be saved.",
         })
       )
       .finally(() => {
-        this.isRenamePopupVisible = false;
-        this.externalDeploymentPathToEdit = {};
+        this.isRenameDeploymentPathVisible = false;
+        this.deploymentPathToEdit = {};
+        this.loadData();
         this.layoutService.change(LayoutParameter.ShowLoading, false);
-        this.dataGrid.instance.refresh();
       });
   }
 
-  public onClickDelete(e): void {
-    const externalDeploymentPath = e.row.data as ExternalDeploymentPath;
-    const result = confirm(
-      `Would you like to delete the external deployment path "${externalDeploymentPath.Name}"?`,
-      "Delete External Deployment Path"
-    );
+  public onClickDeleteDeploymentPathOrStep(e: unknown, entry: ExternalDeploymentPathTreeItem): void {
+    void e;
+    const isStep = entry.ExternalEnvironmentNavigation !== undefined;
+    const message = isStep
+      ? `Would you like to remove the "${this.displayName(entry.ExternalEnvironmentNavigation)}" environment from the external deployment path?`
+      : `Would you like to delete the external deployment path "${entry.Name}"?`;
+    const result = confirm(message, isStep ? "Remove Environment" : "Delete External Deployment Path");
+
     result.then((dialogResult) => {
-      if (dialogResult) {
-        this.layoutService.change(LayoutParameter.ShowLoading, true);
-        this.externalDeploymentPathService
-          .remove(externalDeploymentPath.Id)
-          .then(() =>
-            this.layoutService.notify({
-              type: NotificationType.Success,
-              message: "The external deployment path was successfully deleted.",
-            })
-          )
-          .catch((error: Error) =>
-            this.layoutService.notify({
-              type: NotificationType.Error,
-              message: error?.message
-                ? `The external deployment path could not be deleted: ${error.message}`
-                : "The external deployment path could not be deleted.",
-            })
-          )
-          .finally(() => {
-            this.layoutService.change(LayoutParameter.ShowLoading, false);
-            this.dataGrid.instance.refresh();
-          });
-      }
+      if (!dialogResult) return;
+
+      this.layoutService.change(LayoutParameter.ShowLoading, true);
+      const operation = isStep
+        ? this.externalDeploymentPathEnvironmentService.remove(entry.ExternalDeploymentPath, entry.ExternalEnvironment)
+        : this.externalDeploymentPathService.remove(entry.Id);
+
+      operation
+        .then(() =>
+          this.layoutService.notify({
+            type: NotificationType.Success,
+            message: isStep
+              ? "The external deployment path step was successfully removed."
+              : "The external deployment path was successfully deleted.",
+          })
+        )
+        .catch((error: Error) =>
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: error?.message ? error.message : "The operation could not be completed.",
+          })
+        )
+        .finally(() => {
+          this.loadData();
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+        });
     });
   }
 
-  public onClickManageSteps(e): void {
-    this.currentExternalDeploymentPathId = e.row.data.Id;
-    this.currentExternalDeploymentPathName = e.row.data.Name;
+  public onAdd(e): void {
+    if (e.fromData !== "externalenvironment" || e.toData !== "externaldeploymentpath") return;
 
-    this.layoutService.change(LayoutParameter.ShowLoading, true);
-    this.loadSteps().finally(() => {
-      this.isManageStepsPopupVisible = true;
-      this.layoutService.change(LayoutParameter.ShowLoading, false);
-    });
-  }
+    const fromTreeView = this.getTreeView(e.fromData);
+    const toTreeView = this.getTreeView(e.toData);
+    const fromNode = this.findNode(fromTreeView, e.fromIndex);
+    const toNode = this.findNode(toTreeView, this.calculateToIndex(e));
 
-  public onDragStart(e): void {
-    e.itemData = e.fromData[e.fromIndex];
-  }
+    if (!fromNode || !toNode) return;
 
-  public onAddStep(e): void {
-    if (this.assignedSteps.some((x) => x.Id == e.itemData.Id)) {
-      e.cancel = true;
+    const targetPath = toNode.itemData.ExternalEnvironmentNavigation
+      ? toNode.parent?.itemData
+      : toNode.itemData;
+    const environment = fromNode.itemData as ExternalEnvironment;
+    const path = targetPath as ExternalDeploymentPath;
+
+    if (!path?.Id || !environment?.Id) return;
+
+    const steps = path.ExternalDeploymentPathEnvironments || [];
+    if (steps.some((step) => step.ExternalEnvironment === environment.Id)) {
       return;
     }
-    e.toData.splice(e.toIndex, 0, e.itemData);
-    const externalEnvironmentId = e.itemData.Id;
-    const stepNumber = e.toIndex + 1;
 
     this.externalDeploymentPathEnvironmentService
       .getStore()
       .insert({
-        ExternalDeploymentPath: this.currentExternalDeploymentPathId,
-        ExternalEnvironment: externalEnvironmentId,
-        StepNumber: stepNumber,
+        ExternalDeploymentPath: path.Id,
+        ExternalEnvironment: environment.Id,
+        StepNumber: steps.length + 1,
       })
       .then(() => {
-        this.layoutService.notify({ type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000 });
-        this.refreshAvailableExternalEnvironments();
+        this.loadData();
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Changes have been saved",
+          displayTime: 1000,
+        });
       })
-      .catch((error: Error) => {
-        e.toData.splice(e.toIndex, 1);
+      .catch((error: Error) =>
         this.layoutService.notify({
           type: NotificationType.Error,
           message: error?.message ? error.message : "The environment could not be added as a step.",
-        });
-      });
+        })
+      );
   }
 
-  public onRemoveStep(e): void {
-    e.fromData.splice(e.fromIndex, 1);
-    const externalEnvironmentId = e.itemData.Id;
+  public onReorder(e): void {
+    if (e.fromData !== "externaldeploymentpath" || e.toData !== "externaldeploymentpath") return;
+    if (e.fromComponent !== e.toComponent) return;
 
-    this.externalDeploymentPathEnvironmentService
-      .remove(this.currentExternalDeploymentPathId, externalEnvironmentId)
-      .then(() => {
-        this.layoutService.notify({ type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000 });
-        this.refreshAvailableExternalEnvironments();
+    const treeView = this.getTreeView(e.fromData);
+    const fromNode = this.findNode(treeView, e.fromIndex);
+    const toNode = this.findNode(treeView, this.calculateToIndex(e));
+
+    if (!fromNode?.itemData.ExternalEnvironmentNavigation || !toNode?.itemData.ExternalEnvironmentNavigation) return;
+    if (fromNode.parent?.itemData.Id !== toNode.parent?.itemData.Id) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "It is not possible to move environments between external deployment paths.",
       });
-  }
+      return;
+    }
 
-  public onReorderStep(e): void {
-    const externalEnvironmentId = e.itemData.Id;
-    const fromIndex = e.fromIndex + 1;
-    const toIndex = e.toIndex + 1;
+    const step = fromNode.itemData as ExternalDeploymentPathEnvironment;
+    const fromIndex = step.StepNumber;
+    const toIndex = (toNode.itemData as ExternalDeploymentPathEnvironment).StepNumber;
 
     this.externalDeploymentPathEnvironmentService
       .getStore()
       .update(
-        { ExternalDeploymentPath: this.currentExternalDeploymentPathId, ExternalEnvironment: externalEnvironmentId },
+        { ExternalDeploymentPath: step.ExternalDeploymentPath, ExternalEnvironment: step.ExternalEnvironment },
         { ToIndex: toIndex, FromIndex: fromIndex }
       )
       .then(() => {
-        e.toData.splice(e.fromIndex, 1);
-        e.toData.splice(e.toIndex, 0, e.itemData);
-        this.layoutService.notify({ type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000 });
+        this.loadData();
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Changes have been saved",
+          displayTime: 1000,
+        });
       })
-      .catch((error: Error) => {
-        this.layoutService.notify({ type: NotificationType.Error, message: error.message });
-      });
+      .catch((error: Error) =>
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: error?.message ? error.message : "The environment order could not be saved.",
+        })
+      );
+  }
+
+  public onDragChange(e): void {
+    if (e.fromData === "externaldeploymentpath" && e.toData === "externaldeploymentpath") return;
+  }
+
+  public onDragEnd(e): void {
+    if (e.fromData === e.toData && e.fromIndex === e.toIndex) return;
+    void e;
   }
 
   public displayName(externalEnvironment: ExternalEnvironment): string {
     if (!externalEnvironment) return "";
-    return externalEnvironment.Alias || externalEnvironment.EnvironmentNavigation?.Name || "";
+    const loadedEnvironment = this.allExternalEnvironments.find(
+      (environment) => environment.Id === externalEnvironment.Id
+    );
+    return (
+      externalEnvironment.Alias ||
+      externalEnvironment.EnvironmentNavigation?.Name ||
+      loadedEnvironment?.Alias ||
+      loadedEnvironment?.EnvironmentNavigation?.Name ||
+      ""
+    );
   }
 
-  private loadSteps(): Promise<void> {
-    const promiseSteps = this.externalDeploymentPathEnvironmentService
-      .getStore()
-      .load({
-        filter: ["ExternalDeploymentPath", "=", this.currentExternalDeploymentPathId],
-        sort: [{ selector: "StepNumber", desc: false }],
-        expand: ["ExternalEnvironmentNavigation.EnvironmentNavigation.TenantNavigation"],
-      });
-
-    const promiseAllEnvironments = this.externalEnvironmentService
-      .getStore()
-      .load({
+  private loadData(): Promise<void> {
+    return Promise.all([
+      this.externalDeploymentPathService.getStore().load({
+        sort: [{ selector: "Name", desc: false }],
+        expand: ["ExternalDeploymentPathEnvironments.ExternalEnvironmentNavigation"],
+      }),
+      this.externalEnvironmentService.getStore().load({
         filter: ["IsDeactive", "=", false],
         expand: ["EnvironmentNavigation.TenantNavigation"],
         sort: [{ selector: "Alias", desc: false }],
+      }),
+    ]).then(([paths, environments]) => {
+      this.allExternalDeploymentPaths = paths as ExternalDeploymentPath[];
+      this.allExternalEnvironments = environments as ExternalEnvironment[];
+      this.externalTenants = this.allExternalEnvironments
+        .reduce((tenants, environment) => {
+          const tenant = this.getTenant(environment);
+          const tenantMsId = this.normalizeMsId(tenant?.MsId);
+          if (tenantMsId && !tenants.some((item) => item.MsId === tenantMsId)) {
+            tenants.push({ MsId: tenantMsId, Name: tenant.Name });
+          }
+          return tenants;
+        }, [] as { MsId: string; Name: string }[]);
+      if (!this.selectedTenantMsId && this.externalTenants.length > 0) {
+        this.selectedTenantMsId = this.externalTenants[0].MsId;
+      }
+      if (this.selectedTenantMsId && !this.externalTenants.some((tenant) => tenant.MsId === this.selectedTenantMsId)) {
+        this.selectedTenantMsId = undefined;
+      }
+      this.applyTenantFilter();
+      this.ngZone.run(() => {
+        this.changeDetectorRef.detectChanges();
+        this.treeViewExternalDeploymentPath?.instance.option("dataSource", this.externalDeploymentPaths);
+        this.treeViewExternalEnvironment?.instance.option("dataSource", this.dataSourceExternalEnvironments);
       });
-
-    return Promise.all([promiseSteps, promiseAllEnvironments]).then(([steps, allEnvironments]) => {
-      this.assignedSteps = steps.map((s) => s["ExternalEnvironmentNavigation"] as ExternalEnvironment);
-      this.setAvailableExternalEnvironments(allEnvironments as ExternalEnvironment[]);
     });
   }
 
-  private refreshAvailableExternalEnvironments(): void {
-    this.externalEnvironmentService
-      .getStore()
-      .load({
-        filter: ["IsDeactive", "=", false],
-        expand: ["EnvironmentNavigation.TenantNavigation"],
-        sort: [{ selector: "Alias", desc: false }],
-      })
-      .then((allEnvironments: ExternalEnvironment[]) => this.setAvailableExternalEnvironments(allEnvironments));
+  private applyTenantFilter(): void {
+    this.externalDeploymentPaths = this.allExternalDeploymentPaths.filter((path) => {
+      const steps = path.ExternalDeploymentPathEnvironments || [];
+      return steps.length === 0 || steps.some(
+        (step) => this.getExternalEnvironmentTenantMsId(step.ExternalEnvironment) === this.selectedTenantMsId
+      );
+    });
+
+    this.dataSourceExternalEnvironments = this.allExternalEnvironments.filter(
+      (environment) => this.getExternalEnvironmentTenantMsId(environment.Id) === this.selectedTenantMsId
+    );
   }
 
-  private setAvailableExternalEnvironments(allEnvironments: ExternalEnvironment[]): void {
-    const assignedIds = this.assignedSteps.map((s) => s.Id);
-    const tenantMsId = this.assignedSteps[0]?.EnvironmentNavigation?.TenantNavigation?.MsId;
-    this.availableExternalEnvironments = allEnvironments.filter(
-      (e) => !assignedIds.includes(e.Id) && (!tenantMsId || e.EnvironmentNavigation?.TenantNavigation?.MsId === tenantMsId)
+  private getExternalEnvironmentTenantMsId(externalEnvironmentId: number): string | undefined {
+    const environment = this.allExternalEnvironments.find((item) => item.Id === externalEnvironmentId);
+    return this.normalizeMsId(this.getTenant(environment)?.MsId);
+  }
+
+  private getTenant(externalEnvironment: ExternalEnvironment): { MsId?: string | { _value?: string }; Name?: string } | undefined {
+    const environmentNavigation =
+      externalEnvironment?.EnvironmentNavigation ??
+      (externalEnvironment as ExternalEnvironment & { environmentNavigation?: ExternalEnvironment["EnvironmentNavigation"] })
+        .environmentNavigation;
+    return (
+      environmentNavigation?.TenantNavigation ??
+      (environmentNavigation as typeof environmentNavigation & {
+        tenantNavigation?: { MsId?: string; Name?: string };
+      })?.tenantNavigation
     );
+  }
+
+  private normalizeMsId(msId: string | { _value?: string } | undefined): string | undefined {
+    return typeof msId === "string" ? msId : msId?._value;
+  }
+
+  private getTreeView(name: string): dxTreeView {
+    return name === "externaldeploymentpath"
+      ? this.treeViewExternalDeploymentPath.instance
+      : this.treeViewExternalEnvironment.instance;
+  }
+
+  private findNode(treeView: dxTreeView, index: number): any {
+    const nodeElement = treeView.element().querySelectorAll(".dx-treeview-node")[index];
+    if (!nodeElement) return null;
+    return this.findNodeById(treeView.getNodes(), nodeElement.getAttribute("data-item-id"));
+  }
+
+  private findNodeById(nodes: any[], id: string | null): any {
+    for (const node of nodes) {
+      if (node.itemData?.Id == id) return node;
+      if (node.children) {
+        const found = this.findNodeById(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  private calculateToIndex(e): number {
+    if (e.fromComponent !== e.toComponent || e.dropInsideItem) return e.toIndex;
+    return e.fromIndex >= e.toIndex ? e.toIndex : e.toIndex + 1;
   }
 }
