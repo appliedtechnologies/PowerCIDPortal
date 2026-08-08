@@ -225,7 +225,11 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (solution == null)
                 return Forbid();
 
-            solution.IsReleasedExternally = (bool)parameters["released"];
+            bool released = (bool)parameters["released"];
+            if (released && !ExportExists(key))
+                return BadRequest("A solution version can only be released for external deployment after at least one successful export.");
+
+            solution.IsReleasedExternally = released;
             await this.dbContext.SaveChangesAsync();
 
             logger.LogDebug($"End: SolutionsController SetExternalRelease(key: {key})");

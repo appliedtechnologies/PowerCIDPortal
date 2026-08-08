@@ -53,7 +53,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return NotFound();
 
             if (targetTenant.MsId == this.msIdTenantCurrentUser)
-                return BadRequest(new ODataError { Code = "400", Message = "Can't grant an external delivery permission for your own tenant." });
+                return BadRequest(new ODataError { Code = "400", Message = "Can't grant an external deployment permission for your own tenant." });
 
             base.dbContext.UserExternalTenants.Add(userExternalTenant);
             await base.dbContext.SaveChangesAsync();

@@ -87,7 +87,7 @@ export class ExternalEnvironmentComponent {
         text: "Register environment",
         stylingMode: "contained",
         type: "success",
-        hint: "Register an existing environment of a foreign tenant for external delivery.",
+        hint: "Register an existing environment of a foreign tenant for external deployment.",
         onClick: this.onClickOpenRegisterPopup.bind(this),
       },
       location: "after",
@@ -171,7 +171,7 @@ export class ExternalEnvironmentComponent {
       .then(() => {
         this.layoutService.notify({
           type: NotificationType.Success,
-          message: "The environment was successfully registered for external delivery.",
+          message: "The environment was successfully registered for external deployment.",
         });
         this.isRegisterPopupVisible = false;
         this.dataGrid.instance.refresh();

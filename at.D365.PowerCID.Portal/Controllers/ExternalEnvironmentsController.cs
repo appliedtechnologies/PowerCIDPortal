@@ -52,7 +52,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest(new ODataError { Code = "400", Message = "The referenced environment does not exist." });
 
             if (await this.dbContext.ExternalEnvironments.AnyAsync(e => e.Environment == externalEnvironment.Environment))
-                return BadRequest(new ODataError { Code = "400", Message = "This environment is already registered for external delivery." });
+                return BadRequest(new ODataError { Code = "400", Message = "This environment is already registered for external deployment." });
 
             base.dbContext.ExternalEnvironments.Add(externalEnvironment);
             await base.dbContext.SaveChangesAsync();

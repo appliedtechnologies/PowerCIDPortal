@@ -17,7 +17,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 {
     /// <summary>
     /// Manages deployment paths used to ship externally released solutions into foreign tenants. Mirrors
-    /// <see cref="DeploymentPathsController"/> for the external delivery area. Only available to the vendor tenant.
+    /// <see cref="DeploymentPathsController"/> for the external deployment area. Only available to the vendor tenant.
     /// </summary>
     [Authorize(Roles = "atPowerCID.Admin, atPowerCID.ExternalReleaseManager")]
     [CrossTenantDeliveryGate]

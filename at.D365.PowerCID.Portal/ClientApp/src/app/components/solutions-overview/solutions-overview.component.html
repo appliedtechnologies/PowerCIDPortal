@@ -1,11 +1,92 @@
-<h1>Solutions Overview</h1>
+<h1>{{ externalMode ? 'External Deployment' : 'Solutions Overview' }}</h1>
 <dx-toolbar
+  *ngIf="!externalMode"
   [items]="selectionToolbarItems"
   class="solutions-selection-toolbar"
 ></dx-toolbar>
+<dx-toolbar
+  *ngIf="externalMode && externalTenants.length > 0"
+  [items]="externalSelectionToolbarItems"
+  class="solutions-selection-toolbar"
+></dx-toolbar>
+<dx-data-grid
+  *ngIf="externalMode && showSolutionsGrid"
+  [dataSource]="dataSourceSolutions"
+  [columns]="externalDataGridColumns"
+  [showBorders]="true"
+  [showRowLines]="false"
+  [columnAutoWidth]="true"
+  [allowColumnResizing]="true"
+  [scrolling]="{ mode: 'infinite' }"
+  height="100%"
+  class="solutions-grid external-solutions-grid"
+>
+  <div *dxTemplate="let cellInfo of 'externalTypeCellTemplate'">
+    <div class="card dx-card dx-theme-text-color">
+      {{ cellInfo.value }}
+    </div>
+  </div>
+  <div *dxTemplate="let cellInfo of 'externalVersionCellTemplate'">
+    <div class="card name-cell dx-card dx-theme-text-color">
+      {{ cellInfo.value }}
+    </div>
+  </div>
+  <div *dxTemplate="let cellInfo of 'externalNameCellTemplate'">
+    <div class="card dx-card dx-theme-text-color">
+      <i
+        class="dx-icon-info clickable-icon at-icon"
+        title="show details"
+        (click)="onClickSolutionInfo(cellInfo)"
+        (keydown.enter)="onClickSolutionInfo(cellInfo)"
+        tabindex="0"
+        role="button"
+      ></i>
+      {{ cellInfo.value }}
+    </div>
+  </div>
+  <div *dxTemplate="let cellInfo of 'externalEnvironmentHeaderCellTemplate'">
+    <i class="at-icon powercid-icon-einstellungen clickable-icon"
+      title="configure deployment"
+      (click)="onClickConfigureExternalDeployment(cellInfo.column.environmentData)"
+      (keydown.enter)="onClickConfigureExternalDeployment(cellInfo.column.environmentData)"
+      tabindex="0" role="button"></i>
+    {{ cellInfo.column.caption }}
+  </div>
+  <div *dxTemplate="let cellInfo of 'externalEnvironmentCellTemplate'">
+    <div class="card dx-card dx-theme-text-color"
+      *ngIf="getLastExternalAction(cellInfo) as lastAction; else externalReady"
+      [ngClass]="lastAction.Status !== 3 ? 'card-in-progress' : lastAction.Result === 1 ? 'card-success' : 'card-error'">
+        <i class="dx-icon-info clickable-icon at-icon" title="show details"
+          (click)="onClickActionInfo(lastAction)"
+          (keydown.enter)="onClickActionInfo(lastAction)"
+          tabindex="0" role="button"></i>
+        <i
+          *ngIf="lastAction.Status !== 3 && (autoRefreshInterval === null || autoRefreshInterval === undefined)"
+          class="dx-icon-refresh clickable-icon at-icon"
+          title="start auto-refresh"
+          (click)="onClickStartAutoRefresh(lastAction)"
+          (keydown.enter)="onClickStartAutoRefresh(lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickStartAutoRefresh(lastAction)"
+          tabindex="0"
+          role="button"></i>
+        {{ lastAction.TypeNavigation?.Type }}
+        {{ lastAction.StatusNavigation?.Status }}
+        {{ lastAction.ResultNavigation?.Result }}
+    </div>
+    <ng-template #externalReady>
+      <div class="card dx-card dx-theme-text-color card-ready">
+        <i class="at-icon powercid-icon-handcart clickable-icon at-icon" title="deploy here"
+          (click)="onClickExternalDeploy(cellInfo)"
+          (keydown.enter)="onClickExternalDeploy(cellInfo)"
+          tabindex="0" role="button"></i>
+        deploy here
+      </div>
+    </ng-template>
+  </div>
+</dx-data-grid>
 <dx-data-grid
   #solutionsGrid
-  *ngIf="this.userService.currentDbUserWithTenant && showSolutionsGrid"
+  *ngIf="!externalMode && this.userService.currentDbUserWithTenant && showSolutionsGrid"
   [dataSource]="dataSourceSolutions"
   [columns]="dataGridColumns"
   [showBorders]="true"
@@ -340,6 +421,37 @@
     </ng-template>
   </div>
 </dx-data-grid>
+
+<dx-popup
+  *ngIf="isExternalDeployPopupVisible"
+  [width]="480"
+  height="auto"
+  [showTitle]="true"
+  [title]="'Deploy: ' + selectedSolutionForExternalDeploy?.Name"
+  [hideOnOutsideClick]="true"
+  [(visible)]="isExternalDeployPopupVisible"
+>
+  <div class="dx-fieldset">
+    <div class="dx-field">
+      <div class="dx-field-label">External deployment path</div>
+      <div class="dx-field-value">
+        <dx-select-box [dataSource]="availableExternalDeploymentPaths" displayExpr="Name"
+          [(value)]="selectedExternalDeploymentPath"
+          (onValueChanged)="onExternalDeploymentPathChanged($event.value)"></dx-select-box>
+      </div>
+    </div>
+    <div class="dx-field">
+      <div class="dx-field-label">Target environment</div>
+      <div class="dx-field-value">
+        <dx-select-box [dataSource]="availableExternalSteps" [displayExpr]="stepDisplayName"
+          [(value)]="selectedExternalStep" [disabled]="!selectedExternalDeploymentPath"
+          (onValueChanged)="selectedExternalStep = $event.value"></dx-select-box>
+      </div>
+    </div>
+  </div>
+  <dx-button text="Deploy" type="success" icon="upload" [width]="'100%'"
+    (onClick)="onClickStartExternalDeployment()"></dx-button>
+</dx-popup>
 
 <dx-popup
   *ngIf="isConfigureDeploymentPopupVisible"

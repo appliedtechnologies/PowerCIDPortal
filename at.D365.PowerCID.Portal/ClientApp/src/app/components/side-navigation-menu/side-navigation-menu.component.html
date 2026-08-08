@@ -6,7 +6,8 @@
     selectedExpr="selected"
     [items]="navigationEntries"
     [selectByClick]="true"
-    (onItemClick)="onItemClickNavigation($event)">
+    (onItemClick)="onItemClickNavigation($event)"
+    (onItemSelectionChanged)="onItemSelectionChanged($event)">
   </dx-tree-view>  
 </dx-scroll-view> 
 

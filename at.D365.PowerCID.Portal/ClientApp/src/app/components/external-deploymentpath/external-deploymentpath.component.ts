@@ -8,6 +8,7 @@ import { ExternalEnvironment } from "src/app/shared/models/externalenvironment.m
 import { ExternalDeploymentPathService } from "src/app/shared/services/externaldeploymentpath.service";
 import { ExternalDeploymentPathEnvironmentService } from "src/app/shared/services/externaldeploymentpathenvironment.service";
 import { ExternalEnvironmentService } from "src/app/shared/services/externalenvironment.service";
+import { ApplicationExternalDeploymentPathService } from "src/app/shared/services/applicationexternaldeploymentpath.service";
 import {
   LayoutParameter,
   LayoutService,
@@ -45,6 +46,7 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
     private externalDeploymentPathService: ExternalDeploymentPathService,
     private externalDeploymentPathEnvironmentService: ExternalDeploymentPathEnvironmentService,
     private externalEnvironmentService: ExternalEnvironmentService,
+    private applicationExternalDeploymentPathService: ApplicationExternalDeploymentPathService,
     private layoutService: LayoutService,
     private changeDetectorRef: ChangeDetectorRef,
     private ngZone: NgZone
@@ -135,6 +137,17 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
   public onClickDeleteDeploymentPathOrStep(e: unknown, entry: ExternalDeploymentPathTreeItem): void {
     void e;
     const isStep = entry.ExternalEnvironmentNavigation !== undefined;
+    if (!isStep && (entry.ApplicationExternalDeploymentPaths?.length ?? 0) > 0) {
+      const applicationName =
+        entry.ApplicationExternalDeploymentPaths[0].ApplicationNavigation?.Name;
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: applicationName
+          ? `The external deployment path is used by application '${applicationName}'.`
+          : "The external deployment path cannot be deleted because it is assigned to an application.",
+      });
+      return;
+    }
     const message = isStep
       ? `Would you like to remove the "${this.displayName(entry.ExternalEnvironmentNavigation)}" environment from the external deployment path?`
       : `Would you like to delete the external deployment path "${entry.Name}"?`;
@@ -288,13 +301,21 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
         sort: [{ selector: "Name", desc: false }],
         expand: ["ExternalDeploymentPathEnvironments.ExternalEnvironmentNavigation"],
       }),
+      this.applicationExternalDeploymentPathService.getStore().load({
+        expand: ["ApplicationNavigation"],
+      }),
       this.externalEnvironmentService.getStore().load({
         filter: ["IsDeactive", "=", false],
         expand: ["EnvironmentNavigation.TenantNavigation"],
         sort: [{ selector: "Alias", desc: false }],
       }),
-    ]).then(([paths, environments]) => {
+    ]).then(([paths, assignments, environments]) => {
       this.allExternalDeploymentPaths = paths as ExternalDeploymentPath[];
+      for (const path of this.allExternalDeploymentPaths) {
+        path.ApplicationExternalDeploymentPaths = (assignments as {
+          ExternalDeploymentPath?: number;
+        }[]).filter((assignment) => assignment.ExternalDeploymentPath === path.Id);
+      }
       this.allExternalEnvironments = environments as ExternalEnvironment[];
       this.externalTenants = this.allExternalEnvironments
         .reduce((tenants, environment) => {

@@ -18,7 +18,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 {
     /// <summary>
     /// Manages the ordered steps (environments) of an <see cref="ExternalDeploymentPath"/>. Mirrors
-    /// <see cref="DeploymentPathEnvironmentsController"/> for the external delivery area. Only available to the
+    /// <see cref="DeploymentPathEnvironmentsController"/> for the external deployment area. Only available to the
     /// vendor tenant.
     /// </summary>
     [Authorize(Roles = "atPowerCID.Admin, atPowerCID.ExternalReleaseManager")]

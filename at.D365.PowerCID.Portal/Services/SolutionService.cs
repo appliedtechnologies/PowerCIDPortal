@@ -437,7 +437,7 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"Begin: SolutionService CheckExternalImportPermission(userId: {userId}, solution Id: {solution.Id}, externalEnvironmentId: {externalEnvironmentId}, externalDeploymentPathId: {externalDeploymentPathId})");
 
             if (!solution.IsReleasedExternally)
-                throw new Exception("This solution version is not released for external delivery.");
+                throw new Exception("This solution version is not released for external deployment.");
 
             ExternalEnvironment externalEnvironment = await this.dbContext.ExternalEnvironments.FirstOrDefaultAsync(e => e.Id == externalEnvironmentId);
             if (externalEnvironment == null)

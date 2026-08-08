@@ -87,16 +87,20 @@ export class SolutionDetailComponent implements OnChanges {
         this.layoutService.notify({
           type: NotificationType.Success,
           message: e.value
-            ? "The solution version was successfully released for external delivery."
+            ? "The solution version was successfully released for external deployment."
             : "The solution version's external release was successfully revoked.",
         });
       })
-      .catch((error: Error) => {
+      .catch((error) => {
         this.isReleasedExternally = !e.value;
+        const backendMessage =
+          typeof error?.error === "string"
+            ? error.error
+            : error?.error?.error?.message || error?.error?.message;
         this.layoutService.notify({
           type: NotificationType.Error,
-          message: error?.message
-            ? `An error occurred while changing the external release: ${error.message}`
+          message: backendMessage
+            ? `External release could not be changed: ${backendMessage}`
             : "An error occurred while changing the external release.",
         });
       })

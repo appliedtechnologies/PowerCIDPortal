@@ -16,7 +16,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 {
     /// <summary>
     /// Maps an <see cref="Application"/> to the <see cref="ExternalDeploymentPath"/>(s) it can be delivered through.
-    /// Mirrors <see cref="ApplicationDeploymentPathsController"/> for the external delivery area. Only available to
+    /// Mirrors <see cref="ApplicationDeploymentPathsController"/> for the external deployment area. Only available to
     /// the vendor tenant.
     /// </summary>
     [Authorize(Roles = "atPowerCID.Admin, atPowerCID.ExternalReleaseManager")]
