@@ -31,8 +31,6 @@
     [showWhenGrouped]="true"
   ></dxi-column>
   <dxi-column dataField="EnvironmentNavigation.BasicUrl" caption="URL"></dxi-column>
-  <dxi-column dataField="IsDeactive" caption="Deactivated" dataType="boolean"></dxi-column>
-
   <dxi-column type="buttons" [width]="180">
     <dxi-button icon="eyeclose" hint="Deactivate" [visible]="isActive" [onClick]="onClickDeactivate"></dxi-button>
     <dxi-button icon="eyeopen" hint="Activate" [visible]="isDeactivated" [onClick]="onClickActivate"></dxi-button>

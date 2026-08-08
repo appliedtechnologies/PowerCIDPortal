@@ -24,6 +24,7 @@ export class ExternalEnvironmentComponent {
   @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;
 
   public dataSourceExternalEnvironments: DataSource;
+  public showDeactivatedEnvironments = false;
   public isRegisterPopupVisible = false;
   public registrableEnvironments: RegistrableEnvironment[] = [];
   public registrableTenants: { tenantId: number; tenantName: string }[] = [];
@@ -41,9 +42,11 @@ export class ExternalEnvironmentComponent {
     this.onClickDelete = this.onClickDelete.bind(this);
     this.isActive = this.isActive.bind(this);
     this.isDeactivated = this.isDeactivated.bind(this);
+    this.onClickToggleDeactivatedEnvironments = this.onClickToggleDeactivatedEnvironments.bind(this);
 
     this.dataSourceExternalEnvironments = new DataSource({
       store: this.externalEnvironmentService.getStore(),
+      filter: ["IsDeactive", "=", false],
       expand: ["EnvironmentNavigation.TenantNavigation"],
       sort: [{ selector: "Alias", desc: false }],
     });
@@ -51,6 +54,19 @@ export class ExternalEnvironmentComponent {
 
   public onToolbarPreparingDataGrid(e): void {
     const toolbarItems = e.toolbarOptions.items;
+
+    toolbarItems.unshift({
+      widget: "dxButton",
+      options: {
+        icon: "filter",
+        text: "Show deactivated",
+        stylingMode: "contained",
+        type: "normal",
+        hint: "Show deactivated environments.",
+        onClick: this.onClickToggleDeactivatedEnvironments,
+      },
+      location: "after",
+    });
 
     toolbarItems.unshift({
       widget: "dxButton",
@@ -80,6 +96,22 @@ export class ExternalEnvironmentComponent {
 
   public onClickRefresh(): void {
     this.dataGrid.instance.refresh();
+  }
+
+  public onClickToggleDeactivatedEnvironments(e): void {
+    this.showDeactivatedEnvironments = !this.showDeactivatedEnvironments;
+    this.dataSourceExternalEnvironments.filter(["IsDeactive", "=", this.showDeactivatedEnvironments]);
+    this.dataSourceExternalEnvironments.reload();
+    e.component.option(
+      "text",
+      this.showDeactivatedEnvironments ? "Show active" : "Show deactivated"
+    );
+    e.component.option(
+      "hint",
+      this.showDeactivatedEnvironments
+        ? "Show active environments."
+        : "Show deactivated environments."
+    );
   }
 
   public onClickOpenRegisterPopup(): void {
