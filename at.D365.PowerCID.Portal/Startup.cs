@@ -42,6 +42,9 @@ namespace at.D365.PowerCID.Portal
             builder.EntitySet<User>("Users");
             builder.EntitySet<Tenant>("Tenants");
             builder.EntitySet<Data.Models.Environment>("Environments");
+            // External registration metadata is exposed only through the gated ExternalEnvironments set.
+            // Do not conventionally expose it as a navigation from tenant-scoped Environments.
+            builder.EntityType<Data.Models.Environment>().Ignore(e => e.ExternalEnvironmentNavigation);
             builder.EntityType<Data.Models.Environment>().Property(e => e.IsDeactive);
             builder.EntitySet<Application>("Applications");
             builder.EntityType<Application>().Property(e => e.IsDeactive);

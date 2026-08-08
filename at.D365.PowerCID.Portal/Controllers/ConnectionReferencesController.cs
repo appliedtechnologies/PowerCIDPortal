@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.OData.Query;
 using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -43,6 +44,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(ModelState);
             }
+            if (!await dbContext.Applications.AnyAsync(a => a.Id == connectionReference.Application
+                && a.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == msIdTenantCurrentUser))
+                return Forbid();
             if (dbContext.ConnectionReferences.Any(x => x.MsId == connectionReference.MsId && x.Application == connectionReference.Application))
             {
                 return BadRequest("Connection References already exists with this Ms Id and Application");
@@ -57,16 +61,19 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [HttpPost]
-        public async Task<IEnumerable<ConnectionReference>> GetConnectionReferencesForApplication(ODataActionParameters parameters, [FromServices] ConnectionReferenceService connectionReferenceService)
+        public async Task<IActionResult> GetConnectionReferencesForApplication(ODataActionParameters parameters, [FromServices] ConnectionReferenceService connectionReferenceService)
         {
             logger.LogDebug($"Begin: ConnectionReferencesController GetConnectionReferencesForApplication(parameters applicationId: {(int)parameters["applicationId"]})");
 
             int applicationId = (int)parameters["applicationId"];
+            var application = await dbContext.Applications.FirstOrDefaultAsync(a => a.Id == applicationId);
+            if (application == null || application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId != msIdTenantCurrentUser)
+                return Forbid();
             var connectionReferences = await connectionReferenceService.GetExistsingConnectionReferencesFromDataverse(applicationId);
 
             logger.LogDebug($"End: ConnectionReferencesController GetConnectionReferencesForApplication(parameters applicationId: {(int)parameters["applicationId"]})");
 
-            return connectionReferences;
+            return Ok(connectionReferences);
         }
     }
 }

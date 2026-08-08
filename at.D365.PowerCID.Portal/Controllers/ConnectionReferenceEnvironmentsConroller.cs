@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
+using Microsoft.OData;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
 
@@ -33,7 +34,11 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: ConnectionReferenceEnvironmentsController Get()");
 
-            return base.dbContext.ConnectionReferenceEnvironments.Where(e => e.ConnectionReferenceNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            var externalTenantIds = AuthorizedExternalTenantIds();
+            return base.dbContext.ConnectionReferenceEnvironments.Where(e =>
+                e.ConnectionReferenceNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                && (e.EnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                    || externalTenantIds.Contains(e.EnvironmentNavigation.Tenant)));
         }
 
         [HttpPost]
@@ -45,6 +50,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(ModelState);
             }
+            if (!await CanManageConnectionReferenceEnvironment(connectionReferenceEnvironment.ConnectionReference, connectionReferenceEnvironment.Environment))
+                return Forbid();
             if (dbContext.ConnectionReferenceEnvironments.Any(x => x.ConnectionReference == connectionReferenceEnvironment.ConnectionReference && x.Environment == connectionReferenceEnvironment.Environment))
             {
                 return BadRequest("Connection References for this Environment already exists");
@@ -67,10 +74,13 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(ModelState);
             }
-            if ((await this.dbContext.ConnectionReferences.FirstOrDefaultAsync(e => e.Id == keyConnectionReference && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if (!await CanManageConnectionReferenceEnvironment(keyConnectionReference, keyEnvironment))
                 return Forbid();
 
-            var entity = await base.dbContext.ConnectionReferenceEnvironments.FirstAsync(e => e.ConnectionReference == keyConnectionReference && e.Environment == keyEnvironment);
+            if (connectionReferenceEnvironment.GetChangedPropertyNames().Any(p => p != nameof(ConnectionReferenceEnvironment.ConnectionId)))
+                return BadRequest(new ODataError { Code = "400", Message = "Only the connection id can be changed." });
+
+            var entity = await base.dbContext.ConnectionReferenceEnvironments.FirstOrDefaultAsync(e => e.ConnectionReference == keyConnectionReference && e.Environment == keyEnvironment);
             if (entity == null)
             {
                 return NotFound();
@@ -98,6 +108,25 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"End: ConnectionReferenceEnvironmentsController Patch(keyConnectionReference: {keyConnectionReference}, keyEnvironment: {keyEnvironment})");
 
             return Updated(entity);
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> Delete([FromODataUri] int keyConnectionReference, [FromODataUri] int keyEnvironment)
+        {
+            if (!await CanManageConnectionReferenceEnvironment(keyConnectionReference, keyEnvironment))
+                return Forbid();
+            var entity = await dbContext.ConnectionReferenceEnvironments.FirstOrDefaultAsync(e => e.ConnectionReference == keyConnectionReference && e.Environment == keyEnvironment);
+            if (entity == null)
+                return NotFound();
+            dbContext.Remove(entity);
+            await dbContext.SaveChangesAsync();
+            return Ok();
+        }
+
+        private async Task<bool> CanManageConnectionReferenceEnvironment(int connectionReferenceId, int environmentId)
+        {
+            var reference = await dbContext.ConnectionReferences.FirstOrDefaultAsync(e => e.Id == connectionReferenceId);
+            return reference != null && CanAccessConfiguration(reference.Application, environmentId);
         }
 
         private bool ConnectionReferenceEnvironmentExists(int keyConnectionReference, int keyEnvironment)

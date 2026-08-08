@@ -151,7 +151,10 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: EnvironmentsController GetDataversePublishers(key: {key})");
 
-            Environment environment = await this.dbContext.Environments.FindAsync(key);
+            Environment environment = await this.dbContext.Environments
+                .FirstOrDefaultAsync(e => e.Id == key && e.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if (environment == null)
+                return Forbid();
 
             var response = await downstreamWebApi.CallApiForAppAsync("DataverseApi", options =>
             {
