@@ -46,11 +46,10 @@ namespace at.D365.PowerCID.Portal.Controllers
             var applicationExternalDeploymentPathToDelete = this.dbContext.ApplicationExternalDeploymentPaths.FirstOrDefault(e => e.Application == keyApplication && e.ExternalDeploymentPath == keyExternalDeploymentPath && e.ExternalDeploymentPathNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
 
             if (applicationExternalDeploymentPathToDelete == null)
-                return NotFound();
+            if (applicationExternalDeploymentPathToDelete.HierarchieNumber == null)
+                return BadRequest("HierarchieNumber is required for this assignment.");
 
-            SortWhenRemoved(keyApplication, applicationExternalDeploymentPathToDelete.HierarchieNumber.ToString());
-
-            this.dbContext.Remove(applicationExternalDeploymentPathToDelete);
+            SortWhenRemoved(keyApplication, applicationExternalDeploymentPathToDelete.HierarchieNumber.Value.ToString());
             await this.dbContext.SaveChangesAsync();
 
             logger.LogDebug($"End: ApplicationExternalDeploymentPathsController Delete(keyApplication: {keyApplication}, keyExternalDeploymentPath: {keyExternalDeploymentPath})");
