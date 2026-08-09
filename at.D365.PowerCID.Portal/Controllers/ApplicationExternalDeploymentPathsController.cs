@@ -46,10 +46,13 @@ namespace at.D365.PowerCID.Portal.Controllers
             var applicationExternalDeploymentPathToDelete = this.dbContext.ApplicationExternalDeploymentPaths.FirstOrDefault(e => e.Application == keyApplication && e.ExternalDeploymentPath == keyExternalDeploymentPath && e.ExternalDeploymentPathNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
 
             if (applicationExternalDeploymentPathToDelete == null)
+                return NotFound();
+
             if (applicationExternalDeploymentPathToDelete.HierarchieNumber == null)
                 return BadRequest("HierarchieNumber is required for this assignment.");
 
             SortWhenRemoved(keyApplication, applicationExternalDeploymentPathToDelete.HierarchieNumber.Value.ToString());
+            this.dbContext.Remove(applicationExternalDeploymentPathToDelete);
             await this.dbContext.SaveChangesAsync();
 
             logger.LogDebug($"End: ApplicationExternalDeploymentPathsController Delete(keyApplication: {keyApplication}, keyExternalDeploymentPath: {keyExternalDeploymentPath})");
@@ -93,13 +96,27 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var parametersAsJObject = JsonConvert.DeserializeObject<JObject>(parameters.ToString());
-            int fromIndex = (int)parametersAsJObject["FromIndex"];
-            int toIndex = (int)parametersAsJObject["ToIndex"];
+            if (this.dbContext.Applications.FirstOrDefault(e => e.Id == keyApplication && e.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser) == null)
+                return Forbid();
 
-            SortWhenUpdated(keyApplication, fromIndex, toIndex);
+            if (this.dbContext.ExternalDeploymentPaths.FirstOrDefault(e => e.Id == keyExternalDeploymentPath && e.TenantNavigation.MsId == this.msIdTenantCurrentUser) == null)
+                return Forbid();
 
-            ApplicationExternalDeploymentPath applicationExternalDeploymentPathFromIndex = dbContext.ApplicationExternalDeploymentPaths.FirstOrDefault(x => x.Application == keyApplication && x.ExternalDeploymentPath == keyExternalDeploymentPath);
+            var parametersAsJObject = parameters == null ? null : JsonConvert.DeserializeObject<JObject>(parameters.ToString());
+            if (parametersAsJObject == null ||
+                !int.TryParse(parametersAsJObject["FromIndex"]?.ToString(), out int fromIndex) ||
+                !int.TryParse(parametersAsJObject["ToIndex"]?.ToString(), out int toIndex))
+                return BadRequest("FromIndex and ToIndex are required.");
+
+            ApplicationExternalDeploymentPath applicationExternalDeploymentPathFromIndex = dbContext.ApplicationExternalDeploymentPaths.FirstOrDefault(x =>
+                x.Application == keyApplication &&
+                x.ExternalDeploymentPath == keyExternalDeploymentPath &&
+                x.ExternalDeploymentPathNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if (applicationExternalDeploymentPathFromIndex == null)
+                return NotFound();
+
+            if (fromIndex != toIndex)
+                SortWhenUpdated(keyApplication, fromIndex, toIndex);
             applicationExternalDeploymentPathFromIndex.HierarchieNumber = toIndex;
 
             await base.dbContext.SaveChangesAsync();
