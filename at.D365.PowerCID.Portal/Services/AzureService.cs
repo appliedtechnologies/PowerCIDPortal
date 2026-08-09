@@ -284,11 +284,7 @@ namespace at.D365.PowerCID.Portal.Services
             catch
             {
                 // response body wasn't JSON (or didn't have the expected shape) - fall back to the raw body
-            }
-
-            logger.LogError($"Error: AzureService Graph call failed with status {(int)response.StatusCode} ({response.StatusCode}): {responseBody}");
-
-            return new Exception($"{friendlyMessage} ({(int)response.StatusCode} {response.StatusCode}): {graphErrorMessage}");
+            logger.LogError($"Error: AzureService API call failed with status {(int)response.StatusCode} ({response.StatusCode}): {responseBody}");
         }
     }
 }
