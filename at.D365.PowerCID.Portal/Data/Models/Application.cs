@@ -41,5 +41,8 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public virtual ICollection<ApplicationDeploymentPath> ApplicationDeploymentPaths { get; set; }
         public virtual ICollection<ConnectionReference> ConnectionReferences { get; set; }
         public virtual ICollection<EnvironmentVariable> EnvironmentVariables { get; set; }
+
+        public virtual ICollection<ExternalDeploymentPath> ExternalDeploymentPaths { get; set; }
+        public virtual ICollection<ApplicationExternalDeploymentPath> ApplicationExternalDeploymentPaths { get; set; }
     }
 }

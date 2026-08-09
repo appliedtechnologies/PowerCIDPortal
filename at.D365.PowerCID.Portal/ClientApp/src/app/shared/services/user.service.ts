@@ -33,6 +33,7 @@ export class UserService {
   public currentUserRoles: string[];
   public currentIdentityUser: AccountInfo;
   public currentDbUserWithTenant: User;
+  public isCrossTenantDeliveryEnabled = false;
 
   private isPortalLogginInProgess = false;
 
@@ -153,7 +154,8 @@ export class UserService {
 
   public async logout(): Promise<void> {
     await this.authService.logoutRedirect({
-      account: this.currentIdentityUser
+      account: this.currentIdentityUser,
+      postLogoutRedirectUri: location.origin,
     });
   }
 
@@ -176,6 +178,14 @@ export class UserService {
     });
   }
 
+  public ensureUserInformationLoaded(): Promise<void> {
+    if (!this.isMSALLoggedIn() || !this.isPortalLoggedIn()) {
+      return Promise.resolve();
+    }
+
+    return this.updateUserInformation();
+  }
+
   private getDbUserWithTenant(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       if (!this.isLogggedIn) reject();
@@ -190,6 +200,23 @@ export class UserService {
             this.currentDbUserWithTenant = response[0];
             resolve();
           }
+        });
+    });
+  }
+
+  private getCrossTenantDeliveryStatus(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.http
+        .post(`${AppConfig.settings.api.url}/Users/GetCrossTenantDeliveryStatus`, {})
+        .subscribe({
+          next: (data: { isEnabled: boolean }) => {
+            this.isCrossTenantDeliveryEnabled = data.isEnabled;
+            resolve();
+          },
+          error: () => {
+            this.isCrossTenantDeliveryEnabled = false;
+            resolve();
+          },
         });
     });
   }
@@ -235,7 +262,7 @@ export class UserService {
         })
         .subscribe({
           next: () => resolve(),
-          error: () => reject(),
+          error: (e) => reject(e),
         });
     });
   }
@@ -251,7 +278,7 @@ export class UserService {
         )
         .subscribe({
           next: () => resolve(),
-          error: () => reject(),
+          error: (e) => reject(e),
         });
     });
   }
@@ -269,6 +296,7 @@ export class UserService {
             this.currentIdentityUser.idTokenClaims["roles"];
         if (this.currentDbUserWithTenant == undefined || forceDbReload)
           this.getDbUserWithTenant()
+            .then(() => this.getCrossTenantDeliveryStatus())
             .then(() => {
               resolve();
             })
@@ -326,6 +354,7 @@ export class UserService {
     this.currentUserRoles = undefined;
     this.currentIdentityUser = undefined;
     this.currentDbUserWithTenant = undefined;
+    this.isCrossTenantDeliveryEnabled = false;
   }
 
   private checkUpdatedOwnership(){

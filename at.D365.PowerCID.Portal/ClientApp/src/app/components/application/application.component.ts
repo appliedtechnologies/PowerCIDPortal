@@ -17,6 +17,11 @@ import {
 import { PublisherService } from "src/app/shared/services/publisher.service";
 import { ApplicationdeploymentpathService } from "src/app/shared/services/applicationdeploymentpath.service";
 import { confirm } from 'devextreme/ui/dialog';
+import { ExternalDeploymentPath } from "src/app/shared/models/externaldeploymentpath.model";
+import { ExternalDeploymentPathService } from "src/app/shared/services/externaldeploymentpath.service";
+import { ApplicationExternalDeploymentPathService } from "src/app/shared/services/applicationexternaldeploymentpath.service";
+import { ExternalEnvironmentService } from "src/app/shared/services/externalenvironment.service";
+import { UserService } from "src/app/shared/services/user.service";
 
 @Component({
     selector: "app-application",
@@ -45,18 +50,31 @@ export class ApplicationComponent {
   applicationDeploymentPaths;
   currentApplicationName: string;
 
+  isAssignExternalDeploymentPaths = false;
+  externalDeploymentPaths: ExternalDeploymentPath[];
+  applicationExternalDeploymentPaths;
+  private externalEnvironmentTenantNames = new Map<number, string>();
+
   constructor(
+    public userService: UserService,
     private applicationService: ApplicationService,
     private environmentService: EnvironmentService,
     private publisherService: PublisherService,
     private deploymentPathService: DeploymentpathService,
     private applicationDeploymentPathService: ApplicationdeploymentpathService,
+    private externalDeploymentPathService: ExternalDeploymentPathService,
+    private applicationExternalDeploymentPathService: ApplicationExternalDeploymentPathService,
+    private externalEnvironmentService: ExternalEnvironmentService,
     private layoutService: LayoutService
   ) {
     this.onAdd = this.onAdd.bind(this);
     this.onRemove = this.onRemove.bind(this);
     this.onReorder = this.onReorder.bind(this);
+    this.onAddExternal = this.onAddExternal.bind(this);
+    this.onRemoveExternal = this.onRemoveExternal.bind(this);
+    this.onReorderExternal = this.onReorderExternal.bind(this);
     this.onClickAssignDeploymentPaths = this.onClickAssignDeploymentPaths.bind(this);
+    this.onClickAssignExternalDeploymentPaths = this.onClickAssignExternalDeploymentPaths.bind(this);
     this.onClickDisableApplication = this.onClickDisableApplication.bind(this);
     this.onClickActivateApplication = this.onClickActivateApplication.bind(this);
     this.onClickToggleDeactivatedApplications = this.onClickToggleDeactivatedApplications.bind(this);
@@ -230,6 +248,104 @@ export class ApplicationComponent {
       });
 
     this.isAssignDevelopmentPaths = true;
+  }
+
+  onAddExternal(e) {
+    if (this.applicationExternalDeploymentPaths.some((x) => x.Id == e.itemData.Id)) {
+      e.cancel = true;
+    } else {
+      e.toData.splice(e.toIndex, 0, e.itemData);
+      const itemDataId = e.itemData.Id;
+      const toIndex = e.toIndex + 1;
+
+      this.applicationExternalDeploymentPathService.getStore().insert({
+        Application: this.currentApplicationId,
+        ExternalDeploymentPath: itemDataId,
+        HierarchieNumber: toIndex,
+      }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+    }
+  }
+
+  onRemoveExternal(e) {
+    e.fromData.splice(e.fromIndex, 1);
+    const itemDataId = e.itemData.Id;
+
+    this.applicationExternalDeploymentPathService.getStore().remove({
+      Application: this.currentApplicationId,
+      ExternalDeploymentPath: itemDataId,
+    }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+  }
+
+  onReorderExternal(e) {
+    const itemDataId = e.itemData.Id;
+    const fromIndex = e.fromIndex + 1;
+    const toIndex = e.toIndex + 1;
+
+    this.applicationExternalDeploymentPathService
+      .getStore()
+      .update(
+        {
+          Application: this.currentApplicationId,
+          ExternalDeploymentPath: itemDataId,
+        },
+        { ToIndex: toIndex, FromIndex: fromIndex }
+      )
+      .then(() => {
+        e.toData.splice(e.fromIndex, 1);
+        e.toData.splice(e.toIndex, 0, e.itemData);
+        this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000});
+      });
+  }
+
+  onClickAssignExternalDeploymentPaths(e) {
+    this.currentApplicationName = e.row.data.Name;
+    this.currentApplicationId = e.row.data.Id;
+    const externalDataPromise = Promise.all([
+      this.externalDeploymentPathService.getStore().load({
+        expand: ["ExternalDeploymentPathEnvironments.ExternalEnvironmentNavigation"],
+      }),
+      this.externalEnvironmentService.getStore().load({
+        expand: ["EnvironmentNavigation.TenantNavigation"],
+      }),
+    ]).then(([paths, environments]) => {
+      this.externalDeploymentPaths = paths;
+      this.externalEnvironmentTenantNames = new Map(
+        environments.map((environment) => [
+          environment.Id,
+          environment.EnvironmentNavigation?.TenantNavigation?.Name,
+        ])
+      );
+    });
+
+    externalDataPromise.then(() => this.applicationService
+      .getStore()
+      .load({
+        filter: "Id eq " + this.currentApplicationId,
+        expand: ["ExternalDeploymentPaths", "ApplicationExternalDeploymentPaths"],
+        select: "ExternalDeploymentPaths",
+      }))
+      .then((ad) => {
+        const application = ad[0];
+        const sorted: ExternalDeploymentPath[] = [];
+        for (let i = 0; i < (application?.ApplicationExternalDeploymentPaths.length ?? 0); i++) {
+          const hierarchieNumber = application.ApplicationExternalDeploymentPaths[i].HierarchieNumber;
+          sorted[hierarchieNumber - 1] =
+            this.externalDeploymentPaths.find((path) => path.Id === application.ExternalDeploymentPaths[i].Id) ??
+            application.ExternalDeploymentPaths[i];
+        }
+        this.applicationExternalDeploymentPaths = sorted;
+      });
+
+    this.isAssignExternalDeploymentPaths = true;
+  }
+
+  externalDeploymentPathDisplayName(path: ExternalDeploymentPath): string {
+    if (!path) return "";
+    const environmentId = path.ExternalDeploymentPathEnvironments?.[0]?.ExternalEnvironment;
+    const tenantName = this.externalEnvironmentTenantNames.get(environmentId);
+    return tenantName
+      ? `${path.Name} (${tenantName})`
+      : path.Name || "";
   }
 
   onClickDisableApplication(e) {

@@ -317,21 +317,23 @@ namespace at.D365.PowerCID.Portal.Controllers
 
 
         [HttpPost]
-        public async Task<int> GetDeploymentSettingsStatus([FromODataUri] int key, ODataActionParameters parameters, [FromServices] ConnectionReferenceService connectionReferenceService, [FromServices] EnvironmentVariableService environmentVariableService)
+        public async Task<IActionResult> GetDeploymentSettingsStatus([FromODataUri] int key, ODataActionParameters parameters, [FromServices] ConnectionReferenceService connectionReferenceService, [FromServices] EnvironmentVariableService environmentVariableService)
         {
             logger.LogDebug($"Begin: ApplicationsController GetDeploymentSettingsStatus(key: {key}, parameters environmentId: {(int)parameters["environmentId"]})");
 
             //status 0=incomplete configuration;1=complete configuration
             int environmentId = (int)parameters["environmentId"];
+            if (!CanAccessConfiguration(key, environmentId))
+                return Forbid();
             var statusConnectionReferences = await connectionReferenceService.GetStatus(key, environmentId);
             var statusEnvironmentVariables = await environmentVariableService.GetStatus(key, environmentId);
 
             if (statusConnectionReferences == 0 || statusEnvironmentVariables == 0)
-                return 0;
+                return Ok(0);
 
             logger.LogDebug($"End: ApplicationsController GetDeploymentSettingsStatus(key: {key}, parameters environmentId: {(int)parameters["environmentId"]})");
 
-            return 1;
+            return Ok(1);
         }
 
         private bool ApplicationExists(int key)

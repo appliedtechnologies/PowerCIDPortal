@@ -123,6 +123,9 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("Import Target Environment");
 
+                    b.Property<bool>("IsExternalDelivery")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -380,6 +383,24 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.HasIndex("DeploymentPath");
 
                     b.ToTable("ApplicationDeploymentPath", (string)null);
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ApplicationExternalDeploymentPath", b =>
+                {
+                    b.Property<int>("Application")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExternalDeploymentPath")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("HierarchieNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("Application", "ExternalDeploymentPath");
+
+                    b.HasIndex("ExternalDeploymentPath");
+
+                    b.ToTable("ApplicationExternalDeploymentPath", (string)null);
                 });
 
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ConnectionReference", b =>
@@ -643,6 +664,115 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.ToTable("EnvironmentVariableEnvironment", (string)null);
                 });
 
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ExternalDeploymentPath", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("Created By");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("Created On");
+
+                    b.Property<int>("ModifiedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("Modified By");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("Modified On");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<int>("Tenant")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("ModifiedBy");
+
+                    b.HasIndex("Tenant");
+
+                    b.ToTable("ExternalDeploymentPath", (string)null);
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ExternalDeploymentPathEnvironment", b =>
+                {
+                    b.Property<int>("ExternalDeploymentPath")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExternalEnvironment")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StepNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("ExternalDeploymentPath", "ExternalEnvironment");
+
+                    b.HasIndex("ExternalEnvironment");
+
+                    b.ToTable("ExternalDeploymentPathEnvironment", (string)null);
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ExternalEnvironment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Alias")
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("Created By");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("Created On");
+
+                    b.Property<int>("Environment")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeactive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ModifiedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("Modified By");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("Modified On");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("Environment")
+                        .IsUnique();
+
+                    b.HasIndex("ModifiedBy");
+
+                    b.ToTable("ExternalEnvironment", (string)null);
+                });
+
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Publisher", b =>
                 {
                     b.Property<int>("Id")
@@ -702,6 +832,9 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true)
                         .HasColumnName("Enable Workflows");
+
+                    b.Property<bool>("IsReleasedExternally")
+                        .HasColumnType("bit");
 
                     b.Property<int>("ModifiedBy")
                         .HasColumnType("int")
@@ -846,6 +979,21 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.HasIndex("Tenant");
 
                     b.ToTable("User", (string)null);
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.UserExternalTenant", b =>
+                {
+                    b.Property<int>("User")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tenant")
+                        .HasColumnType("int");
+
+                    b.HasKey("User", "Tenant");
+
+                    b.HasIndex("Tenant");
+
+                    b.ToTable("UserExternalTenant", (string)null);
                 });
 
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Patch", b =>
@@ -1030,6 +1178,27 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.Navigation("DeploymentPathNavigation");
                 });
 
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ApplicationExternalDeploymentPath", b =>
+                {
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Application", "ApplicationNavigation")
+                        .WithMany("ApplicationExternalDeploymentPaths")
+                        .HasForeignKey("Application")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_ApplicationExternalDeploymentPath_Application");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.ExternalDeploymentPath", "ExternalDeploymentPathNavigation")
+                        .WithMany("ApplicationExternalDeploymentPaths")
+                        .HasForeignKey("ExternalDeploymentPath")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_ApplicationExternalDeploymentPath_ExternalDeploymentPath");
+
+                    b.Navigation("ApplicationNavigation");
+
+                    b.Navigation("ExternalDeploymentPathNavigation");
+                });
+
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ConnectionReference", b =>
                 {
                     b.HasOne("at.D365.PowerCID.Portal.Data.Models.Application", "ApplicationNavigation")
@@ -1175,6 +1344,81 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.Navigation("EnvironmentVariableNavigation");
                 });
 
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ExternalDeploymentPath", b =>
+                {
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.User", "CreatedByNavigation")
+                        .WithMany("ExternalDeploymentPathCreatedByNavigations")
+                        .HasForeignKey("CreatedBy")
+                        .IsRequired()
+                        .HasConstraintName("FK_ExternalDeploymentPath_Created_By");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.User", "ModifiedByNavigation")
+                        .WithMany("ExternalDeploymentPathModifiedByNavigations")
+                        .HasForeignKey("ModifiedBy")
+                        .IsRequired()
+                        .HasConstraintName("FK_ExternalDeploymentPath_Modified_By");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Tenant", "TenantNavigation")
+                        .WithMany("ExternalDeploymentPaths")
+                        .HasForeignKey("Tenant")
+                        .IsRequired()
+                        .HasConstraintName("FK_ExternalDeploymentPath_Tenant");
+
+                    b.Navigation("CreatedByNavigation");
+
+                    b.Navigation("ModifiedByNavigation");
+
+                    b.Navigation("TenantNavigation");
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ExternalDeploymentPathEnvironment", b =>
+                {
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.ExternalDeploymentPath", "ExternalDeploymentPathNavigation")
+                        .WithMany("ExternalDeploymentPathEnvironments")
+                        .HasForeignKey("ExternalDeploymentPath")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_ExternalDeploymentPathEnvironment_ExternalDeploymentPath");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.ExternalEnvironment", "ExternalEnvironmentNavigation")
+                        .WithMany("ExternalDeploymentPathEnvironments")
+                        .HasForeignKey("ExternalEnvironment")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_ExternalDeploymentPathEnvironment_ExternalEnvironment");
+
+                    b.Navigation("ExternalDeploymentPathNavigation");
+
+                    b.Navigation("ExternalEnvironmentNavigation");
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ExternalEnvironment", b =>
+                {
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.User", "CreatedByNavigation")
+                        .WithMany("ExternalEnvironmentCreatedByNavigations")
+                        .HasForeignKey("CreatedBy")
+                        .IsRequired()
+                        .HasConstraintName("FK_ExternalEnvironment_Created_By");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Environment", "EnvironmentNavigation")
+                        .WithOne("ExternalEnvironmentNavigation")
+                        .HasForeignKey("at.D365.PowerCID.Portal.Data.Models.ExternalEnvironment", "Environment")
+                        .IsRequired()
+                        .HasConstraintName("FK_ExternalEnvironment_Environment");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.User", "ModifiedByNavigation")
+                        .WithMany("ExternalEnvironmentModifiedByNavigations")
+                        .HasForeignKey("ModifiedBy")
+                        .IsRequired()
+                        .HasConstraintName("FK_ExternalEnvironment_Modified_By");
+
+                    b.Navigation("CreatedByNavigation");
+
+                    b.Navigation("EnvironmentNavigation");
+
+                    b.Navigation("ModifiedByNavigation");
+                });
+
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Publisher", b =>
                 {
                     b.HasOne("at.D365.PowerCID.Portal.Data.Models.Environment", "EnvironmentNavigation")
@@ -1222,6 +1466,27 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.Navigation("TenantNavigation");
                 });
 
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.UserExternalTenant", b =>
+                {
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Tenant", "TenantNavigation")
+                        .WithMany("UserExternalTenants")
+                        .HasForeignKey("Tenant")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_UserExternalTenant_Tenant");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.User", "UserNavigation")
+                        .WithMany("UserExternalTenants")
+                        .HasForeignKey("User")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_UserExternalTenant_User");
+
+                    b.Navigation("TenantNavigation");
+
+                    b.Navigation("UserNavigation");
+                });
+
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Action", b =>
                 {
                     b.Navigation("AsyncJobs");
@@ -1245,6 +1510,8 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Application", b =>
                 {
                     b.Navigation("ApplicationDeploymentPaths");
+
+                    b.Navigation("ApplicationExternalDeploymentPaths");
 
                     b.Navigation("ConnectionReferences");
 
@@ -1277,6 +1544,8 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
 
                     b.Navigation("EnvironmentVariableEnvironments");
 
+                    b.Navigation("ExternalEnvironmentNavigation");
+
                     b.Navigation("Publishers");
 
                     b.Navigation("UserEnvironments");
@@ -1285,6 +1554,18 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.EnvironmentVariable", b =>
                 {
                     b.Navigation("EnvironmentVariableEnvironments");
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ExternalDeploymentPath", b =>
+                {
+                    b.Navigation("ApplicationExternalDeploymentPaths");
+
+                    b.Navigation("ExternalDeploymentPathEnvironments");
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.ExternalEnvironment", b =>
+                {
+                    b.Navigation("ExternalDeploymentPathEnvironments");
                 });
 
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Publisher", b =>
@@ -1302,6 +1583,10 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.Navigation("DeploymentPaths");
 
                     b.Navigation("Environments");
+
+                    b.Navigation("ExternalDeploymentPaths");
+
+                    b.Navigation("UserExternalTenants");
 
                     b.Navigation("Users");
                 });
@@ -1330,11 +1615,21 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
 
                     b.Navigation("EnvironmentVariableModifiedByNavigations");
 
+                    b.Navigation("ExternalDeploymentPathCreatedByNavigations");
+
+                    b.Navigation("ExternalDeploymentPathModifiedByNavigations");
+
+                    b.Navigation("ExternalEnvironmentCreatedByNavigations");
+
+                    b.Navigation("ExternalEnvironmentModifiedByNavigations");
+
                     b.Navigation("SolutionCreatedByNavigations");
 
                     b.Navigation("SolutionModifiedByNavigations");
 
                     b.Navigation("UserEnvironments");
+
+                    b.Navigation("UserExternalTenants");
                 });
 #pragma warning restore 612, 618
         }

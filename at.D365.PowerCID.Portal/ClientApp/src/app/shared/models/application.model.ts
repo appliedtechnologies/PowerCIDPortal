@@ -3,6 +3,7 @@ import { Environment } from "./environment.model";
 import { Publisher } from "./publisher.model";
 import { DeploymentPath } from "./deploymentpath.model";
 import { ApplicationDeploymentPath } from "./applicationdeploymentpath.model";
+import { ApplicationExternalDeploymentPath } from "./applicationexternaldeploymentpath.model";
 import { Solution } from "./solution.model";
 
 export interface Application {
@@ -25,6 +26,7 @@ export interface Application {
   ModifiedByNavigation?: User;
   DeploymentPaths?: DeploymentPath[];
   ApplicationDeploymentPaths?: ApplicationDeploymentPath[];
+  ApplicationExternalDeploymentPaths?: ApplicationExternalDeploymentPath[];
   Solutions? : Solution[];
   IsDeactive?: boolean;
   ForceManagedDeployment? : boolean;

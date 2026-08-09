@@ -32,13 +32,22 @@ export class SideNavigationMenuComponent {
   }
 
   onItemClickNavigation(e): void {
-    if(e.itemData.items)
-      this.setNavigationEntries();
+    if (e.itemData.routerLink) {
+      this.router.navigateByUrl(e.itemData.routerLink);
+      return;
+    }
 
-    if(e.itemData.routerLink)
-      this.router.navigate([e.itemData.routerLink]);   
-    else  
-      this.setNavigationEntries(!e.itemData.expanded);
+    this.setNavigationEntries(!e.itemData.expanded);
+  }
+
+  onItemSelectionChanged(e): void {
+    const selectedItem = e.itemData;
+    if (
+      selectedItem?.routerLink &&
+      selectedItem.routerLink !== this.router.url.split(/[#?]+/)[0]
+    ) {
+      this.router.navigateByUrl(selectedItem.routerLink);
+    }
   }
 
   onItemExpanded(): void{
@@ -78,6 +87,31 @@ export class SideNavigationMenuComponent {
         icon: "at-icon powercid-icon-vergangenheit",
         routerLink: "/history",
         visible: this.userService.isLogggedIn && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.manager].includes(e))
+      },
+      {
+        text: "External Deployment",
+        icon: "at-icon powercid-icon-extern",
+        expanded: expanded,
+        visible: this.userService.isLogggedIn && this.userService.isCrossTenantDeliveryEnabled && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.externalReleaseManager, AppConfig.settings.azure.appRoleNames.externalDeployer].includes(e)),
+        items: [
+        {
+          text: "Deliveries",
+          icon: "upload",
+          routerLink: "/external-delivery",
+          visible: this.userService.isLogggedIn && this.userService.isCrossTenantDeliveryEnabled && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.externalDeployer].includes(e))
+        },
+        {
+          text: "Environments",
+          icon: "at-icon powercid-icon-unit",
+          routerLink: "/external-environments",
+          visible: this.userService.isLogggedIn && this.userService.isCrossTenantDeliveryEnabled && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.externalReleaseManager].includes(e))
+        },
+        {
+          text: "Deployment Paths",
+          icon: "at-icon powercid-icon-route",
+          routerLink: "/external-deploymentpaths",
+          visible: this.userService.isLogggedIn && this.userService.isCrossTenantDeliveryEnabled && this.userService.currentUserRoles && this.userService.currentUserRoles.some(e => [AppConfig.settings.azure.appRoleNames.admin, AppConfig.settings.azure.appRoleNames.externalReleaseManager].includes(e))
+        }]
       },
       {
         text: "App Settings",

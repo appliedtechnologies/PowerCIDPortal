@@ -13,13 +13,17 @@
     "appRoleNames": {
       "admin": "atPowerCID.Admin",
       "manager": "atPowerCID.Manager",
-      "user": "atPowerCID.User"
+      "user": "atPowerCID.User",
+      "externalReleaseManager": "atPowerCID.ExternalReleaseManager",
+      "externalDeployer": "atPowerCID.ExternalDeployer"
     },
     "appRoleIds": {
       "admin": "a8afc5c9-c87b-429e-ab92-d5afbf1f24f1",
       "manager": "4378f55d-1380-46ca-8232-be075d7aed31",
-      "user": "37fb1144-871c-4fd5-8a7e-60a11da92a55"
+      "user": "37fb1144-871c-4fd5-8a7e-60a11da92a55",
+      "externalReleaseManager": "2b4bee2b-bcc4-4104-b510-e473a649cee7",
+      "externalDeployer": "0380511b-20d5-4bbe-9a3c-2d174635e910"
     }
   },
-  "version": "2.0.2608.0322"
+  "version": "2.1.2608.0913"
 }
