@@ -276,15 +276,20 @@ namespace at.D365.PowerCID.Portal.Services
                 // ignore - fall back to status code only if the body can't be read
             }
 
-            string graphErrorMessage = responseBody;
+            string apiErrorMessage = responseBody;
             try
             {
-                graphErrorMessage = (string)JObject.Parse(responseBody)["error"]?["message"] ?? responseBody;
+                apiErrorMessage = (string)JObject.Parse(responseBody)["error"]?["message"] ?? responseBody;
             }
             catch
             {
                 // response body wasn't JSON (or didn't have the expected shape) - fall back to the raw body
+            }
+
             logger.LogError($"Error: AzureService API call failed with status {(int)response.StatusCode} ({response.StatusCode}): {responseBody}");
+
+            string composedMessage = $"{friendlyMessage}. Status {(int)response.StatusCode} ({response.StatusCode}). {apiErrorMessage}";
+            return new Exception(composedMessage);
         }
     }
 }
