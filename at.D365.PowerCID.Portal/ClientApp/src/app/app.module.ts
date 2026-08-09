@@ -74,6 +74,7 @@ import { HistoryComponent } from "./components/history/history.component";
 import { UserComponent } from "./components/user/user.component";
 import { ApplicationdeploymentpathService } from "./shared/services/applicationdeploymentpath.service";
 import { RoleGuard } from "./shared/guards/role.guard";
+import { CrossTenantGuard } from "./shared/guards/cross-tenant.guard";
 import { RouterModule, provideRouter } from "@angular/router";
 import { LogPipe } from "./shared/pipes/log.pipe";
 import { ConfigureDeploymentComponent } from "./components/configure-deployment/configure-deployment.component";
@@ -89,6 +90,9 @@ import { routes } from "./app-routing.module";
 import config from "devextreme/core/config";
 import { licenseKey } from "src/devextreme-license";
 import { IPublicClientApplication } from "@azure/msal-browser";
+import { ExternalEnvironmentComponent } from "./components/external-environment/external-environment.component";
+import { ExternalDeploymentpathComponent } from "./components/external-deploymentpath/external-deploymentpath.component";
+import { ExternalDeliveryComponent } from "./components/external-delivery/external-delivery.component";
 
 export function initializeMsal(msalInstance: IPublicClientApplication) {
   return () => msalInstance.initialize();
@@ -110,6 +114,9 @@ config({ licenseKey });
         SettingsComponent,
         UserComponent,
         ConfigureDeploymentComponent,
+        ExternalEnvironmentComponent,
+        ExternalDeploymentpathComponent,
+        ExternalDeliveryComponent,
         LogPipe,
         SideNavigationMenuComponent,
         FullNamePipe,
@@ -181,6 +188,7 @@ config({ licenseKey });
         MsalGuard,
         MsalBroadcastService,
         RoleGuard,
+        CrossTenantGuard,
         ODataService,
         LayoutService,
         ActionService,

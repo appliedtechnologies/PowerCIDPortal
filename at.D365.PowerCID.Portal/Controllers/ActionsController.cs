@@ -29,7 +29,12 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: ActionsController Get(key: {key})");
 
-            return base.dbContext.Actions.Where(e => e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser && e.Id == key);
+            var externalTenantIds = AuthorizedExternalTenantIds();
+            return base.dbContext.Actions.Where(e =>
+                (e.IsExternalDelivery && e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                    && externalTenantIds.Contains(e.TargetEnvironmentNavigation.Tenant)
+                    || !e.IsExternalDelivery && e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)
+                && e.Id == key);
         }
 
         // GET: odata/Actions
@@ -38,7 +43,14 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: ActionsController Get()");
 
-            return base.dbContext.Actions.Where(e => e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            // Internal deliveries are scoped by the target environment's tenant. External deliveries must instead
+            // be scoped by the solution (vendor) tenant, otherwise they would leak into the customer tenant's
+            // history and be invisible to the vendor tenant that actually performed the delivery.
+            var externalTenantIds = AuthorizedExternalTenantIds();
+            return base.dbContext.Actions.Where(e =>
+                e.IsExternalDelivery && e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                && externalTenantIds.Contains(e.TargetEnvironmentNavigation.Tenant)
+                || !e.IsExternalDelivery && e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
@@ -85,9 +97,20 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: ActionsController CancelImport(key: {key})");
 
-            var action = await this.dbContext.Actions.FirstOrDefaultAsync(e => e.Id == key && e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            var action = await this.dbContext.Actions.FirstOrDefaultAsync(e => e.Id == key);
             if (action == null)
                 return Forbid();
+
+            if (action.IsExternalDelivery)
+            {
+                if (action.SolutionNavigation?.ApplicationNavigation?.DevelopmentEnvironmentNavigation?.TenantNavigation?.MsId != this.msIdTenantCurrentUser
+                    || !CanViewExternalAction(action))
+                    return Forbid();
+            }
+            else if (action.TargetEnvironmentNavigation.TenantNavigation.MsId != this.msIdTenantCurrentUser)
+            {
+                return Forbid();
+            }
 
             if (action.Status == 3 || action.Type == 1)
                 return BadRequest();

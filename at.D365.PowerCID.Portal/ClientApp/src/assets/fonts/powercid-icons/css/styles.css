@@ -59,6 +59,7 @@
 .powercid-icon-variable:before,
 .powercid-icon-reset:before,
 .powercid-icon-sortierpfeile:before,
+.powercid-icon-extern:before,
 .icons8,
 [data-icons8]:before {
   display: inline-block;
@@ -147,4 +148,7 @@
 }
 .powercid-icon-sortierpfeile:before {
   content: "\f11a";
+}
+.powercid-icon-extern:before {
+  content: "\f11b";
 }

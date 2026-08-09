@@ -1,0 +1,157 @@
+<h1>External Deployment Paths</h1>
+
+<div class="tenant-filter">
+  <div class="tenant-filter-label">Tenant</div>
+  @if (externalTenants.length > 0) {
+    <dx-select-box
+      [dataSource]="externalTenants"
+      [value]="selectedTenantMsId"
+      displayExpr="Name"
+      valueExpr="MsId"
+      placeholder="Select a tenant"
+      noDataText="No tenants with registered external environments found."
+      (onValueChanged)="onValueChangedTenant($event)"
+    ></dx-select-box>
+  } @else {
+    <span>No tenants with registered external environments found.</span>
+  }
+</div>
+
+<dx-button
+  id="addButton"
+  icon="add"
+  text="Add External Deployment Path"
+  type="success"
+  (onClick)="onClickOpenAddDeploymentPath()"
+  width="250"
+></dx-button>
+
+<div class="form flex-container">
+  <div class="drive-panel">
+    <div class="drive-header">
+      <i class="dx-icon at-icon powercid-icon-route"></i>
+      <span>External Deployment Paths:</span>
+    </div>
+
+    <dx-sortable
+      filter=".dx-treeview-item"
+      group="externalDeploymentPath"
+      data="externaldeploymentpath"
+      [allowDropInsideItem]="true"
+      [allowReordering]="true"
+      (onDragChange)="onDragChange($event)"
+      (onDragEnd)="onDragEnd($event)"
+      (onAdd)="onAdd($event)"
+      (onReorder)="onReorder($event)"
+    >
+      <dx-tree-view
+        #treeViewExternalDeploymentPath
+        id="treeViewExternalDeploymentPath"
+        dataStructure="tree"
+        displayExpr="Name"
+        [dataSource]="externalDeploymentPaths"
+        itemsExpr="ExternalDeploymentPathEnvironments"
+        keyExpr="Id"
+        itemTemplate="externalDeploymentPathTemplate"
+      >
+        <div *dxTemplate="let entry of 'externalDeploymentPathTemplate'" class="treeview-entry">
+          @if (entry.ExternalEnvironmentNavigation) {
+            <div>
+              {{ entry.StepNumber + ". " }}
+              {{ displayName(entry.ExternalEnvironmentNavigation) }}
+            </div>
+          }
+          @if (!entry.ExternalEnvironmentNavigation) {
+            <div>{{ entry.Name }}</div>
+          }
+          <div class="button-wrapper">
+            @if (!entry.ExternalEnvironmentNavigation) {
+              <dx-button
+                icon="rename"
+                (onClick)="onClickOpenRenameDeploymentPath($event, entry)"
+              ></dx-button>
+            }
+            <dx-button
+              icon="trash"
+              (onClick)="onClickDeleteDeploymentPathOrStep($event, entry)"
+            ></dx-button>
+          </div>
+        </div>
+      </dx-tree-view>
+    </dx-sortable>
+  </div>
+
+  <div class="drive-panel">
+    <div class="drive-header">
+      <i class="dx-icon at-icon powercid-icon-unit"></i>
+      <span>External Environments:</span>
+    </div>
+
+    <dx-sortable
+      filter=".dx-treeview-item"
+      group="externalDeploymentPath"
+      data="externalenvironment"
+      [allowDropInsideItem]="true"
+      [allowReordering]="false"
+    >
+      <dx-tree-view
+        #treeViewExternalEnvironment
+        id="treeViewExternalEnvironment"
+        dataStructure="plain"
+        [displayExpr]="displayName"
+        [dataSource]="dataSourceExternalEnvironments"
+        keyExpr="Id"
+      ></dx-tree-view>
+    </dx-sortable>
+  </div>
+</div>
+
+@if (isAddDeploymentPathVisible) {
+  <dx-popup
+    title="Add External Deployment Path"
+    [showTitle]="true"
+    [width]="500"
+    height="auto"
+    [(visible)]="isAddDeploymentPathVisible"
+  >
+    <dx-form [(formData)]="newDeploymentPath">
+      <dxi-item dataField="Name" [label]="{ text: 'Name' }"></dxi-item>
+      <dxi-item
+        itemType="button"
+        horizontalAlignment="left"
+        [buttonOptions]="{
+          icon: 'save',
+          text: 'Save',
+          type: 'success',
+          onClick: onClickSaveDeploymentPath.bind(this),
+          width: '100%'
+        }"
+      ></dxi-item>
+    </dx-form>
+  </dx-popup>
+}
+
+@if (isRenameDeploymentPathVisible) {
+  <dx-popup
+    title="Rename External Deployment Path"
+    [showTitle]="true"
+    [width]="500"
+    height="auto"
+    [(visible)]="isRenameDeploymentPathVisible"
+  >
+    <dx-form [(formData)]="deploymentPathToEdit">
+      <dxi-item dataField="Name" [label]="{ text: 'Name' }"></dxi-item>
+      <dxi-item
+        itemType="button"
+        horizontalAlignment="left"
+        [buttonOptions]="{
+          icon: 'save',
+          text: 'Save',
+          type: 'success',
+          onClick: onClickSaveRenameDeploymentPath.bind(this),
+          width: '100%'
+        }"
+      ></dxi-item>
+    </dx-form>
+  </dx-popup>
+}

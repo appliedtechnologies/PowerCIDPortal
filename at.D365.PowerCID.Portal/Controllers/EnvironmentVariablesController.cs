@@ -14,6 +14,7 @@ using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
 using at.D365.PowerCID.Portal.Helpers;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -44,6 +45,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(ModelState);
             }
+            if (!await dbContext.Applications.AnyAsync(a => a.Id == environmentVariable.Application
+                && a.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == msIdTenantCurrentUser))
+                return Forbid();
             if (dbContext.EnvironmentVariables.Any(x => x.MsId == environmentVariable.MsId && x.Application == environmentVariable.Application))
             {
                 return BadRequest("Environment Variable already exists with this Ms Id and Application");
@@ -58,16 +62,19 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [HttpPost]
-        public async Task<IEnumerable<EnvironmentVariable>> GetEnvironmentVariablesForApplication(ODataActionParameters parameters, [FromServices] EnvironmentVariableService environmentVariableService)
+        public async Task<IActionResult> GetEnvironmentVariablesForApplication(ODataActionParameters parameters, [FromServices] EnvironmentVariableService environmentVariableService)
         {
             logger.LogDebug($"Begin: EnvironmentVariablesController GetEnvironmentVariablesForApplication(parameters applicationId: {(int)parameters["applicationId"]})");
 
             int applicationId = (int)parameters["applicationId"];
+            var application = await dbContext.Applications.FirstOrDefaultAsync(a => a.Id == applicationId);
+            if (application == null || application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId != msIdTenantCurrentUser)
+                return Forbid();
             var environmentVariables = await environmentVariableService.GetExistsingEnvironmentVariablesFromDataverse(applicationId);
 
             logger.LogDebug($"End: EnvironmentVariablesController GetEnvironmentVariablesForApplication(parameters applicationId: {(int)parameters["applicationId"]})");
 
-            return environmentVariables;
+            return Ok(environmentVariables);
         }
     }
 }

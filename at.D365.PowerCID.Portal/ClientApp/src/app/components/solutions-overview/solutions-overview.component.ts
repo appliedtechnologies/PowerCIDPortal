@@ -1,5 +1,5 @@
-import { Component, OnDestroy, OnInit, ViewChild, ChangeDetectionStrategy } from "@angular/core";
-import { DxDataGridComponent } from "devextreme-angular";
+import { AfterViewInit, ChangeDetectorRef, Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild, ChangeDetectionStrategy } from "@angular/core";
+import { DxDataGridComponent, DxSelectBoxComponent } from "devextreme-angular";
 import DataSource from "devextreme/data/data_source";
 import { Column } from "devextreme/ui/data_grid";
 import dxSelectBox from "devextreme/ui/select_box";
@@ -24,12 +24,22 @@ import { DeploymentPath } from "src/app/shared/models/deploymentpath.model";
 import { alert, confirm } from 'devextreme/ui/dialog';
 import { InitializedEvent as ButtonInitializedEvent } from "devextreme/ui/button";
 import { InitializedEvent as SelectBoxInitializedEvent } from "devextreme/ui/select_box";
+import { ExternalEnvironmentService } from "src/app/shared/services/externalenvironment.service";
+import { ExternalDeploymentPathEnvironmentService } from "src/app/shared/services/externaldeploymentpathenvironment.service";
+import { ExternalDeploymentPath } from "src/app/shared/models/externaldeploymentpath.model";
+import { ExternalDeploymentPathEnvironment } from "src/app/shared/models/externaldeploymentpathenvironment.model";
+import { ExternalEnvironment } from "src/app/shared/models/externalenvironment.model";
+import { ExternalDeploymentPathService } from "src/app/shared/services/externaldeploymentpath.service";
+import { TenantService } from "src/app/shared/services/tenant.service";
 
 type SolutionRowData = Solution & {
   ApplyManually?: unknown;
 };
 
 const ungroupedApplicationText = "Ungrouped";
+const externalTenantStorageKey = "atPowerCIDPortal_ExternalDelivery_Tenant";
+const externalGroupStorageKey = "atPowerCIDPortal_ExternalDelivery_Group";
+const externalApplicationStorageKey = "atPowerCIDPortal_ExternalDelivery_Application";
 
 interface ApplicationGroupOption {
   value: string | null;
@@ -50,9 +60,14 @@ interface SolutionCellInfo {
     changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
-export class SolutionsOverviewComponent implements OnInit, OnDestroy {
+export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnInit, OnDestroy {
+  @Input() public externalMode = false;
   @ViewChild(DxDataGridComponent, { static: false })
   dataGrid: DxDataGridComponent;
+  @ViewChild("externalGroupSelectBox", { static: false })
+  externalGroupSelectBox: DxSelectBoxComponent;
+  @ViewChild("externalApplicationSelectBox", { static: false })
+  externalApplicationSelectBox: DxSelectBoxComponent;
   public applicationSelectBoxInstance: dxSelectBox;
   public autoRefreshHintButtonInstance: dxButton;
   public autoRefreshCancelButtonInstance: dxButton;
@@ -83,6 +98,22 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   public environments: Environment[];
   public isConfigureDeploymentPopupVisible: boolean;
   public configureDeploymentEnvironment: Environment;
+  public externalTenants: { Id: number; Name: string; MsId: string }[] = [];
+  public externalSelectionToolbarItems: unknown[] = [];
+  public selectedExternalTenantId: number;
+  public externalDataGridColumns: Column[] = [];
+  public externalEnvironments: ExternalEnvironment[] = [];
+  public isExternalDeployPopupVisible = false;
+  public selectedExternalDeploymentPath: ExternalDeploymentPath;
+  public selectedSolutionForExternalDeploy: Solution;
+  public availableExternalDeploymentPaths: ExternalDeploymentPath[] = [];
+  public availableExternalSteps: ExternalDeploymentPathEnvironment[] = [];
+  public selectedExternalStep: ExternalDeploymentPathEnvironment;
+  public externalApplications: Application[] = [];
+  public externalApplicationOptions: Application[] = [];
+  private externalDeploymentPaths: ExternalDeploymentPath[] = [];
+  private externalDeliveryDataLoaded = false;
+  private restoringExternalSelections = false;
 
   private refreshAfterPopupClose = false;
 
@@ -93,40 +124,57 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     private environmentService: EnvironmentService,
     private actionService: ActionService,
     private layoutService: LayoutService,
-    private patchService: PatchService
+    private patchService: PatchService,
+    private externalEnvironmentService: ExternalEnvironmentService,
+    private externalDeploymentPathEnvironmentService: ExternalDeploymentPathEnvironmentService,
+    private externalDeploymentPathService: ExternalDeploymentPathService,
+    private tenantService: TenantService,
+    private changeDetectorRef: ChangeDetectorRef
   ) {
     this.selectionToolbarItems = this.createSelectionToolbarItems();
     this.userService.stateChanged$.subscribe(() => {
       this.selectionToolbarItems = this.createSelectionToolbarItems();
     });
-    this.applicationService.getStore().load({
-      filter: ["IsDeactive", "=", false],
-      select: ["Group"],
-      sort: "Group",
-    }).then((applications: Application[]) => {
-      this.applicationGroups = [
-        {
-          value: null,
-          text: ungroupedApplicationText,
-        },
-        ...[...new Set(
-          applications
-            .map((application) => application.Group)
-            .filter((group): group is string => !!group)
-        )].map((group) => ({
-          value: group,
-          text: group,
-        })),
-      ];
-      this.groupSelectBoxInstance?.option("items", this.applicationGroups);
-    });
+    if (!this.externalMode) {
+      this.applicationService.getStore().load({
+        filter: ["IsDeactive", "=", false],
+        select: ["Group"],
+        sort: "Group",
+      }).then((applications: Application[]) => {
+        this.applicationGroups = [
+          { value: null, text: ungroupedApplicationText },
+          ...[...new Set(
+            applications.map((application) => application.Group).filter((group): group is string => !!group)
+          )].map((group) => ({ value: group, text: group })),
+        ];
+        this.groupSelectBoxInstance?.option("items", this.applicationGroups);
+      });
+    }
     this.environmentService
       .getStore()
       .load()
       .then((d: Environment[]) => (this.environments = d));
   }
 
+  public ngOnChanges(changes: SimpleChanges): void {
+    this.initializeExternalDeliveryData(changes.externalMode?.currentValue === true);
+  }
+
+  public ngAfterViewInit(): void {
+    this.initializeExternalDeliveryData(this.externalMode);
+  }
+
+  private initializeExternalDeliveryData(isExternalMode: boolean): void {
+    if (isExternalMode && !this.externalDeliveryDataLoaded) {
+      this.externalDeliveryDataLoaded = true;
+      this.loadExternalDeliveryData();
+    }
+  }
+
   public ngOnInit(): void {
+    if (this.externalMode) {
+      return;
+    }
     const selectedApplicationIdFromLocalStorage =
       parseInt(
         localStorage.getItem("atPowerCIDPortal_SolutionOverview_SelectedId")
@@ -134,6 +182,338 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     if (selectedApplicationIdFromLocalStorage != null)
       this.setSelectedApplicationId(selectedApplicationIdFromLocalStorage);
   }
+
+  private loadExternalDeliveryData(): void {
+    Promise.all([
+      this.externalEnvironmentService.getStore().load({
+        filter: ["IsDeactive", "=", false],
+        expand: ["EnvironmentNavigation.TenantNavigation"],
+      }),
+      this.applicationService.getStore().load({
+        filter: ["IsDeactive", "=", false],
+        expand: [
+          "Solutions($filter=IsReleasedExternally eq true)",
+          "ApplicationExternalDeploymentPaths.ExternalDeploymentPathNavigation",
+        ],
+      }),
+      this.externalDeploymentPathService.getStore().load({
+        expand: ["ExternalDeploymentPathEnvironments.ExternalEnvironmentNavigation"],
+      }),
+      this.tenantService.getStore().load(),
+    ]).then(([environments, applications, paths, tenants]) => {
+      this.externalEnvironments = environments as ExternalEnvironment[];
+      const tenantById = new Map(
+        (tenants as { Id: number; Name: string; MsId: string }[]).map((tenant) => [tenant.Id, tenant])
+      );
+      const externalTenantsById = new Map<number, { Id: number; Name: string; MsId: string }>();
+      this.externalEnvironments.forEach((externalEnvironment) => {
+        const environment = externalEnvironment.EnvironmentNavigation;
+        const tenant = environment?.TenantNavigation;
+        const tenantId = tenant?.Id ?? environment?.Tenant;
+        if (tenantId === undefined || externalTenantsById.has(tenantId)) {
+          return;
+        }
+        externalTenantsById.set(
+          tenantId,
+          tenantById.get(tenantId) ?? {
+            Id: tenantId,
+            Name: tenant?.Name ?? `Tenant ${tenantId}`,
+            MsId: tenant?.MsId,
+          }
+        );
+      });
+      this.externalTenants = [...externalTenantsById.values()];
+      this.externalApplications = (applications as Application[]).filter((a) =>
+        a.Solutions?.some((s) => s.IsReleasedExternally)
+      );
+      this.externalApplicationOptions = this.getExternalApplications();
+      this.applicationGroups = [
+        { value: null, text: ungroupedApplicationText },
+        ...[...new Set(this.externalApplications.map((a) => a.Group).filter((g): g is string => !!g))]
+          .map((group) => ({ value: group, text: group })),
+      ];
+      this.externalDeploymentPaths = paths as ExternalDeploymentPath[];
+      this.restoringExternalSelections = true;
+      this.restoreExternalSelections();
+      this.externalSelectionToolbarItems = this.createExternalSelectionToolbarItems();
+      this.changeDetectorRef.detectChanges();
+      setTimeout(() => {
+        this.restoringExternalSelections = false;
+      });
+    });
+  }
+
+  public onExternalTenantChanged(tenantId: number): void {
+    this.selectedExternalTenantId = tenantId;
+    if (tenantId === undefined || tenantId === null) {
+      localStorage.removeItem(externalTenantStorageKey);
+    } else {
+      localStorage.setItem(externalTenantStorageKey, String(tenantId));
+    }
+    this.externalApplicationOptions = this.getExternalApplications();
+    this.externalDataGridColumns = this.selectedApplication
+      ? this.createExternalDataGridColumns()
+      : [];
+    this.showSolutionsGrid = this.selectedApplication !== undefined;
+    this.externalSelectionToolbarItems = this.createExternalSelectionToolbarItems();
+  }
+
+  public onExternalApplicationChanged(applicationId: number): void {
+    if (this.restoringExternalSelections && (applicationId === undefined || applicationId === null)) {
+      return;
+    }
+    this.selectedApplication = this.externalApplications.find((a) => a.Id === applicationId);
+    if (applicationId === undefined || applicationId === null) {
+      localStorage.removeItem(externalApplicationStorageKey);
+    } else {
+      localStorage.setItem(externalApplicationStorageKey, String(applicationId));
+    }
+    this.externalDataGridColumns = this.createExternalDataGridColumns();
+    this.dataSourceSolutions = new DataSource({
+      store: this.solutionService.getStore(),
+      filter: [["Application", "=", applicationId], "and", ["IsReleasedExternally", "=", true]],
+      sort: [{ selector: "CreatedOn", desc: true }],
+      expand: [
+        "Actions.TargetEnvironmentNavigation($select=DeployUnmanaged, ConnectionsOwner)",
+        "Actions.TypeNavigation",
+        "Actions.StatusNavigation",
+        "Actions.ResultNavigation",
+        "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery)",
+        "ApplicationNavigation",
+      ],
+    });
+    this.showSolutionsGrid = true;
+    this.externalSelectionToolbarItems = this.createExternalSelectionToolbarItems();
+  }
+
+  public onExternalGroupChanged(group: string | null): void {
+    if (this.restoringExternalSelections) {
+      return;
+    }
+    this.selectedApplicationGroup = group;
+    if (group === null) {
+      localStorage.removeItem(externalGroupStorageKey);
+    } else {
+      localStorage.setItem(externalGroupStorageKey, group);
+    }
+    this.selectedApplication = undefined;
+    localStorage.removeItem(externalApplicationStorageKey);
+    this.externalDataGridColumns = [];
+    this.applicationSelectBoxInstance?.option("value", null);
+    this.externalApplicationSelectBox?.instance.option("value", null);
+    this.externalApplicationOptions = this.getExternalApplications();
+    this.externalSelectionToolbarItems = this.createExternalSelectionToolbarItems();
+  }
+
+  public getExternalApplications(): Application[] {
+    return this.externalApplications.filter((a) =>
+      this.selectedApplicationGroup === null ||
+      (a.Group ?? null) === this.selectedApplicationGroup
+    );
+  }
+
+  private restoreExternalSelections(): void {
+    const storedTenantId = Number(localStorage.getItem(externalTenantStorageKey));
+    if (this.externalTenants.some((tenant) => tenant.Id === storedTenantId)) {
+      this.selectedExternalTenantId = storedTenantId;
+    } else {
+      localStorage.removeItem(externalTenantStorageKey);
+    }
+
+    const storedGroup = localStorage.getItem(externalGroupStorageKey);
+    if (
+      storedGroup !== null &&
+      this.applicationGroups.some((group) => group.value === storedGroup)
+    ) {
+      this.selectedApplicationGroup = storedGroup;
+    } else {
+      this.selectedApplicationGroup = null;
+      if (storedGroup !== null) {
+        localStorage.removeItem(externalGroupStorageKey);
+      }
+    }
+
+    this.externalApplicationOptions = this.getExternalApplications();
+    const storedApplicationId = Number(localStorage.getItem(externalApplicationStorageKey));
+    const application = this.externalApplicationOptions.find(
+      (candidate) => candidate.Id === storedApplicationId
+    );
+    if (application) {
+      this.onExternalApplicationChanged(application.Id);
+    } else {
+      this.selectedApplication = undefined;
+      localStorage.removeItem(externalApplicationStorageKey);
+    }
+  }
+
+  private createExternalSelectionToolbarItems(): unknown[] {
+    return [
+      {
+        widget: "dxSelectBox",
+        location: "before",
+        options: {
+          placeholder: "Select external tenant",
+          hint: "Select an external tenant.",
+          items: this.externalTenants,
+          displayExpr: "Name",
+          valueExpr: "Id",
+          value: this.selectedExternalTenantId,
+          width: "240",
+          onValueChanged: (e) => this.onExternalTenantChanged(e.value),
+        },
+      },
+      {
+        widget: "dxSelectBox",
+        location: "before",
+        options: {
+          placeholder: "Select Group",
+          hint: "Select an application group.",
+          items: this.applicationGroups,
+          displayExpr: "text",
+          valueExpr: "value",
+          value: this.selectedApplicationGroup,
+          width: "220",
+          onValueChanged: (e) => this.onExternalGroupChanged(e.value),
+        },
+      },
+      {
+        widget: "dxSelectBox",
+        location: "before",
+        options: {
+          placeholder: "Select Application",
+          hint: "Select an externally released application.",
+          items: this.externalApplicationOptions,
+          displayExpr: "Name",
+          valueExpr: "Id",
+          value: this.selectedApplication?.Id,
+          disabled: !this.selectedExternalTenantId,
+          width: "300",
+          onValueChanged: (e) => this.onExternalApplicationChanged(e.value),
+        },
+      },
+      {
+        widget: "dxButton",
+        location: "after",
+        options: {
+          icon: "assets/animations/loading.gif",
+          text: "auto-refresh is active",
+          stylingMode: "text",
+          disabled: true,
+          visible: false,
+          onInitialized: (args: ButtonInitializedEvent) => {
+            this.autoRefreshHintButtonInstance = args.component;
+          },
+        },
+      },
+      {
+        widget: "dxButton",
+        location: "after",
+        options: {
+          icon: "clear",
+          stylingMode: "contained",
+          type: "success",
+          visible: false,
+          onClick: this.onClickCancelAutoRefresh.bind(this),
+          onInitialized: (args: ButtonInitializedEvent) => {
+            this.autoRefreshCancelButtonInstance = args.component;
+          },
+        },
+      },
+      {
+        widget: "dxButton",
+        location: "after",
+        options: {
+          icon: "refresh",
+          stylingMode: "contained",
+          type: "success",
+          hint: "Refresh the table.",
+          onClick: () => this.dataGrid?.instance.refresh(),
+        },
+      },
+    ];
+  }
+
+  private createExternalDataGridColumns(): Column[] {
+    const columns: Column[] = [
+      {
+        caption: "Type",
+        name: "Type",
+        width: 90,
+        allowReordering: false,
+        cellTemplate: "externalTypeCellTemplate",
+        calculateCellValue: (rowData: SolutionRowData) =>
+          rowData["ApplyManually"] === undefined ? "Patch" : "Upgrade",
+        visibleIndex: 0,
+      },
+      {
+        caption: "Version",
+        name: "Version",
+        dataField: "Version",
+        allowReordering: false,
+        cellTemplate: "externalVersionCellTemplate",
+        visibleIndex: 1,
+      },
+      {
+        caption: "Name",
+        name: "Name",
+        dataField: "Name",
+        allowReordering: false,
+        cellTemplate: "externalNameCellTemplate",
+        visibleIndex: 2,
+      },
+      {
+        dataField: "CreatedOn",
+        sortOrder: "desc",
+        visible: false,
+      },
+    ];
+    const paths = this.externalDeploymentPaths.filter((path) =>
+      !this.selectedExternalTenantId ||
+      this.getExternalDeploymentPathTenantId(path) === this.selectedExternalTenantId
+    );
+    for (const path of paths) {
+      const steps = path.ExternalDeploymentPathEnvironments ?? [];
+      columns.push({
+        caption: path.Name,
+        name: `external-path-${path.Id}`,
+        columns: steps.sort((a, b) => a.StepNumber - b.StepNumber).map((step) => {
+          const environment = this.externalEnvironments.find((e) => e.Id === step.ExternalEnvironment) ?? step.ExternalEnvironmentNavigation;
+          return {
+            caption: environment?.Alias || environment?.EnvironmentNavigation?.Name,
+            name: `${path.Id},${environment?.Id}`,
+            environmentData: environment,
+            headerCellTemplate: "externalEnvironmentHeaderCellTemplate",
+            cellTemplate: "externalEnvironmentCellTemplate",
+            allowSorting: false,
+            allowFiltering: false,
+          };
+        }),
+      });
+    }
+    return columns;
+  }
+
+  private getExternalDeploymentPathTenantId(path: ExternalDeploymentPath): number | undefined {
+    const tenantIds = (path.ExternalDeploymentPathEnvironments ?? [])
+      .map((step) => {
+        const externalEnvironment = this.externalEnvironments.find((environment) =>
+          environment.Id === step.ExternalEnvironment
+        ) ?? step.ExternalEnvironmentNavigation;
+        const environment = externalEnvironment?.EnvironmentNavigation;
+        return environment?.TenantNavigation?.Id ?? environment?.Tenant;
+      })
+      .filter((tenantId): tenantId is number => tenantId !== undefined);
+    return tenantIds[0] ?? path.Tenant;
+  }
+
+  public stepDisplayName = (step: ExternalDeploymentPathEnvironment): string => {
+    const externalEnvironment =
+      this.externalEnvironments.find((environment) => environment.Id === step.ExternalEnvironment) ??
+      step.ExternalEnvironmentNavigation;
+    return externalEnvironment?.Alias ||
+      externalEnvironment?.EnvironmentNavigation?.Name ||
+      `Step ${step.StepNumber ?? ""}`.trim();
+  };
 
   public ngOnDestroy(): void {
     this.cancelAutoRefresh();
@@ -347,6 +727,116 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
     );
   }
 
+  public getLastExternalAction(cellInfo): Action {
+    const environmentId = Number(cellInfo.column.name.split(",")[1]);
+    const targetEnvironmentId = this.externalEnvironments.find((e) => e.Id === environmentId)?.Environment;
+    return (cellInfo.data.Actions ?? []).find((a) =>
+      a.IsExternalDelivery && a.TargetEnvironment === targetEnvironmentId
+    );
+  }
+
+  public onClickExternalDeploy(cellInfo): void {
+    const pathId = Number(cellInfo.column.name.split(",")[0]);
+    const externalEnvironmentId = Number(cellInfo.column.name.split(",")[1]);
+    const externalEnvironment = this.externalEnvironments.find((environment) => environment.Id === externalEnvironmentId);
+    if (!externalEnvironment?.Environment) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The external environment could not be found.",
+      });
+      return;
+    }
+
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.applicationService
+      .getDeploymentSettingsStatus(this.selectedApplication.Id, externalEnvironment.Environment)
+      .then((status) => {
+        if (status === 0) {
+          const confirmResult = confirm(
+            "Import without completed Deployment Settings (e.g. Connection References)?",
+            "Incomplete Deployment Settings"
+          );
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+          return confirmResult.then((result) => {
+            if (!result) {
+              return;
+            }
+            return this.startExternalDeployment(cellInfo.data, externalEnvironmentId, pathId);
+          });
+        }
+        return this.startExternalDeployment(cellInfo.data, externalEnvironmentId, pathId);
+      })
+      .catch(() => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred while checking the deployment settings.",
+        });
+      })
+      .finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
+  }
+
+  private startExternalDeployment(solution: Solution, externalEnvironmentId: number, pathId: number): Promise<void> {
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    return this.solutionService.externalImport(solution.Id, externalEnvironmentId, pathId)
+      .then((action) => {
+        this.layoutService.notify({ type: NotificationType.Success, message: "The deployment has been started." });
+        this.startAutoRefresh(action);
+      })
+      .catch((error) => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: this.getDeploymentErrorMessage(error),
+        });
+      })
+      .finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
+  }
+
+  public onClickConfigureExternalDeployment(environment: ExternalEnvironment): void {
+    this.configureDeploymentEnvironment = environment?.EnvironmentNavigation;
+    this.isConfigureDeploymentPopupVisible = true;
+  }
+
+  public onClickStartExternalDeployment(): void {
+    if (!this.selectedExternalStep || !this.selectedExternalDeploymentPath) {
+      this.layoutService.notify({ type: NotificationType.Error, message: "Please select an external deployment path and environment." });
+      return;
+    }
+
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    this.solutionService.externalImport(
+      this.selectedSolutionForExternalDeploy.Id,
+      this.selectedExternalStep.ExternalEnvironment,
+      this.selectedExternalDeploymentPath.Id
+    ).then((action) => {
+      this.isExternalDeployPopupVisible = false;
+      this.startAutoRefresh(action);
+      this.layoutService.notify({ type: NotificationType.Success, message: "The deployment has been started." });
+      this.dataSourceSolutions?.reload();
+    }).catch((error) => {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: this.getDeploymentErrorMessage(error),
+      });
+    }).finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
+  }
+
+  public onExternalDeploymentPathChanged(path: ExternalDeploymentPath): void {
+    this.selectedExternalDeploymentPath = path;
+    this.selectedExternalStep = undefined;
+    this.availableExternalSteps = path?.ExternalDeploymentPathEnvironments ?? [];
+  }
+
+  private getDeploymentErrorMessage(error): string {
+    const responseError = error?.error;
+    return typeof responseError === "string"
+      ? responseError
+      : responseError?.value ||
+          responseError?.message ||
+          responseError?.error?.message ||
+          error?.message ||
+          "An error occurred while starting the deployment.";
+  }
+
   public canDeployToEnv(cellInfo): boolean {
     this.canImport = true;
     if (cellInfo.column.name.split(",").length > 1) {
@@ -452,13 +942,21 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
 
   private startAutoRefresh(action: Action) {
     let buffer = 1;
-    this.autoRefreshHintButtonInstance.option("visible", true);
-    this.autoRefreshCancelButtonInstance.option("visible", true);
+    this.cancelAutoRefresh();
+    this.autoRefreshHintButtonInstance?.option("visible", true);
+    this.autoRefreshCancelButtonInstance?.option("visible", true);
     this.autoRefreshInterval = window.setInterval(() => {
       this.dataGrid.instance.refresh().then(() => {
-        const refreshedLastAction: Action = (
+        const refreshedSolution = (
           this.dataGrid.instance.getDataSource().items() as Solution[]
-        ).find((e) => e.Id == action.Solution).Actions[0];
+        ).find((solution) => solution.Id === action.Solution);
+        const refreshedLastAction = refreshedSolution?.Actions?.find(
+          (refreshedAction) => refreshedAction.Id === action.Id
+        );
+
+        if (!refreshedLastAction) {
+          return;
+        }
 
         if (refreshedLastAction.Status == 3) buffer--;
         if (refreshedLastAction.Status == 3 && buffer <= 0) {
@@ -479,8 +977,8 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
   private cancelAutoRefresh(): void {
     window.clearInterval(this.autoRefreshInterval);
     this.autoRefreshInterval = null;
-    this.autoRefreshHintButtonInstance.option("visible", false);
-    this.autoRefreshCancelButtonInstance.option("visible", false);
+    this.autoRefreshHintButtonInstance?.option("visible", false);
+    this.autoRefreshCancelButtonInstance?.option("visible", false);
   }
 
   private generateDataGridColumns(): void {
@@ -595,7 +1093,7 @@ export class SolutionsOverviewComponent implements OnInit, OnDestroy {
           "value",
           this.selectedApplicationGroup
         );
-        this.applicationSelectBoxInstance.option(
+        this.applicationSelectBoxInstance?.option(
           "value",
           this.selectedApplication.Id
         );

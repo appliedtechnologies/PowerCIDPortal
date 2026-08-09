@@ -51,6 +51,13 @@
       icon="key"
       [onClick]="onClickEditPermissions"
     ></dxi-button>
+    @if (userService.isCrossTenantDeliveryEnabled) {
+      <dxi-button
+        hint="Manage external tenant permissions"
+        icon="at-icon powercid-icon-extern"
+        [onClick]="onClickEditExternalPermissions"
+      ></dxi-button>
+    }
     <dxi-button
       hint="Delete user"
       icon="trash"
@@ -100,7 +107,7 @@
 
   @if (isEditRolesVisible) {
     <dx-popup
-      [width]="480"
+      [width]="520"
       height="auto"
       [showTitle]="true"
   [title]="
@@ -116,24 +123,65 @@
       <div id="hint-permissions">A higher role contains all the rights of the lower roles. Therefore, only one role needs to be assigned.</div>
       <div class="dx-fieldset">
         @for (roleName of appRoleNames | keyvalue; track roleName) {
-          <div>
-            <div class="dx-field">
-              <div class="dx-field-label">{{roleName.value}}</div>
-              <div class="dx-field-value">
-                <dx-check-box
-                  [disabled]="roleName.key === 'admin'"
-                  [value]="this.currentSelectedUserRoles | hasUserRole: roleName.key"
-                  (onValueChanged)="onValueChangedRoleAssignment($event, roleName.key)"
-                ></dx-check-box>
-              </div>
-              @if (roleName.key === 'admin') {
-                <div class="hint-role-sync">
-                  This role is in sync with the app ownership - <a href="https://github.com/appliedtechnologies/PowerCIDPortal/wiki/Setup-and-maintenance-of-a-tenant#unilateral-synchronization-of-ownership-and-administrator-role" target="_blank">more info.</a>
+          @if (userService.isCrossTenantDeliveryEnabled || (roleName.key !== 'externalReleaseManager' && roleName.key !== 'externalDeployer')) {
+            <div>
+              <div class="dx-field">
+                <div class="dx-field-label">{{roleName.value}}</div>
+                <div class="dx-field-value">
+                  <dx-check-box
+                    [disabled]="roleName.key === 'admin'"
+                    [value]="this.currentSelectedUserRoles | hasUserRole: roleName.key"
+                    (onValueChanged)="onValueChangedRoleAssignment($event, roleName.key)"
+                  ></dx-check-box>
                 </div>
-              }
+                @if (roleName.key === 'admin') {
+                  <div class="hint-role-sync">
+                    This role is in sync with the app ownership - <a href="https://github.com/appliedtechnologies/PowerCIDPortal/wiki/Setup-and-maintenance-of-a-tenant#unilateral-synchronization-of-ownership-and-administrator-role" target="_blank">more info.</a>
+                  </div>
+                }
+              </div>
             </div>
-          </div>
+          }
         }
       </div>
     </dx-popup>
   }
+
+  @if (isEditExternalPermissionsPopupVisible) {
+    <dx-popup
+      [width]="480"
+      height="auto"
+      [showTitle]="true"
+  [title]="
+    'Manage External Tenant Permissions (' +
+    currentSelectedUser.Firstname +
+    ' ' +
+    currentSelectedUser.Lastname +
+    ')'
+  "
+      [hideOnOutsideClick]="false"
+      [(visible)]="isEditExternalPermissionsPopupVisible"
+      [maxHeight]="'90%'"
+      >
+      <div id="hint-permissions">
+        Select which external (customer) tenants
+        <i
+          >{{ currentSelectedUser.Firstname }} {{ currentSelectedUser.Lastname }}</i
+          >
+          could deploy externally released solutions to. Only tenants with at least one registered external environment are listed.
+        </div>
+        <dx-list
+          [dataSource]="dataSourceExternalTenants"
+          [height]="'100%'"
+          selectionMode="all"
+          selectAllMode="allPages"
+          [showSelectionControls]="true"
+          [selectedItemKeys]="selectedItemKeysPermissionExternalTenants"
+          displayExpr="Name"
+          keyExpr="Id"
+          (onSelectionChanged)="onSelectionChangedPermissionExternalTenants($event)"
+          (onContentReady)="onContentReadyPermissionExternalTenantList($event)"
+          >
+        </dx-list>
+      </dx-popup>
+    }

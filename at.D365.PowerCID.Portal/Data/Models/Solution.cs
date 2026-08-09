@@ -27,6 +27,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public DateTime ModifiedOn { get; set; }
         public bool? OverwriteUnmanagedCustomizations { get; set; }
         public bool? EnableWorkflows { get; set; }
+        public bool IsReleasedExternally { get; set; }
 
         public virtual Application ApplicationNavigation { get; set; }
         public virtual User CreatedByNavigation { get; set; }

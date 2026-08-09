@@ -21,6 +21,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using at.D365.PowerCID.Portal.Services;
+using at.D365.PowerCID.Portal.Helpers;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
@@ -262,11 +263,37 @@ namespace at.D365.PowerCID.Portal.Controllers
             Guid appRoleId = Guid.Parse(parameters["appRoleId"].ToString());
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
 
-            await this.AzureService.AssignAppRoleToUser(base.downstreamWebApi, this.msIdTenantCurrentUser, user.MsId, appRoleId);
+            if (this.IsCrossTenantDeliveryRole(appRoleId) && !CrossTenantDeliveryHelper.IsTenantAllowed(this.configuration, this.msIdTenantCurrentUser))
+                return Forbid();
+
+            try
+            {
+                await this.AzureService.AssignAppRoleToUser(base.downstreamWebApi, this.msIdTenantCurrentUser, user.MsId, appRoleId);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Error: UsersController AssignRole(key: {key})");
+                return BadRequest(e.Message);
+            }
 
             logger.LogDebug($"End: UsersController AssignRole(key: {key})");
 
             return Ok();
+        }
+
+        /// <summary>
+        /// Determines whether the given app role GUID is one of the two cross-tenant delivery roles
+        /// (ExternalReleaseManager / ExternalDeployer). Used to prevent assigning/withdrawing these roles for
+        /// tenants that don't have cross-tenant delivery enabled, even if a client bypasses the UI and calls
+        /// this endpoint directly.
+        /// </summary>
+        private bool IsCrossTenantDeliveryRole(Guid appRoleId)
+        {
+            string externalReleaseManagerId = this.configuration["AppRoleIds:ExternalReleaseManager"];
+            string externalDeployerId = this.configuration["AppRoleIds:ExternalDeployer"];
+
+            return (Guid.TryParse(externalReleaseManagerId, out Guid parsedReleaseManagerId) && appRoleId == parsedReleaseManagerId)
+                || (Guid.TryParse(externalDeployerId, out Guid parsedDeployerId) && appRoleId == parsedDeployerId);
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
@@ -277,7 +304,15 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             var user = base.dbContext.Users.FirstOrDefault(u => u.Id == key);
 
-            await this.AzureService.RemoveAppRoleFromUser(base.downstreamWebApi, this.msIdTenantCurrentUser, user.MsId, parameters["roleAssignmentId"].ToString());
+            try
+            {
+                await this.AzureService.RemoveAppRoleFromUser(base.downstreamWebApi, this.msIdTenantCurrentUser, user.MsId, parameters["roleAssignmentId"].ToString());
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Error: UsersController RemoveAssignedRole(key: {key})");
+                return BadRequest(e.Message);
+            }
 
             logger.LogDebug($"End: UsersController RemoveAssignedRole(key: {key})");
             
@@ -296,6 +331,20 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"End: UsersController SyncAdminRole()");
 
             return Ok();
+        }
+
+        /// <summary>
+        /// Lets the frontend check whether cross-tenant delivery is enabled for the current tenant, so it can
+        /// conditionally show the related navigation entries and screens.
+        /// </summary>
+        [HttpPost]
+        public IActionResult GetCrossTenantDeliveryStatus()
+        {
+            logger.LogDebug("Begin & End: UsersController GetCrossTenantDeliveryStatus()");
+
+            bool isEnabled = at.D365.PowerCID.Portal.Helpers.CrossTenantDeliveryHelper.IsTenantAllowed(this.configuration, this.msIdTenantCurrentUser);
+
+            return Ok(new { IsEnabled = isEnabled });
         }
 
         private User UpdateUserIfNeeded(User currentUser)

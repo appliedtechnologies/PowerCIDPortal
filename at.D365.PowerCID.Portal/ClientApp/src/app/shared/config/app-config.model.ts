@@ -13,12 +13,16 @@ export interface IAppConfig {
       appRoleNames: {
         admin: string,
         manager: string,
-        user: string
+        user: string,
+        externalReleaseManager: string,
+        externalDeployer: string
       },
       appRoleIds: {
         admin: string,
         manager: string,
-        user: string
+        user: string,
+        externalReleaseManager: string,
+        externalDeployer: string
       }
     }
     version: string;

@@ -43,5 +43,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public virtual ICollection<ConnectionReference> ConnectionReferences { get; set; }
         public virtual ICollection<EnvironmentVariable> EnvironmentVariables { get; set; }
         public virtual ICollection<EnvironmentVariableEnvironment> EnvironmentVariableEnvironments { get; set; }
+
+        public virtual ExternalEnvironment ExternalEnvironmentNavigation { get; set; }
     }
 }

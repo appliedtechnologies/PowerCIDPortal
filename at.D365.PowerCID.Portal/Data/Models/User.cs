@@ -18,6 +18,10 @@ namespace at.D365.PowerCID.Portal.Data.Models
             SolutionModifiedByNavigations = new HashSet<Solution>();
             DeploymentPathCreatedByNavigations = new HashSet<DeploymentPath>();
             DeploymentPathModifiedByNavigations = new HashSet<DeploymentPath>();
+            ExternalEnvironmentCreatedByNavigations = new HashSet<ExternalEnvironment>();
+            ExternalEnvironmentModifiedByNavigations = new HashSet<ExternalEnvironment>();
+            ExternalDeploymentPathCreatedByNavigations = new HashSet<ExternalDeploymentPath>();
+            ExternalDeploymentPathModifiedByNavigations = new HashSet<ExternalDeploymentPath>();
         }
 
         public int Id { get; set; }
@@ -50,5 +54,15 @@ namespace at.D365.PowerCID.Portal.Data.Models
 
         public virtual ICollection<UserEnvironment> UserEnvironments { get; set; }
         public virtual ICollection<Environment> Environments { get; set; }
+
+        public virtual ICollection<ExternalEnvironment> ExternalEnvironmentCreatedByNavigations { get; set; }
+        public virtual ICollection<ExternalEnvironment> ExternalEnvironmentModifiedByNavigations { get; set; }
+        public virtual ICollection<ExternalDeploymentPath> ExternalDeploymentPathCreatedByNavigations { get; set; }
+        public virtual ICollection<ExternalDeploymentPath> ExternalDeploymentPathModifiedByNavigations { get; set; }
+
+        /// <summary>Permission entries granting this user the right to deploy externally released solutions into a foreign tenant.</summary>
+        public virtual ICollection<UserExternalTenant> UserExternalTenants { get; set; }
+        /// <summary>Foreign tenants this user is permitted to deploy externally released solutions into.</summary>
+        public virtual ICollection<Tenant> ExternalTenants { get; set; }
     }
 }

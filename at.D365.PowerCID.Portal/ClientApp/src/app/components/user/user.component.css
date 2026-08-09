@@ -12,9 +12,35 @@
     margin: 0px 20px;
 }
 
+::ng-deep .dx-fieldset > div {
+    margin-bottom: 12px;
+}
+
+::ng-deep .dx-fieldset > div:last-child {
+    margin-bottom: 0;
+}
+
+::ng-deep .dx-fieldset .dx-field {
+    /* Clearfix: .dx-field-label/.dx-field-value are floated by DevExtreme. Without this, .dx-field
+       collapses to 0 height and floats leak into the next row, causing inconsistent row heights
+       and misaligned checkboxes. */
+    overflow: hidden;
+}
+
+::ng-deep .dx-fieldset .dx-field-label {
+    /* Keep DevExtreme's default 40% column width (removing it makes the label grow past the point
+       where .dx-field-value's fixed 60% width still fits beside it, pushing the value/checkbox onto
+       the next line - see .dx-field-value:not(.dx-switch):not(.dx-checkbox):not(.dx-button){width:60%}
+       in dx.light.css). Only relax the truncation so long role names wrap instead of being cut off. */
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+
 .hint-role-sync {
+    clear: both;
     font-style: italic;
-    position: relative;
-    top: -10px;
     font-weight: 200;
+    padding-top: 4px;
 }

@@ -15,6 +15,7 @@ using Microsoft.Identity.Web;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
 using at.D365.PowerCID.Portal.Helpers;
+using Microsoft.OData;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -34,7 +35,11 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: EnvironmentVariableEnvironmentsController Get()");
 
-            return base.dbContext.EnvironmentVariableEnvironments.Where(e => e.EnvironmentVariableNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            var externalTenantIds = AuthorizedExternalTenantIds();
+            return base.dbContext.EnvironmentVariableEnvironments.Where(e =>
+                e.EnvironmentVariableNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                && (e.EnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                    || externalTenantIds.Contains(e.EnvironmentNavigation.Tenant)));
         }
 
         [HttpPost]
@@ -46,6 +51,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(ModelState);
             }
+            if (!await CanManageEnvironmentVariableEnvironment(environmentVariableEnvironment.EnvironmentVariable, environmentVariableEnvironment.Environment))
+                return Forbid();
             if (dbContext.EnvironmentVariableEnvironments.Any(x => x.EnvironmentVariable == environmentVariableEnvironment.EnvironmentVariable && x.Environment == environmentVariableEnvironment.Environment))
             {
                 return BadRequest("Environment Variable for this Environment already exists");
@@ -68,10 +75,13 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 return BadRequest(ModelState);
             }
-            if ((await this.dbContext.EnvironmentVariables.FirstOrDefaultAsync(e => e.Id == keyEnvironmentVariable && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if (!await CanManageEnvironmentVariableEnvironment(keyEnvironmentVariable, keyEnvironment))
                 return Forbid();
 
-            var entity = await base.dbContext.EnvironmentVariableEnvironments.FirstAsync(e => e.EnvironmentVariable == keyEnvironmentVariable && e.Environment == keyEnvironment);
+            if (environmentVariableEnvironment.GetChangedPropertyNames().Any(p => p != nameof(EnvironmentVariableEnvironment.Value)))
+                return BadRequest(new ODataError { Code = "400", Message = "Only the value can be changed." });
+
+            var entity = await base.dbContext.EnvironmentVariableEnvironments.FirstOrDefaultAsync(e => e.EnvironmentVariable == keyEnvironmentVariable && e.Environment == keyEnvironment);
             if (entity == null)
             {
                 return NotFound();
@@ -99,6 +109,25 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"End: EnvironmentVariableEnvironmentsController Patch(keyEnvironmentVariable: {keyEnvironmentVariable}, keyEnvironment: {keyEnvironment})");
 
             return Updated(entity);
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> Delete([FromODataUri] int keyEnvironmentVariable, [FromODataUri] int keyEnvironment)
+        {
+            if (!await CanManageEnvironmentVariableEnvironment(keyEnvironmentVariable, keyEnvironment))
+                return Forbid();
+            var entity = await dbContext.EnvironmentVariableEnvironments.FirstOrDefaultAsync(e => e.EnvironmentVariable == keyEnvironmentVariable && e.Environment == keyEnvironment);
+            if (entity == null)
+                return NotFound();
+            dbContext.Remove(entity);
+            await dbContext.SaveChangesAsync();
+            return Ok();
+        }
+
+        private async Task<bool> CanManageEnvironmentVariableEnvironment(int variableId, int environmentId)
+        {
+            var variable = await dbContext.EnvironmentVariables.FirstOrDefaultAsync(e => e.Id == variableId);
+            return variable != null && CanAccessConfiguration(variable.Application, environmentId);
         }
 
         private bool EnvironmentVariableEnvironmentExists(int keyEnvironmentVariableEnvironment, int keyEnvironment)
