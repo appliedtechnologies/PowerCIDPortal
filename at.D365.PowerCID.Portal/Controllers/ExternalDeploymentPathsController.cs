@@ -77,9 +77,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (entity == null)
                 return NotFound();
 
-            externalDeploymentPath.Patch(entity);
-
-            if (dbContext.ExternalDeploymentPaths.Any(x => x.TenantNavigation.MsId == this.msIdTenantCurrentUser && x.Name == entity.Name))
+            if (dbContext.ExternalDeploymentPaths.Any(x => x.Id != key && x.TenantNavigation.MsId == this.msIdTenantCurrentUser && x.Name == entity.Name))
                 return BadRequest(new ODataError { Code = "400", Message = "An external deployment path with this name already exists." });
 
             try
