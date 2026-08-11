@@ -27,12 +27,21 @@ export class ActionService {
     });
   }
 
-  public getDurationString(action: Action): string{
-    if(action?.FinishTime != null && action?.StartTime != null){
-      const duration = action?.FinishTime.valueOf() - action?.StartTime.valueOf();
-      return TimeHelper.millisecondsToString(duration);
+  public getDurationString(action: Action): string | null {
+    if (action?.FinishTime != null && action?.StartTime != null) {
+      const startTime = this.getTimeValue(action.StartTime);
+      const finishTime = this.getTimeValue(action.FinishTime);
+      if (!Number.isFinite(startTime) || !Number.isFinite(finishTime)) {
+        return null;
+      }
+
+      return TimeHelper.millisecondsToString(finishTime - startTime);
     }
-    else
-      return null;
+
+    return null;
+  }
+
+  private getTimeValue(value: Date | string): number {
+    return value instanceof Date ? value.getTime() : Date.parse(value);
   }
 }
