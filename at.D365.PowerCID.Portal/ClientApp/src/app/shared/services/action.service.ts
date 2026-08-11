@@ -27,7 +27,7 @@ export class ActionService {
     });
   }
 
-  public getDurationString(action: Action): string{
+  public getDurationString(action: Action): string | null {
     if (action?.FinishTime != null && action?.StartTime != null) {
       const startTime = this.getTimeValue(action.StartTime);
       const finishTime = this.getTimeValue(action.FinishTime);
