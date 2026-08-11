@@ -69,6 +69,15 @@
           (keydown.space)="$event.preventDefault(); onClickStartAutoRefresh(lastAction)"
           tabindex="0"
           role="button"></i>
+        <i
+          *ngIf="lastAction.Status === 3 && lastAction.Result !== 1"
+          class="at-icon powercid-icon-handcart clickable-icon at-icon"
+          title="try deployment again"
+          (click)="onClickExternalDeploy(cellInfo)"
+          (keydown.enter)="onClickExternalDeploy(cellInfo)"
+          (keydown.space)="$event.preventDefault(); onClickExternalDeploy(cellInfo)"
+          tabindex="0"
+          role="button"></i>
         {{ lastAction.TypeNavigation?.Type }}
         {{ lastAction.StatusNavigation?.Status }}
         {{ lastAction.ResultNavigation?.Result }}
