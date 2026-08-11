@@ -40,6 +40,26 @@ namespace at.D365.PowerCID.Portal.Services
         {
             logger.LogDebug($"Begin: SolutionHistoryService GetExceptionMessage(asyncJob BasicUrl: {asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl})");
 
+            if (asyncJob.ActionNavigation.Type == 2 && asyncJob.JobId.HasValue)
+            {
+                try
+                {
+                    Entity solutionHistoryEntry = await GetEntryById(
+                        asyncJob.JobId.Value,
+                        asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl);
+
+                    var exceptionMessage = solutionHistoryEntry.GetAttributeValue<string>("msdyn_exceptionmessage");
+                    if (!string.IsNullOrWhiteSpace(exceptionMessage))
+                    {
+                        return exceptionMessage;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, $"Failed to retrieve solution history entry {asyncJob.JobId.Value} from {asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl}; falling back to latest-by-name query.");
+                }
+            }
+
             using (var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
                 var query = new QueryExpression("msdyn_solutionhistory")
