@@ -36,6 +36,7 @@ namespace at.D365.PowerCID.Portal.Services
             Application application = await this.dbContext.Applications.FindAsync(applicationId);
 
             List<ConnectionReference> connectionReferences = new List<ConnectionReference>();
+            var seenConnectionReferenceMsIds = new HashSet<Guid>();
             var basicUrl = application.DevelopmentEnvironmentNavigation.BasicUrl;
 
             using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
@@ -44,7 +45,11 @@ namespace at.D365.PowerCID.Portal.Services
                 {
                     var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl, dataverseClient);
                     var connectionReferencesOfSolution = await this.GetConnectionReferencesBySolutionComponents(solutionComponents, applicationId, basicUrl, dataverseClient);
-                    connectionReferences.AddRange(connectionReferencesOfSolution.Where(e => connectionReferences.All(x => e.MsId != x.MsId)));
+                    foreach (var connectionReference in connectionReferencesOfSolution)
+                    {
+                        if (seenConnectionReferenceMsIds.Add(connectionReference.MsId))
+                            connectionReferences.Add(connectionReference);
+                    }
 
                     if (!solution.IsPatch())
                         break;
@@ -110,9 +115,16 @@ namespace at.D365.PowerCID.Portal.Services
             {
                 var connectionReferenceMsId = (Guid)solutionComponent["objectid"];
 
-                var connectionReference = await this.GetConnectionReferenceFromDataverse(connectionReferenceMsId, basicUrl, dataverseClient);
-                connectionReference.Application = applicationId;
-                connectionReferences.Add(connectionReference);
+                try
+                {
+                    var connectionReference = await this.GetConnectionReferenceFromDataverse(connectionReferenceMsId, basicUrl, dataverseClient);
+                    connectionReference.Application = applicationId;
+                    connectionReferences.Add(connectionReference);
+                }
+                catch (FaultException exception)
+                {
+                    logger.LogWarning($"Unable to retrieve connection reference {connectionReferenceMsId} from Dataverse. Skipping component. Error: {exception.Message}");
+                }
             }
             logger.LogDebug($"End: ConnectionReferenceService GetConnectionReferencesBySolutionComponents(applicationId: {applicationId}, basicUrl: {basicUrl})");
 
