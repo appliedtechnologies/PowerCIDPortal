@@ -53,14 +53,17 @@ namespace at.D365.PowerCID.Portal.Services
             var basicUrl = application.DevelopmentEnvironmentNavigation.BasicUrl;
             var tenantMsId = application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId;
 
-            foreach (Solution solution in application.Solutions.Reverse())
+            using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
-                var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl);
-                var environmentVariablesOfSolution = await this.GetEnvironemntVariablesBySolutionComponents(solutionComponents, applicationId, basicUrl, tenantMsId);
-                environmentVariables.AddRange(environmentVariablesOfSolution.Where(e => environmentVariables.All(x => e.MsId != x.MsId)));
+                foreach (Solution solution in application.Solutions.Reverse())
+                {
+                    var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl, dataverseClient);
+                    var environmentVariablesOfSolution = await this.GetEnvironemntVariablesBySolutionComponents(solutionComponents, applicationId, basicUrl, tenantMsId, dataverseClient);
+                    environmentVariables.AddRange(environmentVariablesOfSolution.Where(e => environmentVariables.All(x => e.MsId != x.MsId)));
 
-                if (!solution.IsPatch())
-                    break;
+                    if (!solution.IsPatch())
+                        break;
+                }
             }
             logger.LogDebug($"End: EnvironmentVariableService GetExistsingEnvironmentVariablesFromDataverse(applicationId: {applicationId})");
 
@@ -95,7 +98,7 @@ namespace at.D365.PowerCID.Portal.Services
             return 0;
         }
 
-        private async Task<IEnumerable<EnvironmentVariable>> GetEnvironemntVariablesBySolutionComponents(EntityCollection solutionComponents, int applicationId, string basicUrl, Guid tenantMsId){
+        private async Task<IEnumerable<EnvironmentVariable>> GetEnvironemntVariablesBySolutionComponents(EntityCollection solutionComponents, int applicationId, string basicUrl, Guid tenantMsId, ServiceClient dataverseClient){
             logger.LogDebug($"Begin: EnvironmentVariableService  GetEnvironemntVariablesBySolutionComponents(applicationId: {applicationId}, basicUrl: {basicUrl}, tenantMsId: {tenantMsId.ToString()})");
 
             List<EnvironmentVariable> environmentVariables = new List<EnvironmentVariable>();
@@ -105,7 +108,7 @@ namespace at.D365.PowerCID.Portal.Services
                 {
                     var environmentVariableMsId = (Guid)solutionComponent["objectid"];
                     
-                    var environmentVariable = await this.GetEnvironmentVariableFromDataverse(environmentVariableMsId, basicUrl);
+                    var environmentVariable = await this.GetEnvironmentVariableFromDataverse(environmentVariableMsId, basicUrl, dataverseClient);
                     environmentVariable.Application = applicationId;
                     environmentVariables.Add(environmentVariable);
                 }
@@ -115,39 +118,35 @@ namespace at.D365.PowerCID.Portal.Services
             return environmentVariables;
         }
         
-        private async Task<EnvironmentVariable> GetEnvironmentVariableFromDataverse(Guid environmentVariableMsId, string basicUrl){
+        private async Task<EnvironmentVariable> GetEnvironmentVariableFromDataverse(Guid environmentVariableMsId, string basicUrl, ServiceClient dataverseClient){
             logger.LogDebug($"Begin: EnvironmentVariableService  GetEnvironmentVariableFromDataverse(environmentVariableMsId: {environmentVariableMsId.ToString()},basicUrl: {basicUrl})");
 
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                Entity response = await dataverseClient.RetrieveAsync("environmentvariabledefinition", environmentVariableMsId, new ColumnSet("displayname", "schemaname"));
-                var environmentVariable = new EnvironmentVariable
-                {
-                    DisplayName = (string)response["displayname"],
-                    LogicalName = (string)response["schemaname"],
-                    MsId = environmentVariableMsId
-                };
+            Entity response = await dataverseClient.RetrieveAsync("environmentvariabledefinition", environmentVariableMsId, new ColumnSet("displayname", "schemaname"));
+            var environmentVariable = new EnvironmentVariable
+            {
+                DisplayName = (string)response["displayname"],
+                LogicalName = (string)response["schemaname"],
+                MsId = environmentVariableMsId
+            };
 
-                logger.LogDebug($"End: EnvironmentVariableService  GetEnvironmentVariableFromDataverse(environmentVariableMsId: {environmentVariableMsId.ToString()},basicUrl: {basicUrl})");
+            logger.LogDebug($"End: EnvironmentVariableService  GetEnvironmentVariableFromDataverse(environmentVariableMsId: {environmentVariableMsId.ToString()},basicUrl: {basicUrl})");
 
-                return environmentVariable;
-            }
+            return environmentVariable;
         }
 
-        private async Task<EntityCollection> GetSolutionComponentsFromDataverse(Guid solutionMsId, string basicUrl){
+        private async Task<EntityCollection> GetSolutionComponentsFromDataverse(Guid solutionMsId, string basicUrl, ServiceClient dataverseClient){
             logger.LogDebug($"Begin: EnvironmentVariableService GetSolutionComponentsFromDataverse(solutionMsId: {solutionMsId.ToString()}, basicUrl: {basicUrl})");
             
-            using(var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true)){
-                var query = new QueryExpression("solutioncomponent"){
-                    ColumnSet = new ColumnSet("solutionid", "componenttype", "objectid"),
-                };
-                query.Criteria.AddCondition("solutionid", ConditionOperator.Equal, solutionMsId);
+            var query = new QueryExpression("solutioncomponent"){
+                ColumnSet = new ColumnSet("solutionid", "componenttype", "objectid"),
+            };
+            query.Criteria.AddCondition("solutionid", ConditionOperator.Equal, solutionMsId);
 
-                EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
+            EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
                 
-                logger.LogDebug($"End: EnvironmentVariableService GetSolutionComponentsFromDataverse(solutionMsId: {solutionMsId.ToString()}, basicUrl: {basicUrl})");
+            logger.LogDebug($"End: EnvironmentVariableService GetSolutionComponentsFromDataverse(solutionMsId: {solutionMsId.ToString()}, basicUrl: {basicUrl})");
 
-                return response; 
-            }
+            return response;
         }
     }
 }
