@@ -35,8 +35,11 @@ namespace at.D365.PowerCID.Portal.Services
 
             foreach (var environmentVariable in this.dbContext.EnvironmentVariables.Where(e => e.Application == applicationId))
             {
-                if (!existsingEnvironmentVariablesInDataverse.Any(x => x.MsId == environmentVariable.MsId))
+                if (!existsingEnvironmentVariablesInDataverse.Any(x => x.MsId == environmentVariable.MsId) &&
+                    !this.dbContext.EnvironmentVariableEnvironments.Any(e => e.EnvironmentVariable == environmentVariable.Id))
                     this.dbContext.EnvironmentVariables.Remove(environmentVariable);
+                else if (!existsingEnvironmentVariablesInDataverse.Any(x => x.MsId == environmentVariable.MsId))
+                    logger.LogWarning($"Keeping environment variable {environmentVariable.MsId} because it has configured environment values.");
             }
 
             await this.dbContext.SaveChangesAsync();

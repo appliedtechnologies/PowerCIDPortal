@@ -68,8 +68,11 @@ namespace at.D365.PowerCID.Portal.Services
 
             foreach (var connectionReference in this.dbContext.ConnectionReferences.Where(e => e.Application == applicationId))
             {
-                if (!existsingConnectionReferencesInDataverse.Any(x => x.MsId == connectionReference.MsId))
+                if (!existsingConnectionReferencesInDataverse.Any(x => x.MsId == connectionReference.MsId) &&
+                    !this.dbContext.ConnectionReferenceEnvironments.Any(e => e.ConnectionReference == connectionReference.Id))
                     this.dbContext.ConnectionReferences.Remove(connectionReference);
+                else if (!existsingConnectionReferencesInDataverse.Any(x => x.MsId == connectionReference.MsId))
+                    logger.LogWarning($"Keeping connection reference {connectionReference.MsId} because it has configured environment values.");
             }
 
             await this.dbContext.SaveChangesAsync();
