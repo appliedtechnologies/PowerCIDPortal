@@ -50,6 +50,7 @@ namespace at.D365.PowerCID.Portal.Services
             Application application = await this.dbContext.Applications.FindAsync(applicationId);
 
             List<EnvironmentVariable> environmentVariables = new List<EnvironmentVariable>();
+            var seenEnvironmentVariableMsIds = new HashSet<Guid>();
             var basicUrl = application.DevelopmentEnvironmentNavigation.BasicUrl;
             var tenantMsId = application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId;
 
@@ -59,7 +60,11 @@ namespace at.D365.PowerCID.Portal.Services
                 {
                     var solutionComponents = await this.GetSolutionComponentsFromDataverse(solution.MsId, basicUrl, dataverseClient);
                     var environmentVariablesOfSolution = await this.GetEnvironemntVariablesBySolutionComponents(solutionComponents, applicationId, basicUrl, tenantMsId, dataverseClient);
-                    environmentVariables.AddRange(environmentVariablesOfSolution.Where(e => environmentVariables.All(x => e.MsId != x.MsId)));
+                    foreach (var environmentVariable in environmentVariablesOfSolution)
+                    {
+                        if (seenEnvironmentVariableMsIds.Add(environmentVariable.MsId))
+                            environmentVariables.Add(environmentVariable);
+                    }
 
                     if (!solution.IsPatch())
                         break;
