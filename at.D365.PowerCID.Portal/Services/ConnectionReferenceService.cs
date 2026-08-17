@@ -37,7 +37,6 @@ namespace at.D365.PowerCID.Portal.Services
 
             List<ConnectionReference> connectionReferences = new List<ConnectionReference>();
             var basicUrl = application.DevelopmentEnvironmentNavigation.BasicUrl;
-            var tenantMsId = application.DevelopmentEnvironmentNavigation.TenantNavigation.MsId;
 
             using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
