@@ -65,13 +65,21 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"Begin: ConnectionReferenceService CleanConnectionReferences(applicationId: {applicationId})");
 
             var existsingConnectionReferencesInDataverse = await this.GetExistsingConnectionReferencesFromDataverse(applicationId);
+            var existingConnectionReferenceMsIds = existsingConnectionReferencesInDataverse.Select(x => x.MsId).ToHashSet();
+            var connectionReferences = this.dbContext.ConnectionReferences.Where(e => e.Application == applicationId).ToList();
+            var connectionReferenceIds = connectionReferences.Select(e => e.Id).ToList();
+            var connectionReferencesWithConfiguredValues = this.dbContext.ConnectionReferenceEnvironments
+                .Where(e => connectionReferenceIds.Contains(e.ConnectionReference))
+                .Select(e => e.ConnectionReference)
+                .ToHashSet();
 
-            foreach (var connectionReference in this.dbContext.ConnectionReferences.Where(e => e.Application == applicationId))
+            foreach (var connectionReference in connectionReferences)
             {
-                if (!existsingConnectionReferencesInDataverse.Any(x => x.MsId == connectionReference.MsId) &&
-                    !this.dbContext.ConnectionReferenceEnvironments.Any(e => e.ConnectionReference == connectionReference.Id))
+                bool existsInDataverse = existingConnectionReferenceMsIds.Contains(connectionReference.MsId);
+                bool hasConfiguredValues = connectionReferencesWithConfiguredValues.Contains(connectionReference.Id);
+                if (!existsInDataverse && !hasConfiguredValues)
                     this.dbContext.ConnectionReferences.Remove(connectionReference);
-                else if (!existsingConnectionReferencesInDataverse.Any(x => x.MsId == connectionReference.MsId))
+                else if (!existsInDataverse)
                     logger.LogWarning($"Keeping connection reference {connectionReference.MsId} because it has configured environment values.");
             }
 

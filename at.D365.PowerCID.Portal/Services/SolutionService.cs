@@ -291,9 +291,6 @@ namespace at.D365.PowerCID.Portal.Services
         {
             logger.LogDebug($"Begin: SolutionService StartImportInDataverse(solutionFileData Count: {solutionFileData.Count()}, action BasicUrl: {action.TargetEnvironmentNavigation.BasicUrl})");
 
-            await this.environmentVariableService.CleanEnvironmentVariables(action.SolutionNavigation.Application);
-            await this.connectionReferenceService.CleanConnectionReferences(action.SolutionNavigation.Application);
-
             (EntityCollection solutionComponentParameters, string deploymentDetails) = await this.GetSolutionComponentsForImport(action.TargetEnvironment, action.SolutionNavigation.Application);
 
             if (unmanaged)
@@ -539,6 +536,9 @@ namespace at.D365.PowerCID.Portal.Services
         private async Task<(EntityCollection, string)> GetSolutionComponentsForImport(int environmentId, int applicationId)
         {
             logger.LogDebug($"Begin: SolutionService GetSolutionComponentsForImport(environmentId: {environmentId}, applicationId: {applicationId})");
+
+            await this.environmentVariableService.CleanEnvironmentVariables(applicationId);
+            await this.connectionReferenceService.CleanConnectionReferences(applicationId);
 
             EntityCollection solutionComponentParameters = new EntityCollection();
 
