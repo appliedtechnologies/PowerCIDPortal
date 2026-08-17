@@ -537,6 +537,9 @@ namespace at.D365.PowerCID.Portal.Services
         {
             logger.LogDebug($"Begin: SolutionService GetSolutionComponentsForImport(environmentId: {environmentId}, applicationId: {applicationId})");
 
+            await this.environmentVariableService.CleanEnvironmentVariables(applicationId);
+            await this.connectionReferenceService.CleanConnectionReferences(applicationId);
+
             EntityCollection solutionComponentParameters = new EntityCollection();
 
             (var connectionReferenceEntities, string deploymentDetailsConnectionReferences) = await this.GetConnectionReferencesForImport(environmentId, applicationId);
@@ -558,8 +561,6 @@ namespace at.D365.PowerCID.Portal.Services
         {
 
             logger.LogDebug($"Begin: SolutionService  GetEnvironmentVariablesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
-
-            await this.environmentVariableService.CleanEnvironmentVariables(applicationId);
 
             EntityCollection environmentVariableEntities = new EntityCollection();
             string deploymentDetails = "";
@@ -586,8 +587,6 @@ namespace at.D365.PowerCID.Portal.Services
         private async Task<(EntityCollection, string)> GetConnectionReferencesForImport(int environmentId, int applicationId)
         {
             logger.LogDebug($"Begin: SolutionService  GetConnectionReferencesForImport(environmentId: {environmentId}, applicationId: {applicationId})");
-
-            await this.connectionReferenceService.CleanConnectionReferences(applicationId);
 
             EntityCollection connectionReferenceEntities = new EntityCollection();
             string deploymentDetails = "";
