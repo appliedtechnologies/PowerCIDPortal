@@ -1,0 +1,56 @@
+{
+  "workflow": "odata-bug-analysis",
+  "activeSessionId": "session-2",
+  "sessions": [
+    {
+      "id": "session-2",
+      "label": "Implementing environment permissions OData filter fix",
+      "status": "active",
+      "currentPhase": "completed",
+      "todos": [
+        {
+          "id": "load-environments-locally",
+          "title": "Loading environment options locally",
+          "status": "done"
+        },
+        {
+          "id": "configure-odata-fallback",
+          "title": "Configuring OData node-count fallback",
+          "status": "done"
+        },
+        {
+          "id": "validate-fix",
+          "title": "Validating the implementation",
+          "status": "done"
+        }
+      ],
+      "decisions": [
+        {
+          "type": "architecture",
+          "description": "Use a locally loaded Environment array for the permissions dx-list and retain a raised OData MaxNodeCount as a fallback.",
+          "rationale": "The UI must not turn selected keys into a large remote OData filter, while other clients still need a bounded server-side fallback.",
+          "alternatives_considered": [
+            "Only increase MaxNodeCount",
+            "Add a dedicated permissions endpoint"
+          ],
+          "workaround": false
+        }
+      ],
+      "blockers": [],
+      "lessonsLearned": [],
+      "lessonsLearned": [
+        {
+          "category": "tool-limitation",
+          "summary": "Frontend build cannot run with the installed Node.js version",
+          "detail": "Angular CLI requires Node 24.15.0 or newer; the environment has Node 24.14.1. TypeScript checking also reports a pre-existing missing @nguniversal/module-map-ngfactory-loader module.",
+          "appliesTo": [
+            "vite-react"
+          ],
+          "severity": "medium"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-09-29T22:07:00+02:00"
+    }
+  ]
+}
