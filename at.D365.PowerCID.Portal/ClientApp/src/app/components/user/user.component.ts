@@ -48,7 +48,7 @@ export class UserComponent {
 
   public appRoleNames: IAppConfig["azure"]["appRoleNames"] = AppConfig.settings.azure.appRoleNames;
   public dataSourceUsers: DataSource;
-  public dataSourceEnvironments: DataSource;
+  public dataSourceEnvironments: Environment[] = [];
   public isEditRolesVisible: boolean;
   public isEditPermissionsPopupVisible: boolean;
   public selectedItemKeysPermissionEnvironments: number[];
@@ -74,13 +74,6 @@ export class UserComponent {
       store: this.userService.getStore(),
       filter: ["IsDeactive", "=", false],
       expand: "TenantNavigation",
-    });
-
-    this.dataSourceEnvironments = new DataSource({
-      store: this.environmentService.getStore(),
-      filter: ["IsDeactive", "=", false],
-      paginate: false,
-      sort: "Name",
     });
 
     this.onClickEditRoles = this.onClickEditRoles.bind(this);
@@ -120,7 +113,24 @@ export class UserComponent {
 
   public onClickRefresh(): void {
     this.dataSourceUsers.reload();
-    this.dataSourceEnvironments.reload();
+    void this.loadEnvironments().catch(() => {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "An error occurred while loading environments.",
+      });
+    });
+  }
+
+  private loadEnvironments(): Promise<void> {
+    return this.environmentService
+      .getStore()
+      .load({
+        filter: ["IsDeactive", "=", false],
+        sort: "Name",
+      })
+      .then((environments: Environment[]) => {
+        this.dataSourceEnvironments = environments;
+      });
   }
 
   public onContentReadyPermissionEnvironmentList(e: ContentReadyEvent<Environment, number>): void {
@@ -176,21 +186,30 @@ export class UserComponent {
     this.currentSelectedUser = e.row.data;
 
     this.layoutService.change(LayoutParameter.ShowLoading, true);
-    this.userEnvironmentService
-      .getStore()
-      .load({
+    Promise.all([
+      this.loadEnvironments(),
+      this.userEnvironmentService.getStore().load({
         filter: ["User", "=", this.currentSelectedUser.Id],
-      })
-      .then((userEnvironments: UserEnvironment[]) => {
+      }),
+    ])
+      .then(([, userEnvironments]: [void, UserEnvironment[]]) => {
         if (
           this.selectedItemKeysPermissionEnvironments === undefined &&
           userEnvironments.length > 0
         )
           this.isInitPermissionEnvironmentSelection = true;
         this.selectedItemKeysPermissionEnvironments = userEnvironments.map(
-          (e) => e.Environment
+          (userEnvironment) => userEnvironment.Environment
         );
         this.isEditPermissionsPopupVisible = true;
+      })
+      .catch(() => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "An error occurred while loading environment permissions.",
+        });
+      })
+      .then(() => {
         this.layoutService.change(LayoutParameter.ShowLoading, false);
       });
   }

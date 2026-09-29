@@ -97,6 +97,7 @@
         selectAllMode="allPages"
         [showSelectionControls]="true"
         [selectedItemKeys]="selectedItemKeysPermissionEnvironments"
+        keyExpr="Id"
         displayExpr="Name"
         (onSelectionChanged)="onSelectionChangedPermissionEnvironments($event)"
         (onContentReady)="onContentReadyPermissionEnvironmentList($event)"

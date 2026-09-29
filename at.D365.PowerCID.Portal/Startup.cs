@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.OData;
 using Microsoft.AspNetCore.OData.Extensions;
+using Microsoft.AspNetCore.OData.Query;
+using Microsoft.AspNetCore.OData.Query.Validator;
 using Microsoft.OData.Edm;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.Identity.Web;
@@ -159,7 +161,20 @@ namespace at.D365.PowerCID.Portal
             services.AddDbContext<atPowerCIDContext>(options =>
                 options.UseLazyLoadingProxies().UseSqlServer(Configuration.GetConnectionString("atPowerCIDPortal")));
 
-            services.AddControllers().AddOData(options => options.AddRouteComponents("odata", GetEdmModel()).Select().Count().Filter().OrderBy().Expand().SetMaxTop(100));
+            services.AddControllers().AddOData(options => options
+                .AddRouteComponents(
+                    "odata",
+                    GetEdmModel(),
+                    routeServices => routeServices.AddSingleton(new ODataValidationSettings
+                    {
+                        MaxNodeCount = 500
+                    }))
+                .Select()
+                .Count()
+                .Filter()
+                .OrderBy()
+                .Expand()
+                .SetMaxTop(100));
 
             //custom services
             services.AddScoped<GitHubService>();
