@@ -1,14 +1,13 @@
 import { Component, Input, OnInit, ChangeDetectionStrategy } from "@angular/core";
 import { Application } from "src/app/shared/models/application.model";
-import { ConnectionReference } from "src/app/shared/models/connectionreference.model";
-import { ConnectionReferenceEnvironment } from "src/app/shared/models/connectionreferenceenvironment.model";
 import { Environment } from "src/app/shared/models/environment.model";
-import { EnvironmentVariable } from "src/app/shared/models/environmentvariable.model";
-import { EnvironmentVariableEnvironment } from "src/app/shared/models/environmentvariableenvironment.model";
-import { ConnectionReferenceService } from "src/app/shared/services/connectionreference.service";
-import { ConnectionReferenceEnvironmentService } from "src/app/shared/services/connectionreferenceenvironment.service";
-import { EnvironmentVariableService } from "src/app/shared/services/environmentvariable.service";
-import { EnvironmentVariableEnvironmentService } from "src/app/shared/services/environmentvariableenvironment.service";
+import { Solution } from "src/app/shared/models/solution.model";
+import {
+  DeploymentSetting,
+  DeploymentSettingsStatus,
+  SolutionDeploymentSettingsService,
+} from "src/app/shared/services/solution-deployment-settings.service";
+import { SolutionService } from "src/app/shared/services/solution.service";
 import { LayoutParameter, LayoutService, NotificationType } from "src/app/shared/services/layout.service";
 import { InitializedEvent, ValueChangedEvent } from "devextreme/ui/text_box";
 
@@ -22,131 +21,124 @@ import { InitializedEvent, ValueChangedEvent } from "devextreme/ui/text_box";
 export class ConfigureDeploymentComponent implements OnInit {
     @Input() environment: Environment;
     @Input() application: Application;
+    @Input() solution: Solution;
 
-    public connectionReferencesFromDataverse: ConnectionReference[];
-    public environmentVariablesFromDataverse: EnvironmentVariable[];
-    public existingConnectionReferences: ConnectionReference[];
-    public existingEnvironmentVariables: EnvironmentVariable[];
+    public solutions: Solution[] = [];
+    public selectedSolution: Solution;
+    public connectionReferencesFromDataverse: DeploymentSetting[] = [];
+    public environmentVariablesFromDataverse: DeploymentSetting[] = [];
+    public status: DeploymentSettingsStatus;
 
-    constructor(private connectionReferenceService: ConnectionReferenceService, private layoutService: LayoutService, private connectionReferenceEnvironmentService: ConnectionReferenceEnvironmentService, private environmentVariableService: EnvironmentVariableService, private environmentVariableEnvironmentService: EnvironmentVariableEnvironmentService){}
+    constructor(
+      private deploymentSettingsService: SolutionDeploymentSettingsService,
+      private solutionService: SolutionService,
+      private layoutService: LayoutService
+    ) {}
 
     public ngOnInit(): void {
         this.layoutService.change(LayoutParameter.ShowLoading, true);
-        const promiseConnectionRefernecesFromDataverse = this.connectionReferenceService.getFromDataverseForApplication(this.application.Id);
-        const promiseConnectionReferencesExisting = this.connectionReferenceService.getExistingForApplication(this.application.Id);
-        const promiseEnvironmentVariablesFromDataverse = this.environmentVariableService.getFromDataverseForApplication(this.application.Id);
-        const promiseEnvironmentVariablesExisting = this.environmentVariableService.getExistingForApplication(this.application.Id);
-        Promise.all([promiseConnectionRefernecesFromDataverse, promiseConnectionReferencesExisting, promiseEnvironmentVariablesFromDataverse, promiseEnvironmentVariablesExisting])
-        .then((data) => {
-            this.connectionReferencesFromDataverse = data[0]["value"];
-            this.existingConnectionReferences = data[1];
-            this.environmentVariablesFromDataverse = data[2]["value"];
-            this.existingEnvironmentVariables = data[3];
-        })
-        .finally(() =>{
+        this.solutionService.getStore().load({
+            filter: ["Application", "=", this.application.Id],
+            sort: [{ selector: "CreatedOn", desc: true }]
+        }).then((solutions: Solution[]) => {
+            this.solutions = solutions;
+            this.selectedSolution = this.solution || solutions[0];
+            return this.loadSelectedSolution();
+        }).finally(() => {
             this.layoutService.change(LayoutParameter.ShowLoading, false);
         });
     }
 
-    public onValueChangedConnectionIdTextBox(e: ValueChangedEvent, connectionReference: ConnectionReference){
-        if(e.value != e.previousValue){
-            const connectionId = e.value;
-            const existingConnectionReference: ConnectionReference = this.existingConnectionReferences.find(e => e.MsId == connectionReference.MsId);
-            if(!existingConnectionReference){
-                //create connection reference
-                this.connectionReferenceService.add(connectionReference)    
-                    .then((createdConnectionReference) => {
-                        this.saveNewConnectionId(createdConnectionReference, connectionId).then((createdConnectionReferenceEnvironment) => {
-                            createdConnectionReference.ConnectionReferenceEnvironments = [createdConnectionReferenceEnvironment];
-                            this.existingConnectionReferences.push(createdConnectionReference);
-                            this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000})
-                        });
-                    });
-            }
-            else{
-                if(existingConnectionReference.ConnectionReferenceEnvironments?.find(e => e.Environment == this.environment.Id)){
-                    this.updateConnectionId(existingConnectionReference, connectionId).then(() => {
-                        this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000})
-                    });
-                }
-                else{
-                    this.saveNewConnectionId(existingConnectionReference, connectionId).then((createdConnectionReferenceEnvironment) => {
-                        existingConnectionReference.ConnectionReferenceEnvironments = [createdConnectionReferenceEnvironment];
-                        this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000})
-                    });
-                }
-            }
+    public onSolutionChanged(solution: Solution): void {
+        if (solution && solution.Id !== this.selectedSolution?.Id) {
+            this.selectedSolution = solution;
+            this.loadSelectedSolution();
         }
     }
 
-    public onValueChangedEnvVarValueTextBox(e: ValueChangedEvent, environmentVariable: EnvironmentVariable){
-        if(e.value != e.previousValue){
-            const envVarValue = e.value;
-            const existingEnvironmentVariables: EnvironmentVariable = this.existingEnvironmentVariables.find(e => e.MsId == environmentVariable.MsId);
-            if(!existingEnvironmentVariables){
-                //create environment variable
-                this.environmentVariableService.add(environmentVariable)    
-                    .then((createdEnvironmentVariable) => {
-                        this.saveNewEnvVarValue(createdEnvironmentVariable, envVarValue).then((createdEnvironmentVariableEnvironment) => {
-                            createdEnvironmentVariable.EnvironmentVariableEnvironments = [createdEnvironmentVariableEnvironment];
-                            this.existingEnvironmentVariables.push(createdEnvironmentVariable);
-                            this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000})
-                        });
-                    });
-            }
-            else{
-                if(existingEnvironmentVariables.EnvironmentVariableEnvironments?.find(e => e.Environment == this.environment.Id)){
-                    this.updateEnvVarValue(existingEnvironmentVariables, envVarValue).then(() => {
-                        this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000})
-                    });
-                }
-                else{
-                    this.saveNewEnvVarValue(existingEnvironmentVariables, envVarValue).then((createdEnvironmentVariableEnvironment) => {
-                        existingEnvironmentVariables.EnvironmentVariableEnvironments = [createdEnvironmentVariableEnvironment];
-                        this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000})
-                    });
-                }
-            }
+    public refreshManifest(): void {
+        if (!this.selectedSolution?.Id) {
+            return;
+        }
+
+        this.layoutService.change(LayoutParameter.ShowLoading, true);
+        this.deploymentSettingsService.refresh(this.selectedSolution.Id)
+            .then(() => this.loadSelectedSolution())
+            .finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
+    }
+
+    public resetSetting(setting: DeploymentSetting): void {
+        this.deploymentSettingsService.reset(
+            this.selectedSolution.Id,
+            setting.Id,
+            this.environment.Id
+        ).then(value => {
+            setting.Value = value;
+            return this.deploymentSettingsService.status(this.selectedSolution.Id, this.environment.Id);
+        }).then(status => this.status = status);
+    }
+
+    public onValueChangedConnectionIdTextBox(e: ValueChangedEvent, setting: DeploymentSetting): void {
+        if (e.value !== e.previousValue) {
+            this.updateSetting(setting, e.value, true);
         }
     }
 
-    public onInitializedConnectionIdTextBox(e: InitializedEvent, connectionReference: ConnectionReference){
-        const connectionId = this.existingConnectionReferences.find(e => e.MsId == connectionReference.MsId)?.ConnectionReferenceEnvironments?.find(e =>e.Environment == this.environment.Id)?.ConnectionId
-        if(connectionId)
-            e.component.option("value", connectionId);
+    public onValueChangedEnvVarValueTextBox(e: ValueChangedEvent, setting: DeploymentSetting): void {
+        if (e.value !== e.previousValue) {
+            this.updateSetting(setting, e.value, true);
+        }
     }
 
-    public onInitializedEnvVarValueTextBox(e: InitializedEvent, environmentVariable: EnvironmentVariable){
-        const envVarValue = this.existingEnvironmentVariables.find(e => e.MsId == environmentVariable.MsId)?.EnvironmentVariableEnvironments?.find(e =>e.Environment == this.environment.Id)?.Value
-        if(envVarValue)
-            e.component.option("value", envVarValue);
+    public onInitializedConnectionIdTextBox(e: InitializedEvent, setting: DeploymentSetting): void {
+        this.setInitialValue(e, setting);
     }
 
-    private updateEnvVarValue(environmentVariable: EnvironmentVariable, value: string){
-        return this.environmentVariableEnvironmentService.update(environmentVariable.Id, this.environment.Id, {Value: value});
+    public onInitializedEnvVarValueTextBox(e: InitializedEvent, setting: DeploymentSetting): void {
+        this.setInitialValue(e, setting);
     }
 
-    private saveNewEnvVarValue(environmentVariable: EnvironmentVariable, value: string): Promise<EnvironmentVariableEnvironment>{
-        const environmentVariableEnvironment: EnvironmentVariableEnvironment = {
-            EnvironmentVariable: environmentVariable.Id,
-            Environment: this.environment.Id,
-            Value: value
-        }; 
-
-        return this.environmentVariableEnvironmentService.add(environmentVariableEnvironment);
+    public configuredCount(): string {
+        return this.status ? `${this.status.Configured}/${this.status.Total} configured` : "";
     }
 
-    private updateConnectionId(connectionReference: ConnectionReference, connectionId: string){
-        return this.connectionReferenceEnvironmentService.update(connectionReference.Id, this.environment.Id, {ConnectionId: connectionId});
+    private loadSelectedSolution(): Promise<void> {
+        if (!this.selectedSolution?.Id) {
+            return Promise.resolve();
+        }
+        return this.deploymentSettingsService.get(this.selectedSolution.Id, this.environment.Id)
+            .then(response => {
+                this.connectionReferencesFromDataverse = response.settings.filter(e => e.Kind === "ConnectionReference");
+                this.environmentVariablesFromDataverse = response.settings.filter(e => e.Kind === "EnvironmentVariable");
+                return this.deploymentSettingsService.status(this.selectedSolution.Id, this.environment.Id);
+            })
+            .then(status => {
+                this.status = status;
+            });
     }
 
-    private saveNewConnectionId(connectionReference: ConnectionReference, connectionId: string): Promise<ConnectionReferenceEnvironment>{
-        const connectionReferenceEnvironment: ConnectionReferenceEnvironment = {
-            ConnectionReference: connectionReference.Id,
-            Environment: this.environment.Id,
-            ConnectionId: connectionId
-        }; 
+    private updateSetting(setting: DeploymentSetting, value: string, isConfigured: boolean): void {
+        this.deploymentSettingsService.update(
+            this.selectedSolution.Id,
+            setting.Id,
+            this.environment.Id,
+            value,
+            isConfigured,
+            setting.Value?.RowVersion
+        ).then(updated => {
+            setting.Value = updated;
+            this.layoutService.notify({
+                type: NotificationType.Success,
+                message: "Changes have been saved",
+                displayTime: 1000
+            });
+            return this.deploymentSettingsService.status(this.selectedSolution.Id, this.environment.Id);
+        }).then(status => this.status = status);
+    }
 
-        return this.connectionReferenceEnvironmentService.add(connectionReferenceEnvironment);
+    private setInitialValue(e: InitializedEvent, setting: DeploymentSetting): void {
+        if (setting.Value?.IsConfigured) {
+            e.component.option("value", setting.Value.Value ?? "");
+        }
     }
 }

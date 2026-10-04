@@ -31,6 +31,7 @@ import { ExternalDeploymentPathEnvironment } from "src/app/shared/models/externa
 import { ExternalEnvironment } from "src/app/shared/models/externalenvironment.model";
 import { ExternalDeploymentPathService } from "src/app/shared/services/externaldeploymentpath.service";
 import { TenantService } from "src/app/shared/services/tenant.service";
+import { SolutionDeploymentSettingsService } from "src/app/shared/services/solution-deployment-settings.service";
 
 type SolutionRowData = Solution & {
   ApplyManually?: unknown;
@@ -129,6 +130,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     private externalDeploymentPathEnvironmentService: ExternalDeploymentPathEnvironmentService,
     private externalDeploymentPathService: ExternalDeploymentPathService,
     private tenantService: TenantService,
+    private deploymentSettingsService: SolutionDeploymentSettingsService,
     private changeDetectorRef: ChangeDetectorRef
   ) {
     this.selectionToolbarItems = this.createSelectionToolbarItems();
@@ -585,9 +587,15 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     } else {
       const deploymentPathId = cellInfo.column.name.split(",")[0];
       this.layoutService.change(LayoutParameter.ShowLoading, true);
-      this.applicationService.getDeploymentSettingsStatus(this.selectedApplication.Id, targetEnvironmentId).then((status) => {
-        if (status == 0) {
-          const confirmResult = confirm("Import without completed Deployment Settings (e.g. Connection References)?", "Incomplete Deployment Settings");
+      this.deploymentSettingsService.status(cellInfo.data.Id, targetEnvironmentId).then((status) => {
+        if (status.ManifestStatus !== "Ready") {
+          alert(`Import is blocked because the deployment settings manifest is ${status.ManifestStatus}. Refresh the manifest before importing.`, "Deployment Settings");
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+          return;
+        }
+        if (status.Missing > 0) {
+          const missingNames = status.MissingSettings.map(setting => setting.LogicalName).join(", ");
+          const confirmResult = confirm(`Missing settings for this solution version: ${missingNames}. Import anyway?`, "Incomplete Deployment Settings");
           this.layoutService.change(LayoutParameter.ShowLoading, false);
           confirmResult.then((result) => {
             this.layoutService.change(LayoutParameter.ShowLoading, true);

@@ -1,12 +1,21 @@
 <div>
     <strong>Application:</strong>   {{application.Name}}<br />
-    <strong>Environment:</strong>   {{environment.Name}}
+    <strong>Solution version:</strong>
+    <dx-select-box
+        [dataSource]="solutions"
+        displayExpr="Version"
+        [(value)]="selectedSolution"
+        (onValueChanged)="onSolutionChanged($event.value)"
+    ></dx-select-box>
+    <strong>Target environment:</strong>   {{environment.Name}}
+    <span *ngIf="status"> ({{configuredCount()}}; {{status.ManifestStatus}})</span>
+    <dx-button text="Refresh from Dataverse" icon="refresh" (onClick)="refreshManifest()"></dx-button>
 </div>
 <h3>Connection References:</h3>
 <p>Enter the Connection Id the Connection Reference should be associated with during the import on the target environment.</p>
 <dx-list 
     [dataSource]="connectionReferencesFromDataverse"
-    noDataText="The Application does not include any Connection References."
+    noDataText="This solution version does not include any Connection References."
 >
     <div *dxTemplate="let connectionReference of 'item'">
         <div class="list-entry">
@@ -21,6 +30,7 @@
                 (onValueChanged)="onValueChangedConnectionIdTextBox($event, connectionReference)"
             >   
             </dx-text-box>
+            <dx-button text="Reset" (onClick)="resetSetting(connectionReference)"></dx-button>
         </div>
     </div>
 </dx-list>
@@ -28,7 +38,7 @@
 <p>Enter the value the Environment Variable should set on during import on the target environment.</p>
 <dx-list 
     [dataSource]="environmentVariablesFromDataverse"
-    noDataText="The Application does not include any Environment Variable."
+    noDataText="This solution version does not include any Environment Variable."
 >
     <div *dxTemplate="let environmentVariable of 'item'">
         <div class="list-entry">
@@ -42,6 +52,7 @@
                 (onValueChanged)="onValueChangedEnvVarValueTextBox($event, environmentVariable)"
             >   
             </dx-text-box>
+            <dx-button text="Reset" (onClick)="resetSetting(environmentVariable)"></dx-button>
         </div>
     </div>
 </dx-list>

@@ -85,6 +85,10 @@ namespace at.D365.PowerCID.Portal
             var getStatusConnectionReferenceEnvironment = builder.EntityType<Application>().Action("GetDeploymentSettingsStatus");
             getStatusConnectionReferenceEnvironment.Parameter<int>("environmentId");
 
+            builder.EntityType<Solution>().Action("RefreshDeploymentSettings");
+            var getSolutionDeploymentSettingsStatus = builder.EntityType<Solution>().Action("GetDeploymentSettingsStatus");
+            getSolutionDeploymentSettingsStatus.Parameter<int>("environmentId");
+
             // Get Roles
             builder.EntityType<User>().Action("GetUserRoles").Returns<AppRoleAssignment>();
 
@@ -182,6 +186,7 @@ namespace at.D365.PowerCID.Portal
             services.AddScoped<SolutionHistoryService>();
             services.AddScoped<ConnectionReferenceService>();
             services.AddScoped<EnvironmentVariableService>();
+            services.AddScoped<DeploymentSettingsService>();
             services.AddScoped<ActionService>();
             services.AddScoped<FlowService>();
             services.AddScoped<UserService>();

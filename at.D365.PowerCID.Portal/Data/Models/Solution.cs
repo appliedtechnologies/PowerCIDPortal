@@ -11,6 +11,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public Solution()
         {
             Actions = new HashSet<Action>();
+            DeploymentManifests = new HashSet<SolutionDeploymentManifest>();
         }
 
         public int Id { get; set; }
@@ -33,6 +34,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public virtual User CreatedByNavigation { get; set; }
         public virtual User ModifiedByNavigation { get; set; }
         public virtual ICollection<Action> Actions { get; set; }
+        public virtual ICollection<SolutionDeploymentManifest> DeploymentManifests { get; set; }
 
         public bool IsPatch(){
             return this.GetType().Name.Contains("Patch");

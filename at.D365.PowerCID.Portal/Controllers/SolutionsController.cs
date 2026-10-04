@@ -20,6 +20,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.OData;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -40,6 +41,178 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"Begin & End: SolutionsController Get()");
 
             return base.dbContext.Solutions.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+        }
+
+        [HttpGet]
+        [Route("odata/Solutions({key})/DeploymentSettings")]
+        public async Task<IActionResult> GetDeploymentSettings(
+            [FromRoute] int key,
+            [FromQuery] int environmentId,
+            [FromServices] DeploymentSettingsService deploymentSettingsService)
+        {
+            var solution = await GetTenantSolution(key);
+            if (solution == null)
+                return Forbid();
+            if (!CanAccessConfiguration(solution.Application, environmentId))
+                return Forbid();
+
+            var manifest = await deploymentSettingsService.GetManifest(key);
+            if (manifest == null)
+                return Ok(new { manifestStatus = DeploymentManifestStatus.Draft.ToString(), settings = Array.Empty<object>() });
+
+            var settings = manifest.Settings
+                .OrderBy(e => e.Kind)
+                .ThenBy(e => e.MsId)
+                .Select(setting => new
+                {
+                    setting.Id,
+                    kind = setting.Kind.ToString(),
+                    setting.MsId,
+                    setting.LogicalName,
+                    setting.DisplayName,
+                    setting.ConnectorId,
+                    setting.EnvironmentVariableType,
+                    setting.DefaultValue,
+                    setting.IsRequired,
+                    value = setting.Values.FirstOrDefault(e => e.EnvironmentId == environmentId),
+                    componentHash = setting.ComponentHash
+                });
+
+            return Ok(new
+            {
+                manifestStatus = manifest.Status.ToString(),
+                manifestHash = manifest.ManifestHash,
+                lastSyncedOn = manifest.LastSyncedOn,
+                lastSyncError = manifest.LastSyncError,
+                settings
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RefreshDeploymentSettings(
+            [FromODataUri] int key,
+            [FromServices] DeploymentSettingsService deploymentSettingsService)
+        {
+            if (await GetTenantSolution(key) == null)
+                return Forbid();
+
+            try
+            {
+                var manifest = await deploymentSettingsService.RefreshDeploymentManifest(key);
+                return Ok(new
+                {
+                    manifestStatus = manifest.Status.ToString(),
+                    manifestHash = manifest.ManifestHash,
+                    settingCount = manifest.Settings.Count,
+                    lastSyncedOn = manifest.LastSyncedOn
+                });
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Could not refresh deployment settings for solution {SolutionId}.", key);
+                return BadRequest(new ODataError
+                {
+                    Code = "DeploymentManifestSyncFailed",
+                    Message = "The deployment settings manifest could not be refreshed."
+                });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GetDeploymentSettingsStatus(
+            [FromODataUri] int key,
+            ODataActionParameters parameters,
+            [FromServices] DeploymentSettingsService deploymentSettingsService)
+        {
+            var solution = await GetTenantSolution(key);
+            if (solution == null)
+                return Forbid();
+
+            var environmentId = (int)parameters["environmentId"];
+            if (!CanAccessConfiguration(solution.Application, environmentId))
+                return Forbid();
+
+            return Ok(await deploymentSettingsService.GetStatus(key, environmentId));
+        }
+
+        [HttpPatch]
+        [Route("odata/Solutions({solutionId})/DeploymentSettings/{settingId}")]
+        public async Task<IActionResult> UpdateDeploymentSetting(
+            [FromRoute] int solutionId,
+            [FromRoute] int settingId,
+            [FromBody] DeploymentSettingValueUpdateRequest request,
+            [FromServices] DeploymentSettingsService deploymentSettingsService)
+        {
+            var solution = await GetTenantSolution(solutionId);
+            if (solution == null)
+                return Forbid();
+            if (!CanAccessConfiguration(solution.Application, request.EnvironmentId))
+                return Forbid();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var rowVersion = string.IsNullOrWhiteSpace(request.RowVersion)
+                    ? null
+                    : Convert.FromBase64String(request.RowVersion);
+                var value = await deploymentSettingsService.UpdateValue(
+                    solutionId,
+                    settingId,
+                    request.EnvironmentId,
+                    request.Value,
+                    request.IsConfigured,
+                    rowVersion);
+                return Ok(new
+                {
+                    value.Id,
+                    value.SettingId,
+                    value.EnvironmentId,
+                    value.IsConfigured,
+                    value.IsInherited,
+                    value.InheritedFromSolutionId,
+                    rowVersion = value.RowVersion == null ? null : Convert.ToBase64String(value.RowVersion)
+                });
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Conflict(new ODataError
+                {
+                    Code = "ConcurrencyConflict",
+                    Message = "The deployment setting was changed by another user."
+                });
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(new ODataError { Code = "InvalidDeploymentSetting", Message = exception.Message });
+            }
+            catch (KeyNotFoundException exception)
+            {
+                return NotFound(new ODataError { Code = "DeploymentSettingNotFound", Message = exception.Message });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Conflict(new ODataError { Code = "ConcurrencyConflict", Message = exception.Message });
+            }
+        }
+
+        [HttpPost]
+        [Route("odata/Solutions({solutionId})/DeploymentSettings/{settingId}/Reset")]
+        public async Task<IActionResult> ResetDeploymentSetting(
+            [FromRoute] int solutionId,
+            [FromRoute] int settingId,
+            [FromBody] DeploymentSettingResetRequest request,
+            [FromServices] DeploymentSettingsService deploymentSettingsService)
+        {
+            var solution = await GetTenantSolution(solutionId);
+            if (solution == null)
+                return Forbid();
+
+            var environmentId = request.EnvironmentId;
+            if (!CanAccessConfiguration(solution.Application, environmentId))
+                return Forbid();
+
+            return Ok(await deploymentSettingsService.ResetValue(solutionId, settingId, environmentId));
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
@@ -313,5 +486,29 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             return base.dbContext.Solutions.Any(p => p.Id == key);
         }
+
+        private Task<Solution> GetTenantSolution(int solutionId)
+        {
+            return this.dbContext.Solutions
+                .Include(e => e.ApplicationNavigation)
+                    .ThenInclude(e => e.DevelopmentEnvironmentNavigation)
+                        .ThenInclude(e => e.TenantNavigation)
+                .SingleOrDefaultAsync(e =>
+                    e.Id == solutionId &&
+                    e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+        }
+    }
+
+    public sealed class DeploymentSettingValueUpdateRequest
+    {
+        public int EnvironmentId { get; set; }
+        public string Value { get; set; }
+        public bool IsConfigured { get; set; }
+        public string RowVersion { get; set; }
+    }
+
+    public sealed class DeploymentSettingResetRequest
+    {
+        public int EnvironmentId { get; set; }
     }
 }

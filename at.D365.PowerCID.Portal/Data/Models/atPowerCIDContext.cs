@@ -39,6 +39,10 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public virtual DbSet<ConnectionReferenceEnvironment> ConnectionReferenceEnvironments { get; set; }
         public virtual DbSet<EnvironmentVariable> EnvironmentVariables { get; set; }
         public virtual DbSet<EnvironmentVariableEnvironment> EnvironmentVariableEnvironments { get; set; }
+        public virtual DbSet<SolutionDeploymentManifest> SolutionDeploymentManifests { get; set; }
+        public virtual DbSet<SolutionDeploymentSetting> SolutionDeploymentSettings { get; set; }
+        public virtual DbSet<SolutionDeploymentSettingValue> SolutionDeploymentSettingValues { get; set; }
+        public virtual DbSet<DeploymentSettingSnapshot> DeploymentSettingSnapshots { get; set; }
 
         public virtual DbSet<Publisher> Publishers { get; set; }
         public virtual DbSet<AsyncJob> AsyncJobs { get; set; }
@@ -156,6 +160,134 @@ namespace at.D365.PowerCID.Portal.Data.Models
                         j => j.HasOne(ce => ce.EnvironmentNavigation).WithMany(e => e.EnvironmentVariableEnvironments).HasForeignKey(ce => ce.Environment),
                         j => j.HasOne(ce => ce.EnvironmentVariableNavigation).WithMany(c => c.EnvironmentVariableEnvironments).HasForeignKey(ce => ce.EnvironmentVariable)
                     ).ToTable("EnvironmentVariableEnvironment").HasKey(ev => new { ev.EnvironmentVariable, ev.Environment });
+            });
+
+            modelBuilder.Entity<SolutionDeploymentManifest>(entity =>
+            {
+                entity.ToTable("SolutionDeploymentManifest");
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.SolutionId).IsUnique();
+                entity.Property(e => e.DataverseSolutionId)
+                    .HasColumnName("Dataverse Solution Id")
+                    .IsRequired();
+                entity.Property(e => e.DataverseVersion)
+                    .HasColumnName("Dataverse Version")
+                    .HasMaxLength(100)
+                    .IsUnicode(false);
+                entity.Property(e => e.ManifestHash)
+                    .HasColumnName("Manifest Hash")
+                    .HasMaxLength(128)
+                    .IsUnicode(false);
+                entity.Property(e => e.Status).HasConversion<int>();
+                entity.Property(e => e.LastSyncedOn).HasColumnName("Last Synced On");
+                entity.Property(e => e.LastSyncError).HasColumnName("Last Sync Error");
+                entity.Property(e => e.CreatedOn).HasColumnName("Created On");
+                entity.Property(e => e.ModifiedOn).HasColumnName("Modified On");
+                entity.Property(e => e.RowVersion)
+                    .IsRowVersion()
+                    .IsConcurrencyToken()
+                    .HasColumnName("Row Version");
+
+                entity.HasOne(e => e.SolutionNavigation)
+                    .WithMany(e => e.DeploymentManifests)
+                    .HasForeignKey(e => e.SolutionId)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("FK_SolutionDeploymentManifest_Solution");
+            });
+
+            modelBuilder.Entity<SolutionDeploymentSetting>(entity =>
+            {
+                entity.ToTable("SolutionDeploymentSetting");
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.ManifestId, e.Kind, e.MsId }).IsUnique();
+                entity.Property(e => e.Kind).HasConversion<int>();
+                entity.Property(e => e.MsId)
+                    .HasColumnName("MS Id")
+                    .IsRequired();
+                entity.Property(e => e.LogicalName).HasColumnName("Logical Name").IsRequired();
+                entity.Property(e => e.DisplayName).HasColumnName("Display Name").IsRequired();
+                entity.Property(e => e.ConnectorId).HasColumnName("Connector Id");
+                entity.Property(e => e.EnvironmentVariableType).HasColumnName("Environment Variable Type");
+                entity.Property(e => e.DefaultValue).HasColumnName("Default Value");
+                entity.Property(e => e.IsRequired).HasColumnName("Is Required");
+                entity.Property(e => e.ComponentHash).HasColumnName("Component Hash");
+
+                entity.HasOne(e => e.ManifestNavigation)
+                    .WithMany(e => e.Settings)
+                    .HasForeignKey(e => e.ManifestId)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("FK_SolutionDeploymentSetting_Manifest");
+            });
+
+            modelBuilder.Entity<SolutionDeploymentSettingValue>(entity =>
+            {
+                entity.ToTable("SolutionDeploymentSettingValue");
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.SettingId, e.EnvironmentId }).IsUnique();
+                entity.Property(e => e.EnvironmentId).HasColumnName("Environment Id");
+                entity.Property(e => e.IsConfigured).HasColumnName("Is Configured");
+                entity.Property(e => e.IsInherited).HasColumnName("Is Inherited");
+                entity.Property(e => e.InheritedFromSolutionId).HasColumnName("Inherited From Solution Id");
+                entity.Property(e => e.ModifiedBy).HasColumnName("Modified By");
+                entity.Property(e => e.ModifiedOn).HasColumnName("Modified On");
+                entity.Property(e => e.RowVersion)
+                    .IsRowVersion()
+                    .IsConcurrencyToken()
+                    .HasColumnName("Row Version");
+
+                entity.HasOne(e => e.SettingNavigation)
+                    .WithMany(e => e.Values)
+                    .HasForeignKey(e => e.SettingId)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("FK_SolutionDeploymentSettingValue_Setting");
+                entity.HasOne(e => e.EnvironmentNavigation)
+                    .WithMany()
+                    .HasForeignKey(e => e.EnvironmentId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_SolutionDeploymentSettingValue_Environment");
+                entity.HasOne(e => e.InheritedFromSolutionNavigation)
+                    .WithMany()
+                    .HasForeignKey(e => e.InheritedFromSolutionId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_SolutionDeploymentSettingValue_InheritedSolution");
+                entity.HasOne(e => e.ModifiedByNavigation)
+                    .WithMany()
+                    .HasForeignKey(e => e.ModifiedBy)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_SolutionDeploymentSettingValue_ModifiedBy");
+            });
+
+            modelBuilder.Entity<DeploymentSettingSnapshot>(entity =>
+            {
+                entity.ToTable("DeploymentSettingSnapshot");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ActionId).HasColumnName("Action Id");
+                entity.Property(e => e.SolutionId).HasColumnName("Solution Id");
+                entity.Property(e => e.EnvironmentId).HasColumnName("Environment Id");
+                entity.Property(e => e.Kind).HasConversion<int>();
+                entity.Property(e => e.MsId).HasColumnName("MS Id").IsRequired();
+                entity.Property(e => e.LogicalName).HasColumnName("Logical Name").IsRequired();
+                entity.Property(e => e.DisplayName).HasColumnName("Display Name").IsRequired();
+                entity.Property(e => e.ConnectorId).HasColumnName("Connector Id");
+                entity.Property(e => e.IsConfigured).HasColumnName("Is Configured");
+                entity.Property(e => e.CreatedOn).HasColumnName("Created On");
+
+                entity.HasIndex(e => new { e.ActionId, e.Kind, e.MsId }).IsUnique();
+                entity.HasOne(e => e.ActionNavigation)
+                    .WithMany()
+                    .HasForeignKey(e => e.ActionId)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("FK_DeploymentSettingSnapshot_Action");
+                entity.HasOne(e => e.SolutionNavigation)
+                    .WithMany()
+                    .HasForeignKey(e => e.SolutionId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_DeploymentSettingSnapshot_Solution");
+                entity.HasOne(e => e.EnvironmentNavigation)
+                    .WithMany()
+                    .HasForeignKey(e => e.EnvironmentId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK_DeploymentSettingSnapshot_Environment");
             });
 
             modelBuilder.Entity<AsyncJob>(entity =>
