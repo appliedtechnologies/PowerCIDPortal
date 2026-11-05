@@ -214,9 +214,7 @@ namespace at.D365.PowerCID.Portal.Services
             int solutionId,
             int environmentId)
         {
-            var manifest = await EnsureReadyForImport(solutionId);
-            if (manifest.Status != DeploymentManifestStatus.Ready)
-                throw new InvalidOperationException("Deployment settings manifest is not ready.");
+            var manifest = await GetStoredReadyManifest(solutionId);
 
             var values = await dbContext.SolutionDeploymentSettingValues
                 .Where(e => e.EnvironmentId == environmentId && e.SettingNavigation.ManifestId == manifest.Id)
@@ -251,7 +249,7 @@ namespace at.D365.PowerCID.Portal.Services
             if (await dbContext.DeploymentSettingSnapshots.AnyAsync(e => e.ActionId == actionId))
                 return;
 
-            var manifest = await EnsureReadyForImport(solutionId);
+            var manifest = await GetStoredReadyManifest(solutionId);
             var values = await dbContext.SolutionDeploymentSettingValues
                 .Where(e => e.EnvironmentId == environmentId && e.SettingNavigation.ManifestId == manifest.Id)
                 .ToDictionaryAsync(e => e.SettingId);
@@ -276,6 +274,19 @@ namespace at.D365.PowerCID.Portal.Services
             }
 
             await dbContext.SaveChangesAsync();
+        }
+
+        private async Task<SolutionDeploymentManifest> GetStoredReadyManifest(int solutionId)
+        {
+            var manifest = await dbContext.SolutionDeploymentManifests
+                .Include(e => e.Settings)
+                .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
+
+            if (manifest == null || manifest.Status != DeploymentManifestStatus.Ready)
+                throw new InvalidOperationException(
+                    $"The deployment settings manifest for solution {solutionId} is not ready.");
+
+            return manifest;
         }
 
         public async Task<IReadOnlyCollection<DeploymentSettingImportValue>> GetSettingsForAction(int actionId)
