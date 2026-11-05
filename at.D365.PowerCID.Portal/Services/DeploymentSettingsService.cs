@@ -565,7 +565,7 @@ namespace at.D365.PowerCID.Portal.Services
                 if (!currentSettings.TryGetValue((predecessorSetting.Kind, predecessorSetting.MsId), out var currentSetting))
                     continue;
 
-                foreach (var predecessorValue in predecessorSetting.Values.Where(e => e.IsConfigured))
+                foreach (var predecessorValue in predecessorSetting.Values)
                 {
                     if (existingValueKeys.Contains((currentSetting.Id, predecessorValue.EnvironmentId)))
                         continue;
