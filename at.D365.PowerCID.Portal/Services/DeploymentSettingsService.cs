@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -11,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
+using System.Xml.Linq;
 
 namespace at.D365.PowerCID.Portal.Services
 {
@@ -53,15 +56,18 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly atPowerCIDContext dbContext;
         private readonly IConfiguration configuration;
         private readonly ILogger<DeploymentSettingsService> logger;
+        private readonly GitHubService gitHubService;
 
         public DeploymentSettingsService(
             atPowerCIDContext dbContext,
             IConfiguration configuration,
-            ILogger<DeploymentSettingsService> logger)
+            ILogger<DeploymentSettingsService> logger,
+            GitHubService gitHubService)
         {
             this.dbContext = dbContext;
             this.configuration = configuration;
             this.logger = logger;
+            this.gitHubService = gitHubService;
         }
 
         public static string ComputeManifestHash(IEnumerable<DeploymentSettingDescriptor> descriptors)
@@ -187,11 +193,29 @@ namespace at.D365.PowerCID.Portal.Services
                 .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
 
             if (manifest == null)
-                return await RefreshDeploymentManifest(solutionId);
+            {
+                try
+                {
+                    return await BootstrapManifestFromArtifact(solutionId);
+                }
+                catch
+                {
+                    return await RefreshDeploymentManifest(solutionId);
+                }
+            }
 
             var status = await ValidateManifest(solutionId);
             if (status != DeploymentManifestStatus.Ready)
-                return await RefreshDeploymentManifest(solutionId);
+            {
+                try
+                {
+                    return await BootstrapManifestFromArtifact(solutionId);
+                }
+                catch
+                {
+                    return await RefreshDeploymentManifest(solutionId);
+                }
+            }
 
             return await dbContext.SolutionDeploymentManifests
                 .Include(e => e.Settings)
@@ -283,8 +307,7 @@ namespace at.D365.PowerCID.Portal.Services
                 .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
 
             if (manifest == null || manifest.Status != DeploymentManifestStatus.Ready)
-                throw new InvalidOperationException(
-                    $"The deployment settings manifest for solution {solutionId} is not ready.");
+                return await EnsureReadyForImport(solutionId);
 
             return manifest;
         }
@@ -676,6 +699,112 @@ namespace at.D365.PowerCID.Portal.Services
             await dbContext.SaveChangesAsync();
         }
 
+        private async Task<SolutionDeploymentManifest> BootstrapManifestFromArtifact(int solutionId)
+        {
+            var solution = await GetTenantIndependentSolution(solutionId);
+            var artifact = await gitHubService.GetSolutionFileAsByteArray(
+                solution.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation,
+                solution,
+                unmanaged: false);
+            var descriptors = ReadArtifactDescriptors(artifact);
+            var manifest = await dbContext.SolutionDeploymentManifests
+                .Include(e => e.Settings)
+                .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
+
+            if (manifest == null)
+            {
+                manifest = new SolutionDeploymentManifest
+                {
+                    SolutionId = solutionId,
+                    CreatedOn = DateTime.UtcNow
+                };
+                dbContext.SolutionDeploymentManifests.Add(manifest);
+            }
+
+            manifest.DataverseSolutionId = solution.MsId;
+            manifest.DataverseVersion = solution.Version;
+            manifest.ManifestHash = ComputeManifestHash(descriptors);
+            manifest.Status = DeploymentManifestStatus.Ready;
+            manifest.LastSyncError = null;
+            manifest.LastSyncedOn = DateTime.UtcNow;
+            manifest.ModifiedOn = DateTime.UtcNow;
+
+            foreach (var descriptor in descriptors)
+            {
+                if (manifest.Settings.Any(e => e.Kind == descriptor.Kind && e.MsId == descriptor.MsId))
+                    continue;
+
+                manifest.Settings.Add(new SolutionDeploymentSetting
+                {
+                    Kind = descriptor.Kind,
+                    MsId = descriptor.MsId,
+                    LogicalName = descriptor.LogicalName,
+                    DisplayName = descriptor.DisplayName,
+                    ConnectorId = descriptor.ConnectorId,
+                    EnvironmentVariableType = descriptor.EnvironmentVariableType,
+                    DefaultValue = descriptor.DefaultValue,
+                    IsRequired = descriptor.IsRequired,
+                    ComponentHash = ComputeComponentHash(descriptor)
+                });
+            }
+
+            await dbContext.SaveChangesAsync();
+            await MigrateLegacyValues(solution, manifest);
+            return await dbContext.SolutionDeploymentManifests
+                .Include(e => e.Settings)
+                    .ThenInclude(e => e.Values)
+                .SingleAsync(e => e.SolutionId == solutionId);
+        }
+
+        private static List<DeploymentSettingDescriptor> ReadArtifactDescriptors(byte[] artifact)
+        {
+            using var archive = new ZipArchive(new MemoryStream(artifact), ZipArchiveMode.Read);
+            var documents = archive.Entries
+                .Where(e => string.Equals(e.Name, "solution.xml", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(e.Name, "customizations.xml", StringComparison.OrdinalIgnoreCase))
+                .Select(e =>
+                {
+                    using var stream = e.Open();
+                    return XDocument.Load(stream);
+                })
+                .ToList();
+
+            return documents
+                .SelectMany(e => e.Descendants().Where(e => e.Name.LocalName == "RootComponent"))
+                .Select(e => new
+                {
+                    Type = GetAttribute(e, "type"),
+                    Id = GetAttribute(e, "id"),
+                    LogicalName = GetAttribute(e, "schemaName"),
+                    DisplayName = GetAttribute(e, "displayName")
+                })
+                .Where(e => (e.Type == "372" || e.Type == "380") && Guid.TryParse(e.Id?.Trim('{', '}'), out _))
+                .GroupBy(e => (e.Type, e.Id))
+                .Select(e =>
+                {
+                    var component = e.First();
+                    var id = Guid.Parse(component.Id.Trim('{', '}'));
+                    return new DeploymentSettingDescriptor
+                    {
+                        Kind = component.Type == "380"
+                            ? DeploymentSettingKind.EnvironmentVariable
+                            : DeploymentSettingKind.ConnectionReference,
+                        MsId = id,
+                        LogicalName = component.LogicalName,
+                        DisplayName = component.DisplayName,
+                        IsRequired = component.Type == "372"
+                    };
+                })
+                .OrderBy(e => e.Kind)
+                .ThenBy(e => e.MsId)
+                .ToList();
+        }
+
+        private static string GetAttribute(XElement element, string name)
+            => element.Attributes()
+                .FirstOrDefault(e => string.Equals(e.Name.LocalName, name, StringComparison.OrdinalIgnoreCase))
+                ?.Value;
+
         private void AddLegacyValueIfMissing(
             IReadOnlyDictionary<(DeploymentSettingKind Kind, Guid MsId), int> settingIds,
             (DeploymentSettingKind Kind, Guid MsId) key,
@@ -703,6 +832,7 @@ namespace at.D365.PowerCID.Portal.Services
             var solution = await dbContext.Solutions
                 .Include(e => e.ApplicationNavigation)
                     .ThenInclude(e => e.DevelopmentEnvironmentNavigation)
+                        .ThenInclude(e => e.TenantNavigation)
                 .SingleOrDefaultAsync(e => e.Id == solutionId);
             if (solution == null)
                 throw new KeyNotFoundException("The selected solution does not exist.");
