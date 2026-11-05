@@ -520,6 +520,70 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.ToTable("DeploymentPathEnvironment", (string)null);
                 });
 
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.DeploymentSettingSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActionId")
+                        .HasColumnType("int")
+                        .HasColumnName("Action Id");
+
+                    b.Property<string>("ConnectorId")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Connector Id");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("Created On");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Display Name");
+
+                    b.Property<int>("EnvironmentId")
+                        .HasColumnType("int")
+                        .HasColumnName("Environment Id");
+
+                    b.Property<bool>("IsConfigured")
+                        .HasColumnType("bit")
+                        .HasColumnName("Is Configured");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LogicalName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Logical Name");
+
+                    b.Property<Guid>("MsId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("MS Id");
+
+                    b.Property<int>("SolutionId")
+                        .HasColumnType("int")
+                        .HasColumnName("Solution Id");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("SolutionId");
+
+                    b.HasIndex("ActionId", "Kind", "MsId")
+                        .IsUnique();
+
+                    b.ToTable("DeploymentSettingSnapshot", (string)null);
+                });
+
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Environment", b =>
                 {
                     b.Property<int>("Id")
@@ -895,6 +959,183 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.HasDiscriminator<int>("SolutionType");
 
                     b.UseTphMappingStrategy();
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentManifest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("Created On");
+
+                    b.Property<DateTime?>("DataverseModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DataverseSolutionId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("Dataverse Solution Id");
+
+                    b.Property<string>("DataverseVersion")
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("Dataverse Version");
+
+                    b.Property<string>("LastSyncError")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Last Sync Error");
+
+                    b.Property<DateTime?>("LastSyncedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("Last Synced On");
+
+                    b.Property<string>("ManifestHash")
+                        .HasMaxLength(128)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("Manifest Hash");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("Modified On");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasColumnName("Row Version");
+
+                    b.Property<int>("SolutionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolutionId")
+                        .IsUnique();
+
+                    b.ToTable("SolutionDeploymentManifest", (string)null);
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ComponentHash")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Component Hash");
+
+                    b.Property<string>("ConnectorId")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Connector Id");
+
+                    b.Property<string>("DefaultValue")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Default Value");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Display Name");
+
+                    b.Property<string>("EnvironmentVariableType")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Environment Variable Type");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit")
+                        .HasColumnName("Is Required");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LogicalName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Logical Name");
+
+                    b.Property<int>("ManifestId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("MsId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("MS Id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ManifestId", "Kind", "MsId")
+                        .IsUnique();
+
+                    b.ToTable("SolutionDeploymentSetting", (string)null);
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentSettingValue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EnvironmentId")
+                        .HasColumnType("int")
+                        .HasColumnName("Environment Id");
+
+                    b.Property<int?>("InheritedFromSolutionId")
+                        .HasColumnType("int")
+                        .HasColumnName("Inherited From Solution Id");
+
+                    b.Property<bool>("IsConfigured")
+                        .HasColumnType("bit")
+                        .HasColumnName("Is Configured");
+
+                    b.Property<bool>("IsInherited")
+                        .HasColumnType("bit")
+                        .HasColumnName("Is Inherited");
+
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("Modified By");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("Modified On");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasColumnName("Row Version");
+
+                    b.Property<int>("SettingId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("InheritedFromSolutionId");
+
+                    b.HasIndex("ModifiedBy");
+
+                    b.HasIndex("SettingId", "EnvironmentId")
+                        .IsUnique();
+
+                    b.ToTable("SolutionDeploymentSettingValue", (string)null);
                 });
 
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Tenant", b =>
@@ -1274,6 +1515,34 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.Navigation("EnvironmentNavigation");
                 });
 
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.DeploymentSettingSnapshot", b =>
+                {
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Action", "ActionNavigation")
+                        .WithMany()
+                        .HasForeignKey("ActionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_DeploymentSettingSnapshot_Action");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Environment", "EnvironmentNavigation")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId")
+                        .IsRequired()
+                        .HasConstraintName("FK_DeploymentSettingSnapshot_Environment");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Solution", "SolutionNavigation")
+                        .WithMany()
+                        .HasForeignKey("SolutionId")
+                        .IsRequired()
+                        .HasConstraintName("FK_DeploymentSettingSnapshot_Solution");
+
+                    b.Navigation("ActionNavigation");
+
+                    b.Navigation("EnvironmentNavigation");
+
+                    b.Navigation("SolutionNavigation");
+                });
+
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Environment", b =>
                 {
                     b.HasOne("at.D365.PowerCID.Portal.Data.Models.User", "CreatedByNavigation")
@@ -1456,6 +1725,64 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                     b.Navigation("ModifiedByNavigation");
                 });
 
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentManifest", b =>
+                {
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Solution", "SolutionNavigation")
+                        .WithMany("DeploymentManifests")
+                        .HasForeignKey("SolutionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_SolutionDeploymentManifest_Solution");
+
+                    b.Navigation("SolutionNavigation");
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentSetting", b =>
+                {
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentManifest", "ManifestNavigation")
+                        .WithMany("Settings")
+                        .HasForeignKey("ManifestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_SolutionDeploymentSetting_Manifest");
+
+                    b.Navigation("ManifestNavigation");
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentSettingValue", b =>
+                {
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Environment", "EnvironmentNavigation")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId")
+                        .IsRequired()
+                        .HasConstraintName("FK_SolutionDeploymentSettingValue_Environment");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.Solution", "InheritedFromSolutionNavigation")
+                        .WithMany()
+                        .HasForeignKey("InheritedFromSolutionId")
+                        .HasConstraintName("FK_SolutionDeploymentSettingValue_InheritedSolution");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.User", "ModifiedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("ModifiedBy")
+                        .HasConstraintName("FK_SolutionDeploymentSettingValue_ModifiedBy");
+
+                    b.HasOne("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentSetting", "SettingNavigation")
+                        .WithMany("Values")
+                        .HasForeignKey("SettingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_SolutionDeploymentSettingValue_Setting");
+
+                    b.Navigation("EnvironmentNavigation");
+
+                    b.Navigation("InheritedFromSolutionNavigation");
+
+                    b.Navigation("ModifiedByNavigation");
+
+                    b.Navigation("SettingNavigation");
+                });
+
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.User", b =>
                 {
                     b.HasOne("at.D365.PowerCID.Portal.Data.Models.Tenant", "TenantNavigation")
@@ -1576,6 +1903,18 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Solution", b =>
                 {
                     b.Navigation("Actions");
+
+                    b.Navigation("DeploymentManifests");
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentManifest", b =>
+                {
+                    b.Navigation("Settings");
+                });
+
+            modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.SolutionDeploymentSetting", b =>
+                {
+                    b.Navigation("Values");
                 });
 
             modelBuilder.Entity("at.D365.PowerCID.Portal.Data.Models.Tenant", b =>

@@ -1,4 +1,5 @@
 ﻿using at.D365.PowerCID.Portal.Data.Models;
+using at.D365.PowerCID.Portal.Services;
 using at.D365.PowerCID.Portal.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -39,7 +40,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             return base.dbContext.Patches.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
-        public async Task<IActionResult> Post([FromBody] Patch patch)
+        public async Task<IActionResult> Post([FromBody] Patch patch, [FromServices] SolutionService solutionService)
         {
             try
             {
@@ -67,6 +68,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
                 this.dbContext.Patches.Add(patch);
                 await this.dbContext.SaveChangesAsync();
+                await solutionService.InitializeDeploymentManifest(patch.Id);
 
                 logger.LogDebug($"End: PatchesController Post(patch Version: {patch.Version})");
 

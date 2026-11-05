@@ -110,6 +110,7 @@ namespace at.D365.PowerCID.Portal.Services
                 var actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
                 var solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
                 var environmentService = scope.ServiceProvider.GetRequiredService<EnvironmentService>();
+                var deploymentSettingsService = scope.ServiceProvider.GetRequiredService<DeploymentSettingsService>();
 
                 var asyncJobsByEnvironment = dbContext.AsyncJobs.ToList().GroupBy(e => e.ActionNavigation.TargetEnvironment);
 
@@ -139,8 +140,21 @@ namespace at.D365.PowerCID.Portal.Services
                                                     string exportSolutionFile = await solutionService.DownloadSolutionFileFromDataverse(asyncJob);
                                                     await gitHubService.SaveSolutionFile(asyncJob, exportSolutionFile, environment.TenantNavigation);
 
-                                                    if(!dbContext.AsyncJobs.Any(e => e.Action == asyncJob.Action && e.Id != asyncJob.Id)){
-                                                        actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
+                                                if(!dbContext.AsyncJobs.Any(e => e.Action == asyncJob.Action && e.Id != asyncJob.Id)){
+                                                    try
+                                                    {
+                                                        await deploymentSettingsService.RefreshDeploymentManifest(
+                                                            (int)asyncJob.ActionNavigation.Solution);
+                                                    }
+                                                    catch (Exception exception)
+                                                    {
+                                                        logger.LogError(
+                                                            exception,
+                                                            "Could not refresh deployment settings manifest after export for solution {SolutionId}.",
+                                                            asyncJob.ActionNavigation.Solution);
+                                                    }
+
+                                                    actionService.UpdateSuccessfulAction(asyncJob.ActionNavigation);
 
                                                         // Export with Import --> Start Import
                                                         if (asyncJob.ActionNavigation.ExportOnly == false)

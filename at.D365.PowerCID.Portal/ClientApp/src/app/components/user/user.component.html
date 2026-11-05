@@ -93,14 +93,14 @@
       <dx-list
         [dataSource]="dataSourceEnvironments"
         [height]="'100%'"
-        selectionMode="all"
+        selectionMode="multiple"
         selectAllMode="allPages"
         [showSelectionControls]="true"
         [selectedItemKeys]="selectedItemKeysPermissionEnvironments"
         keyExpr="Id"
         displayExpr="Name"
         (onSelectionChanged)="onSelectionChangedPermissionEnvironments($event)"
-        (onContentReady)="onContentReadyPermissionEnvironmentList($event)"
+        (onContentReady)="onContentReadyPermissionEnvironmentList()"
         >
       </dx-list>
     </dx-popup>
@@ -174,14 +174,14 @@
         <dx-list
           [dataSource]="dataSourceExternalTenants"
           [height]="'100%'"
-          selectionMode="all"
+          selectionMode="multiple"
           selectAllMode="allPages"
           [showSelectionControls]="true"
           [selectedItemKeys]="selectedItemKeysPermissionExternalTenants"
           displayExpr="Name"
           keyExpr="Id"
           (onSelectionChanged)="onSelectionChangedPermissionExternalTenants($event)"
-          (onContentReady)="onContentReadyPermissionExternalTenantList($event)"
+          (onContentReady)="onContentReadyPermissionExternalTenantList()"
           >
         </dx-list>
       </dx-popup>

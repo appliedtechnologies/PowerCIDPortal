@@ -12,11 +12,11 @@ import { EnvironmentService } from "src/app/shared/services/environment.service"
 import { Environment } from "src/app/shared/models/environment.model";
 import { UserEnvironmentService } from "src/app/shared/services/userenvironment.service";
 import { UserEnvironment } from "src/app/shared/models/userenvironment.model";
-import { DxDataGridComponent, DxPopupComponent } from "devextreme-angular";
+import { DxDataGridComponent } from "devextreme-angular";
 import { AppRoleAssignment } from "src/app/shared/models/approleassignment.model";
 import { confirm } from 'devextreme/ui/dialog';
 import { ToolbarPreparingEvent } from "devextreme/ui/data_grid";
-import { ContentReadyEvent, SelectionChangedEvent } from "devextreme/ui/list";
+import { SelectionChangedEvent } from "devextreme/ui/list";
 import { ValueChangedEvent } from "devextreme/ui/check_box";
 import { IAppConfig } from "src/app/shared/config/app-config.model";
 import { ExternalEnvironmentService } from "src/app/shared/services/externalenvironment.service";
@@ -43,7 +43,6 @@ interface ExternalTenantOption {
     standalone: false
 })
 export class UserComponent {
-  @ViewChild(DxPopupComponent, { static: false }) popupPermissionEnvironments: DxPopupComponent;
   @ViewChild(DxDataGridComponent, { static: false }) dataGrid: DxDataGridComponent;
 
   public appRoleNames: IAppConfig["azure"]["appRoleNames"] = AppConfig.settings.azure.appRoleNames;
@@ -133,11 +132,6 @@ export class UserComponent {
       });
   }
 
-  public onContentReadyPermissionEnvironmentList(e: ContentReadyEvent<Environment, number>): void {
-    void e;
-    this.popupPermissionEnvironments?.instance.repaint();
-  }
-
   public onClickDeactivateUser(e: UserGridRowEvent){
     const result = confirm("Are you sure you want to disable this user?<br /> This will NOT delete potential ownership in Azure Entra ID.", "Confirm Deactivation");
     result.then((dialogResult) => {
@@ -164,6 +158,10 @@ export class UserComponent {
     });
   }
 
+  public onContentReadyPermissionEnvironmentList(): void {
+    this.isInitPermissionEnvironmentSelection = false;
+  }
+
   public onSelectionChangedPermissionEnvironments(e: SelectionChangedEvent<Environment, number>): void {
     if (!this.isInitPermissionEnvironmentSelection) {
       (e.addedItems as Environment[]).forEach((environment) => {
@@ -179,7 +177,7 @@ export class UserComponent {
           )
           .then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
       });
-    } else this.isInitPermissionEnvironmentSelection = false;
+    }
   }
 
   public onClickEditPermissions(e: UserGridRowEvent): void {
@@ -193,11 +191,7 @@ export class UserComponent {
       }),
     ])
       .then(([, userEnvironments]: [void, UserEnvironment[]]) => {
-        if (
-          this.selectedItemKeysPermissionEnvironments === undefined &&
-          userEnvironments.length > 0
-        )
-          this.isInitPermissionEnvironmentSelection = true;
+        this.isInitPermissionEnvironmentSelection = true;
         this.selectedItemKeysPermissionEnvironments = userEnvironments.map(
           (userEnvironment) => userEnvironment.Environment
         );
@@ -214,8 +208,8 @@ export class UserComponent {
       });
   }
 
-  public onContentReadyPermissionExternalTenantList(e: ContentReadyEvent<ExternalTenantOption, number>): void {
-    void e;
+  public onContentReadyPermissionExternalTenantList(): void {
+    this.isInitPermissionExternalTenantSelection = false;
   }
 
   public onSelectionChangedPermissionExternalTenants(e: SelectionChangedEvent<ExternalTenantOption, number>): void {
@@ -230,7 +224,7 @@ export class UserComponent {
           .removeTenantPermission(this.currentSelectedUser.Id, tenant.Id)
           .then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
       });
-    } else this.isInitPermissionExternalTenantSelection = false;
+    }
   }
 
   public onClickEditExternalPermissions(e: UserGridRowEvent): void {
@@ -255,11 +249,7 @@ export class UserComponent {
       .getStore()
       .load({ filter: ["User", "=", this.currentSelectedUser.Id] })
       .then((userExternalTenants: UserExternalTenant[]) => {
-        if (
-          this.selectedItemKeysPermissionExternalTenants === undefined &&
-          userExternalTenants.length > 0
-        )
-          this.isInitPermissionExternalTenantSelection = true;
+        this.isInitPermissionExternalTenantSelection = true;
         this.selectedItemKeysPermissionExternalTenants = userExternalTenants.map(
           (e) => e.Tenant
         );

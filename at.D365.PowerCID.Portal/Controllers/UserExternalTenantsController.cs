@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Web;
 using Microsoft.OData;
@@ -55,12 +56,29 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (targetTenant.MsId == this.msIdTenantCurrentUser)
                 return BadRequest(new ODataError { Code = "400", Message = "Can't grant an external deployment permission for your own tenant." });
 
-            base.dbContext.UserExternalTenants.Add(userExternalTenant);
-            await base.dbContext.SaveChangesAsync();
+            var existingPermission = await this.dbContext.UserExternalTenants.FindAsync(userExternalTenant.User, userExternalTenant.Tenant);
+            if (existingPermission != null)
+                return Ok(existingPermission);
+
+            try
+            {
+                base.dbContext.UserExternalTenants.Add(userExternalTenant);
+                await base.dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (IsDuplicateKeyViolation(exception))
+            {
+                return Ok(userExternalTenant);
+            }
 
             logger.LogDebug($"End: UserExternalTenantsController Post(userExternalTenant Tenant: {userExternalTenant.Tenant})");
 
             return Created(userExternalTenant);
+        }
+
+        private static bool IsDuplicateKeyViolation(DbUpdateException exception)
+        {
+            return exception.InnerException is SqlException sqlException
+                && (sqlException.Number == 2601 || sqlException.Number == 2627);
         }
 
         [HttpDelete("odata/UserExternalTenants(User={keyUser},Tenant={keyTenant})")]
