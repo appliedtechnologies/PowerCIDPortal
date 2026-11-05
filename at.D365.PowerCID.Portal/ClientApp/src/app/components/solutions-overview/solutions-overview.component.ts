@@ -759,12 +759,17 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     }
 
     this.layoutService.change(LayoutParameter.ShowLoading, true);
-    this.applicationService
-      .getDeploymentSettingsStatus(this.selectedApplication.Id, externalEnvironment.Environment)
+    this.deploymentSettingsService
+      .status(cellInfo.data.Id, externalEnvironment.Environment)
       .then((status) => {
-        if (status === 0) {
+        if (status.manifestStatus !== "Ready") {
+          alert(`Import is blocked because the deployment settings manifest is ${status.manifestStatus}. Refresh the manifest before importing.`, "Deployment Settings");
+          return;
+        }
+        if (status.missing > 0) {
+          const missingNames = status.missingSettings.map(setting => setting.logicalName).join(", ");
           const confirmResult = confirm(
-            "Import without completed Deployment Settings (e.g. Connection References)?",
+            `Missing settings for this solution version: ${missingNames}. Import anyway?`,
             "Incomplete Deployment Settings"
           );
           this.layoutService.change(LayoutParameter.ShowLoading, false);
