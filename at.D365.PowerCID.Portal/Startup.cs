@@ -85,6 +85,7 @@ namespace at.D365.PowerCID.Portal
             var getStatusConnectionReferenceEnvironment = builder.EntityType<Application>().Action("GetDeploymentSettingsStatus");
             getStatusConnectionReferenceEnvironment.Parameter<int>("environmentId");
 
+            builder.EntityType<Solution>().Ignore(e => e.DeploymentManifests);
             builder.EntityType<Solution>().Action("RefreshDeploymentSettings");
             var getSolutionDeploymentSettingsStatus = builder.EntityType<Solution>().Action("GetDeploymentSettingsStatus");
             getSolutionDeploymentSettingsStatus.Parameter<int>("environmentId");
