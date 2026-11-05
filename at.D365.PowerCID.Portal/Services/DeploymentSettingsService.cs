@@ -530,15 +530,17 @@ namespace at.D365.PowerCID.Portal.Services
 
         private async Task InheritMissingValues(Solution solution, SolutionDeploymentManifest manifest)
         {
-            var predecessor = await GetPredecessor(solution);
-            if (predecessor == null)
-                return;
-
-            var predecessorManifest = await dbContext.SolutionDeploymentManifests
+            var predecessorManifests = await dbContext.SolutionDeploymentManifests
+                .Include(e => e.SolutionNavigation)
                 .Include(e => e.Settings)
                     .ThenInclude(e => e.Values)
-                .SingleOrDefaultAsync(e => e.SolutionId == predecessor.Id);
-            if (predecessorManifest == null || predecessorManifest.Status != DeploymentManifestStatus.Ready)
+                .Where(e => e.Status == DeploymentManifestStatus.Ready &&
+                    e.SolutionNavigation.Application == solution.Application &&
+                    e.SolutionNavigation.Id != solution.Id &&
+                    e.SolutionNavigation.CreatedOn < solution.CreatedOn)
+                .OrderBy(e => e.SolutionNavigation.CreatedOn)
+                .ToListAsync();
+            if (predecessorManifests.Count == 0)
                 return;
 
             var currentSettings = manifest.Settings.ToDictionary(e => (e.Kind, e.MsId));
@@ -546,36 +548,46 @@ namespace at.D365.PowerCID.Portal.Services
                 .Where(e => e.SettingNavigation.ManifestId == manifest.Id)
                 .ToListAsync();
             var existingValues = currentValues.ToDictionary(e => (e.SettingId, e.EnvironmentId));
+            var predecessorValues = new Dictionary<(DeploymentSettingKind Kind, Guid MsId, int EnvironmentId),
+                (SolutionDeploymentSettingValue Value, int SolutionId)>();
 
-            foreach (var predecessorSetting in predecessorManifest.Settings)
+            foreach (var predecessorManifest in predecessorManifests)
             {
-                if (!currentSettings.TryGetValue((predecessorSetting.Kind, predecessorSetting.MsId), out var currentSetting))
+                foreach (var predecessorSetting in predecessorManifest.Settings)
+                {
+                    foreach (var predecessorValue in predecessorSetting.Values)
+                        predecessorValues[(predecessorSetting.Kind, predecessorSetting.MsId, predecessorValue.EnvironmentId)] =
+                            (predecessorValue, predecessorManifest.SolutionId);
+                }
+            }
+
+            foreach (var predecessorValue in predecessorValues)
+            {
+                if (!currentSettings.TryGetValue((predecessorValue.Key.Kind, predecessorValue.Key.MsId), out var currentSetting))
                     continue;
 
-                foreach (var predecessorValue in predecessorSetting.Values)
+                if (existingValues.TryGetValue((currentSetting.Id, predecessorValue.Key.EnvironmentId), out var currentValue) &&
+                    !(currentValue.IsInherited && currentValue.InheritedFromSolutionId == null))
+                    continue;
+
+                var sourceValue = predecessorValue.Value.Value;
+                if (currentValue == null)
                 {
-                    if (existingValues.TryGetValue((currentSetting.Id, predecessorValue.EnvironmentId), out var currentValue) &&
-                        !(currentValue.IsInherited && currentValue.InheritedFromSolutionId == null))
-                        continue;
-
-                    if (currentValue == null)
+                    currentValue = new SolutionDeploymentSettingValue
                     {
-                        currentValue = new SolutionDeploymentSettingValue
-                        {
-                            SettingId = currentSetting.Id,
-                            EnvironmentId = predecessorValue.EnvironmentId
-                        };
-                        dbContext.SolutionDeploymentSettingValues.Add(currentValue);
-                        existingValues[(currentSetting.Id, predecessorValue.EnvironmentId)] = currentValue;
-                    }
-
-                    currentValue.Value = predecessorValue.Value;
-                    currentValue.IsConfigured = predecessorValue.IsConfigured;
-                    currentValue.IsInherited = true;
-                    currentValue.InheritedFromSolutionId = predecessor.Id;
-                    currentValue.ModifiedBy = predecessorValue.ModifiedBy;
-                    currentValue.ModifiedOn = DateTime.UtcNow;
+                        SettingId = currentSetting.Id,
+                        EnvironmentId = predecessorValue.Key.EnvironmentId
+                    };
+                    dbContext.SolutionDeploymentSettingValues.Add(currentValue);
+                    existingValues[(currentSetting.Id, predecessorValue.Key.EnvironmentId)] = currentValue;
                 }
+
+                currentValue.Value = sourceValue.Value;
+                currentValue.IsConfigured = sourceValue.IsConfigured;
+                currentValue.IsInherited = true;
+                currentValue.InheritedFromSolutionId = predecessorValue.Value.SolutionId;
+                currentValue.ModifiedBy = sourceValue.ModifiedBy;
+                currentValue.ModifiedOn = DateTime.UtcNow;
             }
 
             await dbContext.SaveChangesAsync();
