@@ -168,6 +168,7 @@ namespace at.D365.PowerCID.Portal.Services
                 manifest.ModifiedOn = DateTime.UtcNow;
                 await dbContext.SaveChangesAsync();
 
+                await InheritMissingValues(solution, manifest);
                 await MigrateLegacyValues(solution, manifest);
                 logger.LogInformation(
                     "Deployment manifest {ManifestId} for solution {SolutionId} is ready with {SettingCount} settings.",
@@ -524,8 +525,11 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task InitializeManifestAndInherit(int solutionId)
         {
-            var solution = await GetTenantIndependentSolution(solutionId);
-            var manifest = await RefreshDeploymentManifest(solutionId);
+            await RefreshDeploymentManifest(solutionId);
+        }
+
+        private async Task InheritMissingValues(Solution solution, SolutionDeploymentManifest manifest)
+        {
             var predecessor = await GetPredecessor(solution);
             if (predecessor == null)
                 return;
@@ -541,24 +545,7 @@ namespace at.D365.PowerCID.Portal.Services
             var currentValues = await dbContext.SolutionDeploymentSettingValues
                 .Where(e => e.SettingNavigation.ManifestId == manifest.Id)
                 .ToListAsync();
-            var existingValueKeys = currentValues
-                .Select(e => (e.SettingId, e.EnvironmentId))
-                .ToHashSet();
-
-            // Refreshing a newly created version can migrate legacy application values.
-            // A concrete predecessor is authoritative for version creation, so discard
-            // those non-versioned values before copying the predecessor snapshot.
-            var legacyValues = currentValues
-                .Where(e => e.IsInherited && e.InheritedFromSolutionId == null)
-                .ToList();
-            if (legacyValues.Count > 0)
-            {
-                dbContext.SolutionDeploymentSettingValues.RemoveRange(legacyValues);
-                existingValueKeys = currentValues
-                    .Except(legacyValues)
-                    .Select(e => (e.SettingId, e.EnvironmentId))
-                    .ToHashSet();
-            }
+            var existingValues = currentValues.ToDictionary(e => (e.SettingId, e.EnvironmentId));
 
             foreach (var predecessorSetting in predecessorManifest.Settings)
             {
@@ -567,20 +554,27 @@ namespace at.D365.PowerCID.Portal.Services
 
                 foreach (var predecessorValue in predecessorSetting.Values)
                 {
-                    if (existingValueKeys.Contains((currentSetting.Id, predecessorValue.EnvironmentId)))
+                    if (existingValues.TryGetValue((currentSetting.Id, predecessorValue.EnvironmentId), out var currentValue) &&
+                        !(currentValue.IsInherited && currentValue.InheritedFromSolutionId == null))
                         continue;
 
-                    dbContext.SolutionDeploymentSettingValues.Add(new SolutionDeploymentSettingValue
+                    if (currentValue == null)
                     {
-                        SettingId = currentSetting.Id,
-                        EnvironmentId = predecessorValue.EnvironmentId,
-                        Value = predecessorValue.Value,
-                        IsConfigured = predecessorValue.IsConfigured,
-                        IsInherited = true,
-                        InheritedFromSolutionId = predecessor.Id,
-                        ModifiedBy = predecessorValue.ModifiedBy,
-                        ModifiedOn = DateTime.UtcNow
-                    });
+                        currentValue = new SolutionDeploymentSettingValue
+                        {
+                            SettingId = currentSetting.Id,
+                            EnvironmentId = predecessorValue.EnvironmentId
+                        };
+                        dbContext.SolutionDeploymentSettingValues.Add(currentValue);
+                        existingValues[(currentSetting.Id, predecessorValue.EnvironmentId)] = currentValue;
+                    }
+
+                    currentValue.Value = predecessorValue.Value;
+                    currentValue.IsConfigured = predecessorValue.IsConfigured;
+                    currentValue.IsInherited = true;
+                    currentValue.InheritedFromSolutionId = predecessor.Id;
+                    currentValue.ModifiedBy = predecessorValue.ModifiedBy;
+                    currentValue.ModifiedOn = DateTime.UtcNow;
                 }
             }
 
