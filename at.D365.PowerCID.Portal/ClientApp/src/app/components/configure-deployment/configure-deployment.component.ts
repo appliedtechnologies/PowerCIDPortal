@@ -185,7 +185,18 @@ export class ConfigureDeploymentComponent implements OnInit {
                 displayTime: 1000
             });
             return this.deploymentSettingsService.status(this.selectedSolution.Id, this.environment.Id);
-        }).then(status => this.status = status);
+        }).then(status => this.status = status).catch(() => {
+            this.layoutService.notify({
+                type: NotificationType.Error,
+                message: "The deployment setting could not be saved. The latest settings will be reloaded."
+            });
+            return this.loadSelectedSolution().catch(() => {
+                this.layoutService.notify({
+                    type: NotificationType.Error,
+                    message: "The latest settings could not be loaded. Reopen this view before editing again."
+                });
+            });
+        });
     }
 
     private initializeSettingEditor(e: InitializedEvent, setting: DeploymentSetting): void {
