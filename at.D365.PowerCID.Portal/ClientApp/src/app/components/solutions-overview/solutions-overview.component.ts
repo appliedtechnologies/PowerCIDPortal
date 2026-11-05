@@ -31,6 +31,7 @@ import { ExternalDeploymentPathEnvironment } from "src/app/shared/models/externa
 import { ExternalEnvironment } from "src/app/shared/models/externalenvironment.model";
 import { ExternalDeploymentPathService } from "src/app/shared/services/externaldeploymentpath.service";
 import { TenantService } from "src/app/shared/services/tenant.service";
+import { SolutionDeploymentSettingsService } from "src/app/shared/services/solution-deployment-settings.service";
 
 type SolutionRowData = Solution & {
   ApplyManually?: unknown;
@@ -129,6 +130,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     private externalDeploymentPathEnvironmentService: ExternalDeploymentPathEnvironmentService,
     private externalDeploymentPathService: ExternalDeploymentPathService,
     private tenantService: TenantService,
+    private deploymentSettingsService: SolutionDeploymentSettingsService,
     private changeDetectorRef: ChangeDetectorRef
   ) {
     this.selectionToolbarItems = this.createSelectionToolbarItems();
@@ -585,9 +587,15 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     } else {
       const deploymentPathId = cellInfo.column.name.split(",")[0];
       this.layoutService.change(LayoutParameter.ShowLoading, true);
-      this.applicationService.getDeploymentSettingsStatus(this.selectedApplication.Id, targetEnvironmentId).then((status) => {
-        if (status == 0) {
-          const confirmResult = confirm("Import without completed Deployment Settings (e.g. Connection References)?", "Incomplete Deployment Settings");
+      this.deploymentSettingsService.status(cellInfo.data.Id, targetEnvironmentId).then((status) => {
+        if (status.manifestStatus !== "Ready") {
+          alert(`Import is blocked because the deployment settings manifest is ${status.manifestStatus}. Refresh the manifest before importing.`, "Deployment Settings");
+          this.layoutService.change(LayoutParameter.ShowLoading, false);
+          return;
+        }
+        if (status.missing > 0) {
+          const missingNames = status.missingSettings.map(setting => setting.logicalName).join(", ");
+          const confirmResult = confirm(`Missing settings for this solution version: ${missingNames}. Import anyway?`, "Incomplete Deployment Settings");
           this.layoutService.change(LayoutParameter.ShowLoading, false);
           confirmResult.then((result) => {
             this.layoutService.change(LayoutParameter.ShowLoading, true);
@@ -623,10 +631,13 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
         });
         this.startAutoRefresh(action);
       })
-      .catch(() => {
+      .catch((error) => {
         this.layoutService.notify({
           type: NotificationType.Error,
-          message: "An error occurred while starting an export.",
+          message: this.getDeploymentErrorMessage(
+            error,
+            "An error occurred while starting an export."
+          ),
         });
       })
       .then(() => {
@@ -748,12 +759,17 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     }
 
     this.layoutService.change(LayoutParameter.ShowLoading, true);
-    this.applicationService
-      .getDeploymentSettingsStatus(this.selectedApplication.Id, externalEnvironment.Environment)
+    this.deploymentSettingsService
+      .status(cellInfo.data.Id, externalEnvironment.Environment)
       .then((status) => {
-        if (status === 0) {
+        if (status.manifestStatus !== "Ready") {
+          alert(`Import is blocked because the deployment settings manifest is ${status.manifestStatus}. Refresh the manifest before importing.`, "Deployment Settings");
+          return;
+        }
+        if (status.missing > 0) {
+          const missingNames = status.missingSettings.map(setting => setting.logicalName).join(", ");
           const confirmResult = confirm(
-            "Import without completed Deployment Settings (e.g. Connection References)?",
+            `Missing settings for this solution version: ${missingNames}. Import anyway?`,
             "Incomplete Deployment Settings"
           );
           this.layoutService.change(LayoutParameter.ShowLoading, false);
@@ -826,15 +842,43 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     this.availableExternalSteps = path?.ExternalDeploymentPathEnvironments ?? [];
   }
 
-  private getDeploymentErrorMessage(error): string {
-    const responseError = error?.error;
-    return typeof responseError === "string"
-      ? responseError
-      : responseError?.value ||
-          responseError?.message ||
-          responseError?.error?.message ||
-          error?.message ||
-          "An error occurred while starting the deployment.";
+  private getDeploymentErrorMessage(error: unknown, fallbackMessage: string = "An error occurred while starting the deployment."): string {
+    if (typeof error === "string") {
+      return error;
+    }
+
+    if (!error || typeof error !== "object") {
+      return fallbackMessage;
+    }
+
+    const response = error as { error?: unknown; message?: unknown };
+    const responseError = response.error;
+    if (typeof responseError === "string") {
+      return responseError;
+    }
+
+    if (responseError && typeof responseError === "object") {
+      const body = responseError as {
+        value?: unknown;
+        message?: unknown;
+        error?: { message?: unknown } | string;
+      };
+
+      if (typeof body.value === "string") {
+        return body.value;
+      }
+      if (typeof body.message === "string") {
+        return body.message;
+      }
+      if (typeof body.error === "string") {
+        return body.error;
+      }
+      if (body.error && typeof body.error === "object" && typeof body.error.message === "string") {
+        return body.error.message;
+      }
+    }
+
+    return typeof response.message === "string" ? response.message : fallbackMessage;
   }
 
   public canDeployToEnv(cellInfo): boolean {
@@ -893,9 +937,10 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       .catch((error) => {
         this.layoutService.notify({
           type: NotificationType.Error,
-          message: error.error.value
-            ? `An error occurred while starting an import: ${error.error.value}`
-            : "An error occurred while starting an import.",
+          message: this.getDeploymentErrorMessage(
+            error,
+            "An error occurred while starting an import."
+          ),
         });
       });
   }
@@ -913,9 +958,10 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       .catch((error) => {
         this.layoutService.notify({
           type: NotificationType.Error,
-          message: error.error.value
-            ? `An error occurred while starting an apply upgrade: ${error.error.value}`
-            : "An error occurred while starting an apply upgrade.",
+          message: this.getDeploymentErrorMessage(
+            error,
+            "An error occurred while starting an apply upgrade."
+          ),
         });
       });
   }
@@ -933,9 +979,10 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       .catch((error) => {
         this.layoutService.notify({
           type: NotificationType.Error,
-          message: error.error.value
-            ? `An error occurred while starting enable flows: ${error.error.value}`
-            : "An error occurred while starting enable flows.",
+          message: this.getDeploymentErrorMessage(
+            error,
+            "An error occurred while starting enable flows."
+          ),
         });
       });
   }

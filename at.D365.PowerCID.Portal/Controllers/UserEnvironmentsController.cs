@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Formatter;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Microsoft.Identity.Web;
 using Microsoft.Extensions.Logging;
 
@@ -44,12 +45,29 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == userEnvironment.Environment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            base.dbContext.UserEnvironments.Add(userEnvironment);
-            await base.dbContext.SaveChangesAsync();
+            var existingPermission = await this.dbContext.UserEnvironments.FindAsync(userEnvironment.User, userEnvironment.Environment);
+            if (existingPermission != null)
+                return Ok(existingPermission);
+
+            try
+            {
+                base.dbContext.UserEnvironments.Add(userEnvironment);
+                await base.dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (IsDuplicateKeyViolation(exception))
+            {
+                return Ok(userEnvironment);
+            }
 
             logger.LogDebug($"End: UserEnvironmentsController Post(userEnvironment Environment: {userEnvironment.Environment})");
 
             return Created(userEnvironment);
+        }
+
+        private static bool IsDuplicateKeyViolation(DbUpdateException exception)
+        {
+            return exception.InnerException is SqlException sqlException
+                && (sqlException.Number == 2601 || sqlException.Number == 2627);
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]

@@ -105,6 +105,7 @@ namespace at.D365.PowerCID.Portal.Services
                 var solutionHistoryService = scope.ServiceProvider.GetRequiredService<SolutionHistoryService>();
                 var actionService = scope.ServiceProvider.GetRequiredService<ActionService>();
                 var flowService = scope.ServiceProvider.GetRequiredService<FlowService>();
+                var deploymentSettingsService = scope.ServiceProvider.GetRequiredService<DeploymentSettingsService>();
 
                 foreach (Action queuedAction in dbContext.Actions.Where(e => e.Status == 1).ToList())
                 {
@@ -127,6 +128,11 @@ namespace at.D365.PowerCID.Portal.Services
                             break;
                             case 2: //import 
                             {
+                                await deploymentSettingsService.CreateActionSnapshot(
+                                    queuedAction.Id,
+                                    (int)queuedAction.Solution,
+                                    (int)queuedAction.TargetEnvironment);
+
                                 bool unmanaged = queuedAction.TargetEnvironmentNavigation.DeployUnmanaged;
                                 if(queuedAction.SolutionNavigation.ApplicationNavigation.ForceManagedDeployment)
                                     unmanaged = false;
@@ -154,6 +160,11 @@ namespace at.D365.PowerCID.Portal.Services
                             break;
                             case 3: //apply upgrade
                             {                        
+                                await deploymentSettingsService.CreateActionSnapshot(
+                                    queuedAction.Id,
+                                    (int)queuedAction.Solution,
+                                    (int)queuedAction.TargetEnvironment);
+
                                 queuedAction.Status = 2;
                                 await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
 

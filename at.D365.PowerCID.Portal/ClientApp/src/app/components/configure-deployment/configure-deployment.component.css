@@ -1,3 +1,87 @@
+.deployment-header{
+    padding: 0 0 12px;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+.deployment-context{
+    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) 276px;
+    gap: 32px;
+    margin-bottom: 10px;
+}
+
+.deployment-context-item{
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.deployment-context-label{
+    color: #616161;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.deployment-context-item strong{
+    color: #242424;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.deployment-target{
+    min-width: 0;
+}
+
+.deployment-status{
+    color: #616161;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.deployment-status-value{
+    color: #107c10;
+    font-weight: 600;
+}
+
+.deployment-version-control{
+    width: 276px;
+}
+
+.deployment-control-grid{
+    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 36px;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.deployment-version-field{
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.deployment-control-grid dx-select-box,
+.deployment-control-grid dx-text-box{
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+}
+
+.deployment-control-grid dx-button{
+    width: 36px;
+}
+
+.setting-controls{
+    flex: 0 0 276px;
+    margin-top: 0;
+    margin-right: -8px;
+}
+
 .list-entry{
     display: flex;
     justify-content: space-between;
@@ -26,9 +110,33 @@ dx-text-box{
 }
 
 h3{
-    margin-bottom: 0;
+    margin: 16px 0 4px;
 }
 
 p{
-    margin-top: 5px;
+    margin: 0 0 7px;
+}
+
+dx-list{
+    margin-bottom: 8px;
+}
+
+@media (max-width: 640px){
+    .deployment-context{
+        flex-direction: column;
+        display: flex;
+        gap: 12px;
+    }
+
+    .deployment-context-item,
+    .deployment-version-field{
+        width: 100%;
+    }
+
+    .deployment-version-control,
+    .setting-controls{
+        flex-basis: auto;
+        margin-right: 0;
+        width: 100%;
+    }
 }

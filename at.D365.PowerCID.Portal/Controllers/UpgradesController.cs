@@ -50,6 +50,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
                 this.dbContext.Upgrades.Add(upgrade);
                 await this.dbContext.SaveChangesAsync();
+                await solutionService.InitializeDeploymentManifest(upgrade.Id);
 
                 logger.LogDebug($"Begin: UpgradesController Post(upgrade Application: {upgrade.Application})");
 
