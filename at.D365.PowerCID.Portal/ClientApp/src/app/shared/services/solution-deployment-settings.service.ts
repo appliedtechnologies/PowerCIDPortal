@@ -4,24 +4,24 @@ import { AppConfig } from "../config/app.config";
 import { firstValueFrom } from "rxjs";
 
 export interface DeploymentSettingValue {
-  Value?: string;
-  IsConfigured: boolean;
-  IsInherited: boolean;
-  InheritedFromSolutionId?: number;
-  RowVersion?: string;
+  value?: string;
+  isConfigured: boolean;
+  isInherited: boolean;
+  inheritedFromSolutionId?: number;
+  rowVersion?: string;
 }
 
 export interface DeploymentSetting {
-  Id: number;
-  Kind: string;
-  MsId: string;
-  LogicalName: string;
-  DisplayName: string;
-  ConnectorId?: string;
-  EnvironmentVariableType?: string;
-  DefaultValue?: string;
-  IsRequired: boolean;
-  Value?: DeploymentSettingValue;
+  id: number;
+  kind: string;
+  msId: string;
+  logicalName: string;
+  displayName: string;
+  connectorId?: string;
+  environmentVariableType?: string;
+  defaultValue?: string;
+  isRequired: boolean;
+  value?: DeploymentSettingValue;
 }
 
 export interface DeploymentSettingsResponse {
@@ -31,13 +31,13 @@ export interface DeploymentSettingsResponse {
 }
 
 export interface DeploymentSettingsStatus {
-  ManifestStatus: string;
-  ConfigurationStatus: string;
-  Total: number;
-  Configured: number;
-  Missing: number;
-  Inherited: number;
-  MissingSettings: DeploymentSetting[];
+  manifestStatus: string;
+  configurationStatus: string;
+  total: number;
+  configured: number;
+  missing: number;
+  inherited: number;
+  missingSettings: DeploymentSetting[];
 }
 
 @Injectable({ providedIn: "root" })

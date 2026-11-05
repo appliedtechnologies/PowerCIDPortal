@@ -52,7 +52,6 @@ namespace at.D365.PowerCID.Portal.Services
             }
 
             Solution solution = dbContext.Solutions.First(e => e.Id == key);
-            await this.deploymentSettingsService.EnsureReadyForImport(solution.Id);
 
             Data.Models.Action newAction = new Data.Models.Action
             {
@@ -81,7 +80,6 @@ namespace at.D365.PowerCID.Portal.Services
             Solution solution = dbContext.Solutions.First(e => e.Id == key);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
-            await this.deploymentSettingsService.EnsureReadyForImport(solution.Id);
             await this.CheckImportPermission(user.Id, targetEnvironmentId);
 
             Data.Models.Action newAction = new Data.Models.Action
@@ -96,8 +94,6 @@ namespace at.D365.PowerCID.Portal.Services
 
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
-            await deploymentSettingsService.CreateActionSnapshot(newAction.Id, solution.Id, targetEnvironmentId);
-
             logger.LogDebug($"End: SolutionService AddImportAction(key: {key}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
 
             return newAction;
@@ -110,7 +106,6 @@ namespace at.D365.PowerCID.Portal.Services
             Solution solution = dbContext.Solutions.First(e => e.Id == key);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
-            await this.deploymentSettingsService.EnsureReadyForImport(solution.Id);
             ExternalEnvironment externalEnvironment = await this.CheckExternalImportPermission(user.Id, solution, externalEnvironmentId, externalDeploymentPathId);
 
             Data.Models.Action newAction = new Data.Models.Action
@@ -126,8 +121,6 @@ namespace at.D365.PowerCID.Portal.Services
 
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
-            await deploymentSettingsService.CreateActionSnapshot(newAction.Id, solution.Id, externalEnvironment.Environment);
-
             logger.LogDebug($"End: SolutionService AddExternalImportAction(key: {key}, externalEnvironmentId: {externalEnvironmentId}, externalDeploymentPathId: {externalDeploymentPathId}, msIdCurrentUser: {msIdCurrentUser.ToString()})");
 
             return newAction;
@@ -140,7 +133,6 @@ namespace at.D365.PowerCID.Portal.Services
             Solution solution = dbContext.Solutions.First(e => e.Id == solutionId);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
-            await this.deploymentSettingsService.EnsureReadyForImport(solution.Id);
             await this.CheckImportPermission(user.Id, targetEnvironmentId);
 
             Data.Models.Action newAction = new Data.Models.Action
@@ -155,8 +147,6 @@ namespace at.D365.PowerCID.Portal.Services
 
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
-            await deploymentSettingsService.CreateActionSnapshot(newAction.Id, solution.Id, targetEnvironmentId);
-
             logger.LogDebug($"End: SolutionService  AddApplyUpgradeAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
 
             return newAction;
@@ -574,11 +564,28 @@ namespace at.D365.PowerCID.Portal.Services
                 }
             }
 
-            var deploymentDetails =
-                $"Deployment settings: {connectionReferenceCount} connection references, {environmentVariableCount} environment variables.";
+            var deploymentDetails = new StringBuilder()
+                .AppendLine($"Deployment settings: {connectionReferenceCount} connection references, {environmentVariableCount} environment variables.");
+
+            if (connectionReferenceCount > 0)
+            {
+                deploymentDetails.AppendLine()
+                    .AppendLine("Used Connection References:");
+                foreach (var setting in settings.Where(e => e.Kind == DeploymentSettingKind.ConnectionReference))
+                    deploymentDetails.AppendLine($"-{setting.LogicalName}: {setting.Value}");
+            }
+
+            if (environmentVariableCount > 0)
+            {
+                deploymentDetails.AppendLine()
+                    .AppendLine("Used Environment Variables:");
+                foreach (var setting in settings.Where(e => e.Kind == DeploymentSettingKind.EnvironmentVariable))
+                    deploymentDetails.AppendLine($"-{setting.LogicalName}: {setting.Value}");
+            }
+
             logger.LogDebug(
                 $"End: SolutionService GetSolutionComponentsForImport(actionId: {actionId}, settingCount: {settings.Count})");
-            return (solutionComponentParameters, deploymentDetails);
+            return (solutionComponentParameters, deploymentDetails.ToString());
         }
     }
 }

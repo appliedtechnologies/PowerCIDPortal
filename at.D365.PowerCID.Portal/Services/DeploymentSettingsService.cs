@@ -313,18 +313,19 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<DeploymentSettingsStatus> GetStatus(int solutionId, int environmentId)
         {
-            var manifest = await GetManifest(solutionId);
-            if (manifest?.Status == DeploymentManifestStatus.Ready)
-            {
-                await ValidateManifest(solutionId);
-                manifest = await GetManifest(solutionId);
-            }
+            var manifest = await dbContext.SolutionDeploymentManifests
+                .Include(e => e.Settings)
+                .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
             if (manifest == null)
             {
                 return new DeploymentSettingsStatus
                 {
                     ManifestStatus = DeploymentManifestStatus.Draft.ToString(),
                     ConfigurationStatus = "Unavailable",
+                    Total = 0,
+                    Configured = 0,
+                    Missing = 0,
+                    Inherited = 0,
                     MissingSettings = Array.Empty<DeploymentSettingDescriptor>()
                 };
             }

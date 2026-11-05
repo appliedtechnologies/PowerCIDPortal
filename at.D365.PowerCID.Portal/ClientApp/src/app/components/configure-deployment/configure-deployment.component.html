@@ -1,15 +1,40 @@
-<div>
-    <strong>Application:</strong>   {{application.Name}}<br />
-    <strong>Solution version:</strong>
-    <dx-select-box
-        [dataSource]="solutions"
-        displayExpr="Version"
-        [(value)]="selectedSolution"
-        (onValueChanged)="onSolutionChanged($event.value)"
-    ></dx-select-box>
-    <strong>Target environment:</strong>   {{environment.Name}}
-    <span *ngIf="status"> ({{configuredCount()}}; {{status.ManifestStatus}})</span>
-    <dx-button text="Refresh from Dataverse" icon="refresh" (onClick)="refreshManifest()"></dx-button>
+<div class="deployment-header">
+    <div class="deployment-context">
+        <div class="deployment-context-item">
+            <span class="deployment-context-label">Application</span>
+            <strong>{{application.Name}}</strong>
+        </div>
+        <div class="deployment-context-item deployment-target">
+            <span class="deployment-context-label">Target environment</span>
+            <strong>{{environment.Name}}</strong>
+            <span class="deployment-status">
+                {{status ? configuredCount() : '0/0 configured'}} ·
+                <span class="deployment-status-value">{{status?.manifestStatus || 'Draft'}}</span>
+            </span>
+        </div>
+        <div class="deployment-version-field">
+            <span class="deployment-context-label">Solution version</span>
+            <div class="deployment-control-grid deployment-version-control">
+                <dx-select-box
+                    [dataSource]="solutions"
+                    displayExpr="Version"
+                    valueExpr="Id"
+                    [dropDownOptions]="{ width: '100%' }"
+                    [(value)]="selectedSolutionId"
+                    (onValueChanged)="onSolutionChanged($event.value)"
+                ></dx-select-box>
+                <dx-button
+                    icon="refresh"
+                    [disabled]="!canRefreshManifest()"
+                    [hint]="canRefreshManifest()
+                        ? 'Refresh from Dataverse: Updates the Connection References and Environment Variables for the latest solution version.'
+                        : 'Refresh is only available for the latest solution version. It updates the Connection References and Environment Variables from Dataverse.'"
+                    stylingMode="outlined"
+                    (onClick)="refreshManifest()"
+                ></dx-button>
+            </div>
+        </div>
+    </div>
 </div>
 <h3>Connection References:</h3>
 <p>Enter the Connection Id the Connection Reference should be associated with during the import on the target environment.</p>
@@ -20,17 +45,21 @@
     <div *dxTemplate="let connectionReference of 'item'">
         <div class="list-entry">
             <div class="list-entry-descriptor">
-                <div><strong>{{connectionReference.DisplayName}}</strong> ({{connectionReference.LogicalName}})</div>
-                <div>{{connectionReference.ConnectorId}}</div>
+                <div><strong>{{connectionReference.displayName}}</strong> ({{connectionReference.logicalName}})</div>
+                <div>{{connectionReference.connectorId}}</div>
             </div>
-            <dx-text-box
-                placeholder="Connection Id"
-                width="280"
-                (onInitialized)="onInitializedConnectionIdTextBox($event, connectionReference)"
-                (onValueChanged)="onValueChangedConnectionIdTextBox($event, connectionReference)"
-            >   
-            </dx-text-box>
-            <dx-button text="Reset" (onClick)="resetSetting(connectionReference)"></dx-button>
+            <div class="deployment-control-grid setting-controls">
+                <dx-text-box
+                    placeholder="Connection Id"
+                    (onInitialized)="onInitializedConnectionIdTextBox($event, connectionReference)"
+                    (onValueChanged)="onValueChangedConnectionIdTextBox($event, connectionReference)"
+                ></dx-text-box>
+                <dx-button
+                    icon="revert"
+                    [elementAttr]="{ 'aria-label': 'Reset setting to the previous solution version value' }"
+                    (onClick)="resetSetting(connectionReference)"
+                ></dx-button>
+            </div>
         </div>
     </div>
 </dx-list>
@@ -43,16 +72,20 @@
     <div *dxTemplate="let environmentVariable of 'item'">
         <div class="list-entry">
             <div class="list-entry-descriptor">
-                <div><strong>{{environmentVariable.DisplayName}}</strong> ({{environmentVariable.LogicalName}})</div>
+                <div><strong>{{environmentVariable.displayName}}</strong> ({{environmentVariable.logicalName}})</div>
             </div>
-            <dx-text-box
-                placeholder="Value"
-                width="280"
-                (onInitialized)="onInitializedEnvVarValueTextBox($event, environmentVariable)"
-                (onValueChanged)="onValueChangedEnvVarValueTextBox($event, environmentVariable)"
-            >   
-            </dx-text-box>
-            <dx-button text="Reset" (onClick)="resetSetting(environmentVariable)"></dx-button>
+            <div class="deployment-control-grid setting-controls">
+                <dx-text-box
+                    placeholder="Value"
+                    (onInitialized)="onInitializedEnvVarValueTextBox($event, environmentVariable)"
+                    (onValueChanged)="onValueChangedEnvVarValueTextBox($event, environmentVariable)"
+                ></dx-text-box>
+                <dx-button
+                    icon="revert"
+                    [elementAttr]="{ 'aria-label': 'Reset setting to the previous solution version value' }"
+                    (onClick)="resetSetting(environmentVariable)"
+                ></dx-button>
+            </div>
         </div>
     </div>
 </dx-list>

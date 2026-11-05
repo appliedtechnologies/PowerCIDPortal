@@ -74,7 +74,20 @@ namespace at.D365.PowerCID.Portal.Controllers
                     setting.EnvironmentVariableType,
                     setting.DefaultValue,
                     setting.IsRequired,
-                    value = setting.Values.FirstOrDefault(e => e.EnvironmentId == environmentId),
+                    value = setting.Values
+                        .Where(e => e.EnvironmentId == environmentId)
+                        .Select(e => new
+                        {
+                            e.Id,
+                            e.SettingId,
+                            e.EnvironmentId,
+                            e.Value,
+                            e.IsConfigured,
+                            e.IsInherited,
+                            e.InheritedFromSolutionId,
+                            rowVersion = e.RowVersion == null ? null : Convert.ToBase64String(e.RowVersion)
+                        })
+                        .FirstOrDefault(),
                     componentHash = setting.ComponentHash
                 });
 
@@ -168,6 +181,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                     value.Id,
                     value.SettingId,
                     value.EnvironmentId,
+                    value = value.Value,
                     value.IsConfigured,
                     value.IsInherited,
                     value.InheritedFromSolutionId,
@@ -212,7 +226,41 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (!CanAccessConfiguration(solution.Application, environmentId))
                 return Forbid();
 
-            return Ok(await deploymentSettingsService.ResetValue(solutionId, settingId, environmentId));
+            try
+            {
+                var value = await deploymentSettingsService.ResetValue(solutionId, settingId, environmentId);
+                return Ok(new
+                {
+                    value.Id,
+                    value.SettingId,
+                    value.EnvironmentId,
+                    value = value.Value,
+                    value.IsConfigured,
+                    value.IsInherited,
+                    value.InheritedFromSolutionId,
+                    rowVersion = value.RowVersion == null ? null : Convert.ToBase64String(value.RowVersion)
+                });
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Conflict(new ODataError
+                {
+                    Code = "ConcurrencyConflict",
+                    Message = "The deployment setting was changed by another user."
+                });
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(new ODataError { Code = "InvalidDeploymentSetting", Message = exception.Message });
+            }
+            catch (KeyNotFoundException exception)
+            {
+                return NotFound(new ODataError { Code = "DeploymentSettingNotFound", Message = exception.Message });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Conflict(new ODataError { Code = "ConcurrencyConflict", Message = exception.Message });
+            }
         }
 
         [Authorize(Roles = "atPowerCID.Admin")]
