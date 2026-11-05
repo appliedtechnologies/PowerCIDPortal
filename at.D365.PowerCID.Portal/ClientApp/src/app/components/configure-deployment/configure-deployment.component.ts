@@ -29,7 +29,8 @@ export class ConfigureDeploymentComponent implements OnInit {
     public connectionReferencesFromDataverse: DeploymentSetting[] = [];
     public environmentVariablesFromDataverse: DeploymentSetting[] = [];
     public status: DeploymentSettingsStatus;
-    private readonly settingEditors = new WeakMap<DeploymentSetting, InitializedEvent["component"]>();
+    private settingEditors = new WeakMap<DeploymentSetting, InitializedEvent["component"]>();
+    private loadRequestId = 0;
 
     constructor(
       private deploymentSettingsService: SolutionDeploymentSettingsService,
@@ -65,6 +66,7 @@ export class ConfigureDeploymentComponent implements OnInit {
             }
 
             this.selectedSolution = solution;
+            this.clearSelectedSolutionData();
             this.loadSelectedSolution();
         }
     }
@@ -140,8 +142,14 @@ export class ConfigureDeploymentComponent implements OnInit {
         if (!this.selectedSolution?.Id) {
             return Promise.resolve();
         }
-        return this.deploymentSettingsService.get(this.selectedSolution.Id, this.environment.Id)
+        const requestId = ++this.loadRequestId;
+        const solutionId = this.selectedSolution.Id;
+        const environmentId = this.environment.Id;
+        return this.deploymentSettingsService.get(solutionId, environmentId)
             .then(response => {
+                if (!this.isCurrentLoad(requestId, solutionId, environmentId)) {
+                    return;
+                }
                 this.connectionReferencesFromDataverse = response.settings.filter(e => e.kind === "ConnectionReference");
                 this.environmentVariablesFromDataverse = response.settings.filter(e => e.kind === "EnvironmentVariable");
                 if (response.manifestStatus === "Draft" && response.settings.length === 0) {
@@ -156,13 +164,26 @@ export class ConfigureDeploymentComponent implements OnInit {
                     };
                     return;
                 }
-                return this.deploymentSettingsService.status(this.selectedSolution.Id, this.environment.Id);
+                return this.deploymentSettingsService.status(solutionId, environmentId);
             })
             .then(status => {
-                if (status) {
+                if (status && this.isCurrentLoad(requestId, solutionId, environmentId)) {
                     this.status = status;
                 }
             });
+    }
+
+    private clearSelectedSolutionData(): void {
+        this.connectionReferencesFromDataverse = [];
+        this.environmentVariablesFromDataverse = [];
+        this.status = undefined;
+        this.settingEditors = new WeakMap<DeploymentSetting, InitializedEvent["component"]>();
+    }
+
+    private isCurrentLoad(requestId: number, solutionId: number, environmentId: number): boolean {
+        return requestId === this.loadRequestId &&
+            this.selectedSolution?.Id === solutionId &&
+            this.environment?.Id === environmentId;
     }
 
     private updateSetting(setting: DeploymentSetting, value: string, isConfigured: boolean): void {
