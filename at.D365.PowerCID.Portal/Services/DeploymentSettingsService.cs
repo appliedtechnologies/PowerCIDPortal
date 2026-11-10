@@ -254,6 +254,22 @@ namespace at.D365.PowerCID.Portal.Services
                 .Where(e => e.EnvironmentId == environmentId && e.SettingNavigation.ManifestId == manifest.Id)
                 .ToDictionaryAsync(e => e.SettingId);
 
+            if (manifest.Settings.Count == 0)
+            {
+                dbContext.DeploymentSettingSnapshots.Add(new DeploymentSettingSnapshot
+                {
+                    ActionId = actionId,
+                    SolutionId = solutionId,
+                    EnvironmentId = environmentId,
+                    Kind = DeploymentSettingKind.SnapshotMarker,
+                    MsId = Guid.Empty,
+                    LogicalName = string.Empty,
+                    DisplayName = string.Empty,
+                    IsConfigured = false,
+                    CreatedOn = DateTime.UtcNow
+                });
+            }
+
             foreach (var setting in manifest.Settings)
             {
                 values.TryGetValue(setting.Id, out var value);
