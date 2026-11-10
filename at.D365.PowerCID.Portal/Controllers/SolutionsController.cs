@@ -56,9 +56,15 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (!CanAccessConfiguration(solution.Application, environmentId))
                 return Forbid();
 
-            var manifest = await deploymentSettingsService.GetManifest(key);
+            var resolution = await deploymentSettingsService.GetManifestResolution(key);
+            var manifest = resolution.Manifest;
             if (manifest == null)
-                return Ok(new { manifestStatus = DeploymentManifestStatus.Draft.ToString(), settings = Array.Empty<object>() });
+                return Ok(new
+                {
+                    manifestStatus = DeploymentManifestStatus.Draft.ToString(),
+                    isFallbackManifest = false,
+                    settings = Array.Empty<object>()
+                });
 
             var settings = manifest.Settings
                 .OrderBy(e => e.Kind)
@@ -97,6 +103,9 @@ namespace at.D365.PowerCID.Portal.Controllers
                 manifestHash = manifest.ManifestHash,
                 lastSyncedOn = manifest.LastSyncedOn,
                 lastSyncError = manifest.LastSyncError,
+                isFallbackManifest = resolution.IsFallback,
+                manifestSourceSolutionId = resolution.SourceSolution.Id,
+                manifestSourceSolutionVersion = resolution.SourceSolution.Version,
                 settings
             });
         }

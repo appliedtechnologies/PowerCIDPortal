@@ -166,7 +166,7 @@
       </div>
 
       <div *dxTemplate="let cellInfo of 'groupCellTemplate'">
-        {{ (cellInfo.column && cellInfo.column.caption) ? cellInfo.column.caption : 'Group' }}: {{ cellInfo.value == null || cellInfo.value === '' ? 'empty' : cellInfo.value }}
+        {{ (cellInfo.column && cellInfo.column.caption) ? cellInfo.column.caption : 'Group' }}: {{ (cellInfo.value === null || cellInfo.value === undefined || cellInfo.value === '') ? 'empty' : cellInfo.value }}
       </div>
 
       <div *dxTemplate="let cellInfo of 'publishersDropdownTemplate'">

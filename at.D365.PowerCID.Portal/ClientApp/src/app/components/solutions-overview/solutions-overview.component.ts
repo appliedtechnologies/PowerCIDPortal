@@ -593,6 +593,12 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           this.layoutService.change(LayoutParameter.ShowLoading, false);
           return;
         }
+        if (status.isFallbackManifest) {
+          this.layoutService.notify({
+            type: NotificationType.Info,
+            message: `This historical solution version uses the deployment settings manifest from version ${status.manifestSourceSolutionVersion}.`,
+          });
+        }
         if (status.missing > 0) {
           const missingNames = status.missingSettings.map(setting => setting.logicalName).join(", ");
           const confirmResult = confirm(`Missing settings for this solution version: ${missingNames}. Import anyway?`, "Incomplete Deployment Settings");
@@ -766,6 +772,12 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           alert(`Import is blocked because the deployment settings manifest is ${status.manifestStatus}. Refresh the manifest before importing.`, "Deployment Settings");
           return;
         }
+        if (status.isFallbackManifest) {
+          this.layoutService.notify({
+            type: NotificationType.Info,
+            message: `This historical solution version uses the deployment settings manifest from version ${status.manifestSourceSolutionVersion}.`,
+          });
+        }
         if (status.missing > 0) {
           const missingNames = status.missingSettings.map(setting => setting.logicalName).join(", ");
           const confirmResult = confirm(
@@ -842,7 +854,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     this.availableExternalSteps = path?.ExternalDeploymentPathEnvironments ?? [];
   }
 
-  private getDeploymentErrorMessage(error: unknown, fallbackMessage: string = "An error occurred while starting the deployment."): string {
+  private getDeploymentErrorMessage(error: unknown, fallbackMessage = "An error occurred while starting the deployment."): string {
     if (typeof error === "string") {
       return error;
     }

@@ -11,6 +11,10 @@
                 {{status ? configuredCount() : '0/0 configured'}} ·
                 <span class="deployment-status-value">{{status?.manifestStatus || 'Draft'}}</span>
             </span>
+            <span *ngIf="status?.isFallbackManifest">
+                Using the nearest legacy deployment settings manifest
+                ({{status?.manifestSourceSolutionVersion}}); values are read-only.
+            </span>
         </div>
         <div class="deployment-version-field">
             <span class="deployment-context-label">Solution version</span>
@@ -51,11 +55,13 @@
             <div class="deployment-control-grid setting-controls">
                 <dx-text-box
                     placeholder="Connection Id"
+                    [disabled]="status?.isFallbackManifest === true"
                     (onInitialized)="onInitializedConnectionIdTextBox($event, connectionReference)"
                     (onValueChanged)="onValueChangedConnectionIdTextBox($event, connectionReference)"
                 ></dx-text-box>
                 <dx-button
                     icon="revert"
+                    [disabled]="status?.isFallbackManifest === true"
                     [elementAttr]="{ 'aria-label': 'Reset setting to the previous solution version value' }"
                     (onClick)="resetSetting(connectionReference)"
                 ></dx-button>
@@ -77,11 +83,13 @@
             <div class="deployment-control-grid setting-controls">
                 <dx-text-box
                     placeholder="Value"
+                    [disabled]="status?.isFallbackManifest === true"
                     (onInitialized)="onInitializedEnvVarValueTextBox($event, environmentVariable)"
                     (onValueChanged)="onValueChangedEnvVarValueTextBox($event, environmentVariable)"
                 ></dx-text-box>
                 <dx-button
                     icon="revert"
+                    [disabled]="status?.isFallbackManifest === true"
                     [elementAttr]="{ 'aria-label': 'Reset setting to the previous solution version value' }"
                     (onClick)="resetSetting(environmentVariable)"
                 ></dx-button>
