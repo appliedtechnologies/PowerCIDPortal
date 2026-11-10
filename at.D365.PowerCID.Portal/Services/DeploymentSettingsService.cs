@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
-using System.Xml.Linq;
 
 namespace at.D365.PowerCID.Portal.Services
 {
@@ -42,6 +39,9 @@ namespace at.D365.PowerCID.Portal.Services
     public sealed class DeploymentSettingsStatus
     {
         public string ManifestStatus { get; set; }
+        public bool IsFallbackManifest { get; set; }
+        public int? ManifestSourceSolutionId { get; set; }
+        public string ManifestSourceSolutionVersion { get; set; }
         public string ConfigurationStatus { get; set; }
         public int Total { get; set; }
         public int Configured { get; set; }
@@ -56,18 +56,22 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly atPowerCIDContext dbContext;
         private readonly IConfiguration configuration;
         private readonly ILogger<DeploymentSettingsService> logger;
-        private readonly GitHubService gitHubService;
 
         public DeploymentSettingsService(
             atPowerCIDContext dbContext,
             IConfiguration configuration,
-            ILogger<DeploymentSettingsService> logger,
-            GitHubService gitHubService)
+            ILogger<DeploymentSettingsService> logger)
         {
             this.dbContext = dbContext;
             this.configuration = configuration;
             this.logger = logger;
-            this.gitHubService = gitHubService;
+        }
+
+        public sealed class ManifestResolution
+        {
+            public SolutionDeploymentManifest Manifest { get; init; }
+            public bool IsFallback { get; init; }
+            public Solution SourceSolution { get; init; }
         }
 
         public static string ComputeManifestHash(IEnumerable<DeploymentSettingDescriptor> descriptors)
@@ -190,38 +194,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<SolutionDeploymentManifest> EnsureReadyForImport(int solutionId)
         {
-            var manifest = await dbContext.SolutionDeploymentManifests
-                .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
-
-            if (manifest == null)
-            {
-                try
-                {
-                    return await BootstrapManifestFromArtifact(solutionId);
-                }
-                catch
-                {
-                    return await RefreshDeploymentManifest(solutionId);
-                }
-            }
-
-            var status = await ValidateManifest(solutionId);
-            if (status != DeploymentManifestStatus.Ready)
-            {
-                try
-                {
-                    return await BootstrapManifestFromArtifact(solutionId);
-                }
-                catch
-                {
-                    return await RefreshDeploymentManifest(solutionId);
-                }
-            }
-
-            return await dbContext.SolutionDeploymentManifests
-                .Include(e => e.Settings)
-                    .ThenInclude(e => e.Values)
-                .SingleAsync(e => e.SolutionId == solutionId);
+            return (await ResolveManifestForImport(solutionId)).Manifest;
         }
 
         public async Task<SolutionDeploymentManifest> GetManifest(int solutionId, bool refreshIfNotReady = false)
@@ -229,10 +202,12 @@ namespace at.D365.PowerCID.Portal.Services
             if (refreshIfNotReady)
                 await EnsureReadyForImport(solutionId);
 
-            return await dbContext.SolutionDeploymentManifests
-                .Include(e => e.Settings)
-                    .ThenInclude(e => e.Values)
-                .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
+            return (await ResolveManifestForDisplay(solutionId)).Manifest;
+        }
+
+        public Task<ManifestResolution> GetManifestResolution(int solutionId)
+        {
+            return ResolveManifestForDisplay(solutionId);
         }
 
         public async Task<IReadOnlyCollection<DeploymentSettingImportValue>> GetSettingsForImport(
@@ -279,6 +254,22 @@ namespace at.D365.PowerCID.Portal.Services
                 .Where(e => e.EnvironmentId == environmentId && e.SettingNavigation.ManifestId == manifest.Id)
                 .ToDictionaryAsync(e => e.SettingId);
 
+            if (manifest.Settings.Count == 0)
+            {
+                dbContext.DeploymentSettingSnapshots.Add(new DeploymentSettingSnapshot
+                {
+                    ActionId = actionId,
+                    SolutionId = solutionId,
+                    EnvironmentId = environmentId,
+                    Kind = DeploymentSettingKind.SnapshotMarker,
+                    MsId = Guid.Empty,
+                    LogicalName = string.Empty,
+                    DisplayName = string.Empty,
+                    IsConfigured = false,
+                    CreatedOn = DateTime.UtcNow
+                });
+            }
+
             foreach (var setting in manifest.Settings)
             {
                 values.TryGetValue(setting.Id, out var value);
@@ -303,14 +294,7 @@ namespace at.D365.PowerCID.Portal.Services
 
         private async Task<SolutionDeploymentManifest> GetStoredReadyManifest(int solutionId)
         {
-            var manifest = await dbContext.SolutionDeploymentManifests
-                .Include(e => e.Settings)
-                .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
-
-            if (manifest == null || manifest.Status != DeploymentManifestStatus.Ready)
-                return await EnsureReadyForImport(solutionId);
-
-            return manifest;
+            return (await ResolveManifestForImport(solutionId)).Manifest;
         }
 
         public async Task<IReadOnlyCollection<DeploymentSettingImportValue>> GetSettingsForAction(int actionId)
@@ -348,14 +332,13 @@ namespace at.D365.PowerCID.Portal.Services
 
         public async Task<DeploymentSettingsStatus> GetStatus(int solutionId, int environmentId)
         {
-            var manifest = await dbContext.SolutionDeploymentManifests
-                .Include(e => e.Settings)
-                .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
-            if (manifest == null)
+            var resolution = await ResolveManifestForDisplay(solutionId);
+            if (resolution.Manifest == null)
             {
                 return new DeploymentSettingsStatus
                 {
                     ManifestStatus = DeploymentManifestStatus.Draft.ToString(),
+                    IsFallbackManifest = false,
                     ConfigurationStatus = "Unavailable",
                     Total = 0,
                     Configured = 0,
@@ -365,6 +348,7 @@ namespace at.D365.PowerCID.Portal.Services
                 };
             }
 
+            var manifest = resolution.Manifest;
             var values = await dbContext.SolutionDeploymentSettingValues
                 .Where(e => e.EnvironmentId == environmentId && e.SettingNavigation.ManifestId == manifest.Id)
                 .ToDictionaryAsync(e => e.SettingId);
@@ -382,6 +366,9 @@ namespace at.D365.PowerCID.Portal.Services
             return new DeploymentSettingsStatus
             {
                 ManifestStatus = manifest.Status.ToString(),
+                IsFallbackManifest = resolution.IsFallback,
+                ManifestSourceSolutionId = resolution.SourceSolution.Id,
+                ManifestSourceSolutionVersion = resolution.SourceSolution.Version,
                 ConfigurationStatus = manifest.Status == DeploymentManifestStatus.Ready && missing.Count == 0
                     ? "Complete"
                     : "Incomplete",
@@ -425,6 +412,146 @@ namespace at.D365.PowerCID.Portal.Services
                 logger.LogError(exception, "Could not validate deployment manifest for solution {SolutionId}.", solutionId);
                 return DeploymentManifestStatus.SyncFailed;
             }
+        }
+
+        private async Task<ManifestResolution> ResolveManifestForDisplay(int solutionId)
+        {
+            var solution = await GetTenantIndependentSolution(solutionId);
+            var ownManifest = await dbContext.SolutionDeploymentManifests
+                .Include(e => e.Settings)
+                    .ThenInclude(e => e.Values)
+                .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
+            if (ownManifest?.Status == DeploymentManifestStatus.Ready)
+            {
+                return new ManifestResolution
+                {
+                    Manifest = ownManifest,
+                    SourceSolution = solution
+                };
+            }
+
+            var fallbackCandidates = await GetReadyManifestCandidatesForApplication(solution.Application);
+            if (!HasNewerReadyManifest(solution, fallbackCandidates))
+            {
+                return new ManifestResolution
+                {
+                    Manifest = ownManifest,
+                    SourceSolution = solution
+                };
+            }
+
+            var fallbackCandidate = SelectNearestManifest(solution, fallbackCandidates);
+            var fallback = await dbContext.SolutionDeploymentManifests
+                .Include(e => e.Settings)
+                    .ThenInclude(e => e.Values)
+                .Include(e => e.SolutionNavigation)
+                .SingleAsync(e => e.Id == fallbackCandidate.Id);
+            logger.LogWarning(
+                "Using legacy deployment manifest from solution {SourceSolutionId} version {SourceVersion} for historical solution {SolutionId} version {SolutionVersion}.",
+                fallback.SolutionId,
+                fallback.SolutionNavigation.Version,
+                solutionId,
+                solution.Version);
+            return new ManifestResolution
+            {
+                Manifest = fallback,
+                IsFallback = true,
+                SourceSolution = fallback.SolutionNavigation
+            };
+        }
+
+        private async Task<ManifestResolution> ResolveManifestForImport(int solutionId)
+        {
+            var resolution = await ResolveManifestForDisplay(solutionId);
+            if (resolution.Manifest == null)
+                throw new InvalidOperationException(
+                    $"No deployment settings manifest is available for solution {solutionId}.");
+            if (resolution.Manifest.Status != DeploymentManifestStatus.Ready)
+                throw new InvalidOperationException(
+                    $"The deployment settings manifest for solution {solutionId} is {resolution.Manifest.Status}.");
+            return resolution;
+        }
+
+        private Task<List<SolutionDeploymentManifest>> GetReadyManifestCandidatesForApplication(int applicationId)
+        {
+            return dbContext.SolutionDeploymentManifests
+                .Include(e => e.SolutionNavigation)
+                .Where(e => e.Status == DeploymentManifestStatus.Ready &&
+                    e.SolutionNavigation.Application == applicationId)
+                .ToListAsync();
+        }
+
+        private static bool HasNewerReadyManifest(
+            Solution solution,
+            IReadOnlyCollection<SolutionDeploymentManifest> readyManifests)
+        {
+            var solutionVersion = TryParseVersion(solution.Version);
+            if (solutionVersion != null)
+            {
+                var versionedManifests = readyManifests
+                    .Select(e => TryParseVersion(e.SolutionNavigation.Version))
+                    .Where(e => e != null)
+                    .ToList();
+                if (versionedManifests.Count > 0)
+                    return versionedManifests.Any(e => e > solutionVersion);
+            }
+
+            return readyManifests.Any(e => e.SolutionNavigation.CreatedOn > solution.CreatedOn);
+        }
+
+        private static SolutionDeploymentManifest SelectNearestManifest(
+            Solution solution,
+            IReadOnlyCollection<SolutionDeploymentManifest> manifests)
+        {
+            var version = TryParseVersion(solution.Version);
+            if (version != null)
+            {
+                var versionedCandidates = manifests
+                    .Select(e => new { Manifest = e, Version = TryParseVersion(e.SolutionNavigation.Version) })
+                    .Where(e => e.Version != null)
+                    .ToList();
+                if (versionedCandidates.Count > 0)
+                {
+                    return versionedCandidates
+                        .OrderBy(e => CompareVersionDistance(version, e.Version))
+                        .ThenBy(e => e.Version)
+                        .ThenBy(e => e.Manifest.SolutionId)
+                        .First()
+                        .Manifest;
+                }
+            }
+
+            return manifests
+                .OrderBy(e => Math.Abs((e.SolutionNavigation.CreatedOn - solution.CreatedOn).Ticks))
+                .ThenBy(e => e.SolutionNavigation.CreatedOn)
+                .ThenBy(e => e.SolutionId)
+                .First();
+        }
+
+        private static Version TryParseVersion(string version)
+        {
+            return Version.TryParse(version, out var parsed) ? parsed : null;
+        }
+
+        private static string CompareVersionDistance(Version requested, Version candidate)
+        {
+            var requestedParts = GetVersionParts(requested);
+            var candidateParts = GetVersionParts(candidate);
+            return string.Join(
+                ".",
+                requestedParts.Zip(candidateParts, (requestedPart, candidatePart) =>
+                    Math.Abs(requestedPart - candidatePart).ToString("D10")));
+        }
+
+        private static int[] GetVersionParts(Version version)
+        {
+            return new[]
+            {
+                version.Major,
+                version.Minor,
+                version.Build < 0 ? 0 : version.Build,
+                version.Revision < 0 ? 0 : version.Revision
+            };
         }
 
         public async Task<SolutionDeploymentSettingValue> UpdateValue(
@@ -704,112 +831,6 @@ namespace at.D365.PowerCID.Portal.Services
 
             await dbContext.SaveChangesAsync();
         }
-
-        private async Task<SolutionDeploymentManifest> BootstrapManifestFromArtifact(int solutionId)
-        {
-            var solution = await GetTenantIndependentSolution(solutionId);
-            var artifact = await gitHubService.GetSolutionFileAsByteArray(
-                solution.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation,
-                solution,
-                unmanaged: false);
-            var descriptors = ReadArtifactDescriptors(artifact);
-            var manifest = await dbContext.SolutionDeploymentManifests
-                .Include(e => e.Settings)
-                .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
-
-            if (manifest == null)
-            {
-                manifest = new SolutionDeploymentManifest
-                {
-                    SolutionId = solutionId,
-                    CreatedOn = DateTime.UtcNow
-                };
-                dbContext.SolutionDeploymentManifests.Add(manifest);
-            }
-
-            manifest.DataverseSolutionId = solution.MsId;
-            manifest.DataverseVersion = solution.Version;
-            manifest.ManifestHash = ComputeManifestHash(descriptors);
-            manifest.Status = DeploymentManifestStatus.Ready;
-            manifest.LastSyncError = null;
-            manifest.LastSyncedOn = DateTime.UtcNow;
-            manifest.ModifiedOn = DateTime.UtcNow;
-
-            foreach (var descriptor in descriptors)
-            {
-                if (manifest.Settings.Any(e => e.Kind == descriptor.Kind && e.MsId == descriptor.MsId))
-                    continue;
-
-                manifest.Settings.Add(new SolutionDeploymentSetting
-                {
-                    Kind = descriptor.Kind,
-                    MsId = descriptor.MsId,
-                    LogicalName = descriptor.LogicalName,
-                    DisplayName = descriptor.DisplayName,
-                    ConnectorId = descriptor.ConnectorId,
-                    EnvironmentVariableType = descriptor.EnvironmentVariableType,
-                    DefaultValue = descriptor.DefaultValue,
-                    IsRequired = descriptor.IsRequired,
-                    ComponentHash = ComputeComponentHash(descriptor)
-                });
-            }
-
-            await dbContext.SaveChangesAsync();
-            await MigrateLegacyValues(solution, manifest);
-            return await dbContext.SolutionDeploymentManifests
-                .Include(e => e.Settings)
-                    .ThenInclude(e => e.Values)
-                .SingleAsync(e => e.SolutionId == solutionId);
-        }
-
-        private static List<DeploymentSettingDescriptor> ReadArtifactDescriptors(byte[] artifact)
-        {
-            using var archive = new ZipArchive(new MemoryStream(artifact), ZipArchiveMode.Read);
-            var documents = archive.Entries
-                .Where(e => string.Equals(e.Name, "solution.xml", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(e.Name, "customizations.xml", StringComparison.OrdinalIgnoreCase))
-                .Select(e =>
-                {
-                    using var stream = e.Open();
-                    return XDocument.Load(stream);
-                })
-                .ToList();
-
-            return documents
-                .SelectMany(e => e.Descendants().Where(e => e.Name.LocalName == "RootComponent"))
-                .Select(e => new
-                {
-                    Type = GetAttribute(e, "type"),
-                    Id = GetAttribute(e, "id"),
-                    LogicalName = GetAttribute(e, "schemaName"),
-                    DisplayName = GetAttribute(e, "displayName")
-                })
-                .Where(e => (e.Type == "372" || e.Type == "380") && Guid.TryParse(e.Id?.Trim('{', '}'), out _))
-                .GroupBy(e => (e.Type, e.Id))
-                .Select(e =>
-                {
-                    var component = e.First();
-                    var id = Guid.Parse(component.Id.Trim('{', '}'));
-                    return new DeploymentSettingDescriptor
-                    {
-                        Kind = component.Type == "380"
-                            ? DeploymentSettingKind.EnvironmentVariable
-                            : DeploymentSettingKind.ConnectionReference,
-                        MsId = id,
-                        LogicalName = component.LogicalName,
-                        DisplayName = component.DisplayName,
-                        IsRequired = component.Type == "372"
-                    };
-                })
-                .OrderBy(e => e.Kind)
-                .ThenBy(e => e.MsId)
-                .ToList();
-        }
-
-        private static string GetAttribute(XElement element, string name)
-            => element.Attributes()
-                .FirstOrDefault(e => string.Equals(e.Name.LocalName, name, StringComparison.OrdinalIgnoreCase))
-                ?.Value;
 
         private void AddLegacyValueIfMissing(
             IReadOnlyDictionary<(DeploymentSettingKind Kind, Guid MsId), int> settingIds,

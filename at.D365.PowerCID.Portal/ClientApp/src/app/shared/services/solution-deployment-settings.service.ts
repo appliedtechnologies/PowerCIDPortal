@@ -27,11 +27,17 @@ export interface DeploymentSetting {
 export interface DeploymentSettingsResponse {
   manifestStatus: string;
   manifestHash?: string;
+  isFallbackManifest?: boolean;
+  manifestSourceSolutionId?: number;
+  manifestSourceSolutionVersion?: string;
   settings: DeploymentSetting[];
 }
 
 export interface DeploymentSettingsStatus {
   manifestStatus: string;
+  isFallbackManifest: boolean;
+  manifestSourceSolutionId?: number;
+  manifestSourceSolutionVersion?: string;
   configurationStatus: string;
   total: number;
   configured: number;

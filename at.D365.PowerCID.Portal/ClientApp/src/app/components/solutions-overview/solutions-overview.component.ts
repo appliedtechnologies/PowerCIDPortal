@@ -593,6 +593,12 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           this.layoutService.change(LayoutParameter.ShowLoading, false);
           return;
         }
+        if (status.isFallbackManifest) {
+          this.layoutService.notify({
+            type: NotificationType.Info,
+            message: `This historical solution version uses the deployment settings manifest from version ${status.manifestSourceSolutionVersion}.`,
+          });
+        }
         if (status.missing > 0) {
           const missingNames = status.missingSettings.map(setting => setting.logicalName).join(", ");
           const confirmResult = confirm(`Missing settings for this solution version: ${missingNames}. Import anyway?`, "Incomplete Deployment Settings");
@@ -738,6 +744,10 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     );
   }
 
+  public hasSuccessfulImport(solution: Solution): boolean {
+    return solution.Actions?.some((action) => action.Type === 2 && action.Result === 1) ?? false;
+  }
+
   public getLastExternalAction(cellInfo): Action {
     const environmentId = Number(cellInfo.column.name.split(",")[1]);
     const targetEnvironmentId = this.externalEnvironments.find((e) => e.Id === environmentId)?.Environment;
@@ -765,6 +775,12 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
         if (status.manifestStatus !== "Ready") {
           alert(`Import is blocked because the deployment settings manifest is ${status.manifestStatus}. Refresh the manifest before importing.`, "Deployment Settings");
           return;
+        }
+        if (status.isFallbackManifest) {
+          this.layoutService.notify({
+            type: NotificationType.Info,
+            message: `This historical solution version uses the deployment settings manifest from version ${status.manifestSourceSolutionVersion}.`,
+          });
         }
         if (status.missing > 0) {
           const missingNames = status.missingSettings.map(setting => setting.logicalName).join(", ");
@@ -842,7 +858,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     this.availableExternalSteps = path?.ExternalDeploymentPathEnvironments ?? [];
   }
 
-  private getDeploymentErrorMessage(error: unknown, fallbackMessage: string = "An error occurred while starting the deployment."): string {
+  private getDeploymentErrorMessage(error: unknown, fallbackMessage = "An error occurred while starting the deployment."): string {
     if (typeof error === "string") {
       return error;
     }
@@ -1157,7 +1173,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
             "Actions.TypeNavigation",
             "Actions.StatusNavigation",
             "Actions.ResultNavigation",
-            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution)",
+            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery)",
             "CreatedByNavigation($select=Firstname, Lastname)",
             "ModifiedByNavigation($select=Firstname, Lastname)",
           ],
