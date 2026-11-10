@@ -254,6 +254,22 @@ namespace at.D365.PowerCID.Portal.Services
                 .Where(e => e.EnvironmentId == environmentId && e.SettingNavigation.ManifestId == manifest.Id)
                 .ToDictionaryAsync(e => e.SettingId);
 
+            if (manifest.Settings.Count == 0)
+            {
+                dbContext.DeploymentSettingSnapshots.Add(new DeploymentSettingSnapshot
+                {
+                    ActionId = actionId,
+                    SolutionId = solutionId,
+                    EnvironmentId = environmentId,
+                    Kind = DeploymentSettingKind.SnapshotMarker,
+                    MsId = Guid.Empty,
+                    LogicalName = string.Empty,
+                    DisplayName = string.Empty,
+                    IsConfigured = false,
+                    CreatedOn = DateTime.UtcNow
+                });
+            }
+
             foreach (var setting in manifest.Settings)
             {
                 values.TryGetValue(setting.Id, out var value);
@@ -405,7 +421,7 @@ namespace at.D365.PowerCID.Portal.Services
                 .Include(e => e.Settings)
                     .ThenInclude(e => e.Values)
                 .SingleOrDefaultAsync(e => e.SolutionId == solutionId);
-            if (ownManifest != null)
+            if (ownManifest?.Status == DeploymentManifestStatus.Ready)
             {
                 return new ManifestResolution
                 {
@@ -414,11 +430,22 @@ namespace at.D365.PowerCID.Portal.Services
                 };
             }
 
-            var fallbackManifests = await GetReadyManifestsForApplication(solution.Application);
-            if (!IsLegacySolution(solution, fallbackManifests))
-                return new ManifestResolution { SourceSolution = solution };
+            var fallbackCandidates = await GetReadyManifestCandidatesForApplication(solution.Application);
+            if (!HasNewerReadyManifest(solution, fallbackCandidates))
+            {
+                return new ManifestResolution
+                {
+                    Manifest = ownManifest,
+                    SourceSolution = solution
+                };
+            }
 
-            var fallback = SelectNearestManifest(solution, fallbackManifests);
+            var fallbackCandidate = SelectNearestManifest(solution, fallbackCandidates);
+            var fallback = await dbContext.SolutionDeploymentManifests
+                .Include(e => e.Settings)
+                    .ThenInclude(e => e.Values)
+                .Include(e => e.SolutionNavigation)
+                .SingleAsync(e => e.Id == fallbackCandidate.Id);
             logger.LogWarning(
                 "Using legacy deployment manifest from solution {SourceSolutionId} version {SourceVersion} for historical solution {SolutionId} version {SolutionVersion}.",
                 fallback.SolutionId,
@@ -445,27 +472,31 @@ namespace at.D365.PowerCID.Portal.Services
             return resolution;
         }
 
-        private Task<List<SolutionDeploymentManifest>> GetReadyManifestsForApplication(int applicationId)
+        private Task<List<SolutionDeploymentManifest>> GetReadyManifestCandidatesForApplication(int applicationId)
         {
             return dbContext.SolutionDeploymentManifests
-                .Include(e => e.Settings)
-                    .ThenInclude(e => e.Values)
                 .Include(e => e.SolutionNavigation)
                 .Where(e => e.Status == DeploymentManifestStatus.Ready &&
                     e.SolutionNavigation.Application == applicationId)
                 .ToListAsync();
         }
 
-        private static bool IsLegacySolution(
+        private static bool HasNewerReadyManifest(
             Solution solution,
             IReadOnlyCollection<SolutionDeploymentManifest> readyManifests)
         {
-            var firstManifestSolutionDate = readyManifests
-                .Select(e => e.SolutionNavigation.CreatedOn)
-                .DefaultIfEmpty()
-                .Min();
-            return firstManifestSolutionDate != default &&
-                solution.CreatedOn < firstManifestSolutionDate;
+            var solutionVersion = TryParseVersion(solution.Version);
+            if (solutionVersion != null)
+            {
+                var versionedManifests = readyManifests
+                    .Select(e => TryParseVersion(e.SolutionNavigation.Version))
+                    .Where(e => e != null)
+                    .ToList();
+                if (versionedManifests.Count > 0)
+                    return versionedManifests.Any(e => e > solutionVersion);
+            }
+
+            return readyManifests.Any(e => e.SolutionNavigation.CreatedOn > solution.CreatedOn);
         }
 
         private static SolutionDeploymentManifest SelectNearestManifest(
