@@ -25,6 +25,13 @@ namespace at.D365.PowerCID.Portal.Services
 {
     public class SolutionService
     {
+        public sealed class ExportRenewalNotAllowedException : InvalidOperationException
+        {
+            public ExportRenewalNotAllowedException(string message) : base(message)
+            {
+            }
+        }
+
         private readonly ILogger logger;
         private readonly atPowerCIDContext dbContext;
         private readonly DeploymentSettingsService deploymentSettingsService;
@@ -52,6 +59,7 @@ namespace at.D365.PowerCID.Portal.Services
             }
 
             Solution solution = dbContext.Solutions.First(e => e.Id == key);
+            await this.EnsureExportRenewalAllowed(solution);
 
             Data.Models.Action newAction = new Data.Models.Action
             {
@@ -71,6 +79,29 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: SolutionService AddExportAction(key: {key}, tenantMsIdCurrentUser: {tenantMsIdCurrentUser.ToString()}, msIdCurrentUser: {msIdCurrentUser.ToString()} exportOnly: {exportOnly})");
 
             return newAction;
+        }
+
+        private async Task EnsureExportRenewalAllowed(Solution solution)
+        {
+            bool hasSuccessfulImport = await this.dbContext.Actions.AnyAsync(e =>
+                e.Solution == solution.Id &&
+                e.Type == 2 &&
+                e.Result == 1);
+            if (hasSuccessfulImport)
+            {
+                throw new ExportRenewalNotAllowedException(
+                    "The export cannot be renewed because this solution version has already been imported successfully.");
+            }
+
+            bool hasNewerUpgrade = await this.dbContext.Upgrades.AnyAsync(e =>
+                e.Application == solution.Application &&
+                (e.CreatedOn > solution.CreatedOn ||
+                    (e.CreatedOn == solution.CreatedOn && e.Id > solution.Id)));
+            if (hasNewerUpgrade)
+            {
+                throw new ExportRenewalNotAllowedException(
+                    "The export cannot be renewed because a newer upgrade exists for this application.");
+            }
         }
 
         public async Task<Data.Models.Action> AddImportAction(int key, int targetEnvironmentId, Guid msIdCurrentUser)
