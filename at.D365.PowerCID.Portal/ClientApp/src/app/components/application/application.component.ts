@@ -186,7 +186,13 @@ export class ApplicationComponent {
         Application: this.currentApplicationId,
         DeploymentPath: itemDataId,
         HierarchieNumber: toIndex,
-      }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+      }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}))
+        .catch(() => {
+          this.layoutService.notify({type: NotificationType.Error, message: "Could not save the deployment path order."});
+          return this.loadApplicationDeploymentPaths().catch(() =>
+            this.layoutService.notify({type: NotificationType.Error, message: "Could not reload the deployment path order."})
+          );
+        });
     }
   }
 
@@ -197,7 +203,13 @@ export class ApplicationComponent {
     this.applicationDeploymentPathService.getStore().remove({
       Application: this.currentApplicationId,
       DeploymentPath: itemDataId,
-    }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+    }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}))
+      .catch(() => {
+        this.layoutService.notify({type: NotificationType.Error, message: "Could not save the deployment path order."});
+        return this.loadApplicationDeploymentPaths().catch(() =>
+          this.layoutService.notify({type: NotificationType.Error, message: "Could not reload the deployment path order."})
+        );
+      });
   }
 
   onReorder(e) {
@@ -218,6 +230,12 @@ export class ApplicationComponent {
         e.toData.splice(e.fromIndex, 1);
         e.toData.splice(e.toIndex, 0, e.itemData);
         this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000});
+      })
+      .catch(() => {
+        this.layoutService.notify({type: NotificationType.Error, message: "The deployment path order changed or could not be saved. The latest order is being loaded."});
+        return this.loadApplicationDeploymentPaths().catch(() =>
+          this.layoutService.notify({type: NotificationType.Error, message: "Could not reload the deployment path order."})
+        );
       });
   }
 
@@ -231,21 +249,9 @@ export class ApplicationComponent {
         this.deploymentPaths = d;
       });
 
-    this.applicationService
-      .getStore()
-      .load({
-        filter: "Id eq " + this.currentApplicationId,
-        expand: ["DeploymentPaths", "ApplicationDeploymentPaths"],
-        select: "DeploymentPaths",
-      })
-      .then((ad) => {
-        this.applicationDeploymentPaths = ad[0];
-        this.applicationDeploymentPaths =
-          this.applicationService.sortAfterHierarchieAndStepNumber(
-            this.applicationDeploymentPaths,
-            false
-          );
-      });
+    this.loadApplicationDeploymentPaths().catch(() =>
+      this.layoutService.notify({type: NotificationType.Error, message: "Could not load the application's deployment paths."})
+    );
 
     this.isAssignDevelopmentPaths = true;
   }
@@ -294,6 +300,22 @@ export class ApplicationComponent {
         e.toData.splice(e.fromIndex, 1);
         e.toData.splice(e.toIndex, 0, e.itemData);
         this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000});
+      });
+  }
+
+  private loadApplicationDeploymentPaths(): Promise<void> {
+    return this.applicationService
+      .getStore()
+      .load({
+        filter: "Id eq " + this.currentApplicationId,
+        expand: ["DeploymentPaths", "ApplicationDeploymentPaths"],
+        select: "DeploymentPaths",
+      })
+      .then((applications) => {
+        const application = applications[0] as Application | undefined;
+        this.applicationDeploymentPaths = application
+          ? this.applicationService.sortAfterHierarchieAndStepNumber(application, false)
+          : [];
       });
   }
 

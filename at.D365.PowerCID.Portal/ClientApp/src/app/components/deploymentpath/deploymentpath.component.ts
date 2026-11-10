@@ -15,6 +15,7 @@ import {
 import dxTreeView, { ContentReadyEvent as TreeViewContentReadyEvent, dxTreeViewNode } from "devextreme/ui/tree_view";
 import { DeploymentPathEnvironmentService } from "src/app/shared/services/deploymentpathEnvironment.service";
 import { AddEvent, DragChangeEvent, DragEndEvent, ReorderEvent } from "devextreme/ui/sortable";
+import { normalizeDeploymentPathEnvironmentOrder } from "src/app/shared/services/deploymentpath-environment-order";
 
 type DeploymentPathTreeItem = DeploymentPath & DeploymentPathEnvironment & {
   items?: DeploymentPathTreeItem[];
@@ -197,6 +198,13 @@ export class DeploymentpathComponent {
           this.loadDeploymentPaths().then(
             () => (this.deploymentPathIdToExpand = ToItemDataId)
           );
+        })
+        .catch((error: Error) => {
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: error.message || "The environment could not be added to the deployment path.",
+          });
+          return this.loadDeploymentPaths();
         });
     } else {
       toItems.forEach((element) => {
@@ -230,6 +238,13 @@ export class DeploymentpathComponent {
                   displayTime: 1000,
                 });
               });
+            })
+            .catch((error: Error) => {
+              this.layoutService.notify({
+                type: NotificationType.Error,
+                message: error.message || "The environment could not be added to the deployment path.",
+              });
+              return this.loadDeploymentPaths();
             });
         }
       });
@@ -270,24 +285,63 @@ export class DeploymentpathComponent {
 
     const fromNode = this.findNode(fromTreeView, e.fromIndex);
     const toNode = this.findNode(toTreeView, this.calculateToIndex(e));
-
-    if(fromNode.itemData.DeploymentPath != toNode.itemData.DeploymentPath){
+    if (fromNode === null) {
       this.layoutService.notify({
         type: NotificationType.Error,
-        message: "It is not possible to move environments between deployment paths. Please use the environment selection on the right.",
+        message: "The environment order could not be determined. Reload the deployment paths and try again.",
       });
       return;
     }
 
     const environmentId = fromNode.itemData.Environment;
     const deploymentPathId = fromNode.itemData.DeploymentPath;
-    const fromIndex = fromNode.itemData.StepNumber;
-    const toIndex = toNode.itemData.StepNumber;
+    const deploymentPath = this.deploymentPaths.find(path => path.Id === deploymentPathId);
+    const assignments = deploymentPath?.DeploymentPathEnvironments ?? [];
+    const fromIndex = assignments.findIndex(assignment => assignment.Environment === environmentId) + 1;
+    const sourcePathIndex = this.deploymentPaths.findIndex(path => path.Id === deploymentPathId);
 
-    if(fromIndex == undefined || toIndex == undefined){
+    if (fromIndex < 1 || sourcePathIndex < 0) {
       this.layoutService.notify({
         type: NotificationType.Error,
-        message: "The environment was placed outside a deployment path.",
+        message: "The environment order could not be determined. Reload the deployment paths and try again.",
+      });
+      return;
+    }
+
+    let toIndex: number;
+    if (toNode === null) {
+      if (sourcePathIndex !== this.deploymentPaths.length - 1) {
+        this.notifyEnvironmentMoveAcrossPaths();
+        return;
+      }
+      toIndex = assignments.length;
+    } else {
+      const targetPathId = toNode.itemData.DeploymentPath ??
+        (toNode.parent === null && toNode.itemData.EnvironmentNavigation === undefined
+          ? toNode.itemData.Id
+          : undefined);
+      const isEndOfCurrentPath =
+        !e.dropInsideItem &&
+        toNode.parent === null &&
+        sourcePathIndex + 1 === this.deploymentPaths.findIndex(path => path.Id === targetPathId);
+
+      if (targetPathId !== deploymentPathId && !isEndOfCurrentPath) {
+        this.notifyEnvironmentMoveAcrossPaths();
+        return;
+      }
+
+      if (isEndOfCurrentPath || toNode.itemData.EnvironmentNavigation === undefined) {
+        toIndex = assignments.length;
+      } else {
+        toIndex =
+          assignments.findIndex(assignment => assignment.Environment === toNode.itemData.Environment) + 1;
+      }
+    }
+
+    if (toIndex < 1) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The environment order could not be determined. Reload the deployment paths and try again.",
       });
     }
     else {
@@ -313,8 +367,14 @@ export class DeploymentpathComponent {
       .catch((e: Error) => {
         this.layoutService.notify({
           type: NotificationType.Error,
-          message: e.message,
+          message: e.message || "The environment order could not be saved.",
         });
+        this.loadDeploymentPaths()
+          .then(() => this.deploymentPathIdToExpand = deploymentPathId)
+          .catch(() => this.layoutService.notify({
+            type: NotificationType.Error,
+            message: "The latest environment order could not be reloaded.",
+          }));
       });
     }
   }
@@ -362,17 +422,19 @@ export class DeploymentpathComponent {
       .then((data) => {
         const sortedDeploymentPaths: DeploymentPath[] = data;
 
-        let deploymentPathEnvironments: DeploymentPathEnvironment[] = [];
-
         for (const deploymentPath of sortedDeploymentPaths) {
-          for (const deploymentPathEnvironment of deploymentPath.DeploymentPathEnvironments) {
-            const stepNumber = deploymentPathEnvironment.StepNumber;
-            deploymentPathEnvironments[stepNumber - 1] =
-              deploymentPathEnvironment;
+          const { assignments, unresolvedCount } = normalizeDeploymentPathEnvironmentOrder(
+            deploymentPath.DeploymentPathEnvironments,
+            deploymentPath.Environments
+          );
+          if (unresolvedCount > 0) {
+            this.layoutService.notify({
+              type: NotificationType.Error,
+              message: `${unresolvedCount} environment assignment(s) in deployment path "${deploymentPath.Name}" could not be resolved.`,
+            });
           }
-          deploymentPath.DeploymentPathEnvironments =
-            deploymentPathEnvironments;
-          deploymentPathEnvironments = [];
+
+          deploymentPath.DeploymentPathEnvironments = assignments;
         }
 
         this.deploymentPaths = sortedDeploymentPaths;
@@ -470,6 +532,13 @@ export class DeploymentpathComponent {
       parent = parent.parent;
     }
     return false;
+  }
+
+  private notifyEnvironmentMoveAcrossPaths(): void {
+    this.layoutService.notify({
+      type: NotificationType.Error,
+      message: "It is not possible to move environments between deployment paths. Please use the environment selection on the right.",
+    });
   }
 
   private getTopVisibleNode(component): Element | null{
