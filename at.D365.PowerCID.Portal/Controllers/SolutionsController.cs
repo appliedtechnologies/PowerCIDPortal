@@ -348,7 +348,19 @@ namespace at.D365.PowerCID.Portal.Controllers
                 });
             }
 
-            Data.Models.Action createdAction = await solutionService.AddExportAction(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: true);
+            Data.Models.Action createdAction;
+            try
+            {
+                createdAction = await solutionService.AddExportAction(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: true);
+            }
+            catch (SolutionService.ExportRenewalNotAllowedException exception)
+            {
+                return Conflict(new ODataError
+                {
+                    Code = "ExportRenewalNotAllowed",
+                    Message = exception.Message
+                });
+            }
 
             logger.LogDebug($"End: SolutionsController Export(key: {key})");
 
@@ -383,6 +395,14 @@ namespace at.D365.PowerCID.Portal.Controllers
                         createdAction = await solutionService.AddImportAction(key, targetEnvironmentId, this.msIdCurrentUser);
                     else
                         createdAction = await solutionService.AddExportAction(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: false, targetEnvironmentId);
+                }
+                catch (SolutionService.ExportRenewalNotAllowedException exception)
+                {
+                    return Conflict(new ODataError
+                    {
+                        Code = "ExportRenewalNotAllowed",
+                        Message = exception.Message
+                    });
                 }
                 catch (Exception e)
                 {
