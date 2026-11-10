@@ -339,6 +339,15 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Solutions.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
+            if (await SuccessfulImportExists(key))
+            {
+                return Conflict(new ODataError
+                {
+                    Code = "ExportRenewalNotAllowed",
+                    Message = "The export cannot be renewed because this solution version has already been imported successfully."
+                });
+            }
+
             Data.Models.Action createdAction = await solutionService.AddExportAction(key, this.msIdTenantCurrentUser, this.msIdCurrentUser, exportOnly: true);
 
             logger.LogDebug($"End: SolutionsController Export(key: {key})");
@@ -521,6 +530,16 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"Begin & End: SolutionsController ExportExists(solutionId: {solutionId})");
 
             return base.dbContext.Actions.Any(a => a.Solution == solutionId && a.Type == 1 && a.Result == 1);
+        }
+
+        private Task<bool> SuccessfulImportExists(int solutionId)
+        {
+            logger.LogDebug($"Begin & End: SolutionsController SuccessfulImportExists(solutionId: {solutionId})");
+
+            return base.dbContext.Actions.AnyAsync(a =>
+                a.Solution == solutionId &&
+                a.Type == 2 &&
+                a.Result == 1);
         }
 
         private bool ImportExistsOnEnvironment(int solutionId, int environmentId)

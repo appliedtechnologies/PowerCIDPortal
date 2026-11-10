@@ -744,6 +744,10 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     );
   }
 
+  public hasSuccessfulImport(solution: Solution): boolean {
+    return solution.Actions?.some((action) => action.Type === 2 && action.Result === 1) ?? false;
+  }
+
   public getLastExternalAction(cellInfo): Action {
     const environmentId = Number(cellInfo.column.name.split(",")[1]);
     const targetEnvironmentId = this.externalEnvironments.find((e) => e.Id === environmentId)?.Environment;
@@ -1169,7 +1173,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
             "Actions.TypeNavigation",
             "Actions.StatusNavigation",
             "Actions.ResultNavigation",
-            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution)",
+            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery)",
             "CreatedByNavigation($select=Firstname, Lastname)",
             "ModifiedByNavigation($select=Firstname, Lastname)",
           ],
