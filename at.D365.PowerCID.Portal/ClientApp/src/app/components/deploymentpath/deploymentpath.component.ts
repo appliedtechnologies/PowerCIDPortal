@@ -336,13 +336,22 @@ export class DeploymentpathComponent {
         !e.dropInsideItem &&
         toNode.parent === null &&
         sourcePathIndex + 1 === this.deploymentPaths.findIndex(path => path.Id === targetPathId);
+      const isPathHeader = toNode.itemData.EnvironmentNavigation === undefined;
+
+      if (isPathHeader && !e.dropInsideItem && targetPathId === deploymentPathId) {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "Drop the environment inside its deployment path or immediately before the next path.",
+        });
+        return;
+      }
 
       if (targetPathId !== deploymentPathId && !isEndOfCurrentPath) {
         this.notifyEnvironmentMoveAcrossPaths();
         return;
       }
 
-      if (isEndOfCurrentPath || toNode.itemData.EnvironmentNavigation === undefined) {
+      if (isEndOfCurrentPath || (isPathHeader && e.dropInsideItem)) {
         toIndex = assignments.length;
       } else {
         const targetIndex =
