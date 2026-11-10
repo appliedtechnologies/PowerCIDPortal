@@ -15,6 +15,7 @@ using Newtonsoft.Json.Linq;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Logging;
+using at.D365.PowerCID.Portal.Helpers;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -46,6 +47,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Delete(keyDeploymentPath: {keyDeploymentPath}, keyEnvironment: {keyEnvironment})");
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"DeploymentPathEnvironments:{keyDeploymentPath}"))
+                return Conflict("Another environment order change is in progress. Retry the operation.");
 
             if (!await CanAccessAssignmentAsync(keyDeploymentPath, keyEnvironment))
                 return Forbid();
@@ -83,6 +86,10 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest(ModelState);
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(
+                    dbContext,
+                    $"DeploymentPathEnvironments:{deploymentPathEnvironment.DeploymentPath}"))
+                return Conflict("Another environment order change is in progress. Retry the operation.");
 
             if (!await CanAccessAssignmentAsync(deploymentPathEnvironment.DeploymentPath, deploymentPathEnvironment.Environment))
                 return Forbid();
@@ -124,6 +131,8 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest("FromIndex, ToIndex, and ExpectedOrder are required.");
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"DeploymentPathEnvironments:{keyDeploymentPath}"))
+                return Conflict("Another environment order change is in progress. Retry the operation.");
 
             if (!await CanAccessAssignmentAsync(keyDeploymentPath, keyEnvironment))
                 return Forbid();

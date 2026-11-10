@@ -345,8 +345,16 @@ export class DeploymentpathComponent {
       if (isEndOfCurrentPath || toNode.itemData.EnvironmentNavigation === undefined) {
         toIndex = assignments.length;
       } else {
-        toIndex =
+        const targetIndex =
           assignments.findIndex(assignment => assignment.Environment === toNode.itemData.Environment) + 1;
+        if (targetIndex < 1) {
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: "The destination environment could not be determined. Reload the deployment paths and try again.",
+          });
+          return;
+        }
+        toIndex = targetIndex > fromIndex ? targetIndex - 1 : targetIndex;
       }
     }
 

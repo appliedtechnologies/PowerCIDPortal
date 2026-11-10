@@ -15,6 +15,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using at.D365.PowerCID.Portal.Helpers;
 
 namespace at.D365.PowerCID.Portal.Controllers
 {
@@ -34,7 +35,8 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             return base.dbContext.ApplicationDeploymentPaths
                 .Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)
-                .OrderBy(ad => ad.HierarchieNumber)
+                .OrderBy(ad => ad.HierarchieNumber == null)
+                .ThenBy(ad => ad.HierarchieNumber)
                 .ThenBy(ad => ad.DeploymentPath);
         }
 
@@ -45,6 +47,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"Begin: ApplicationDeploymentPathsController Delete(keyApplication: {keyApplication}, keyDeploymentPath: {keyDeploymentPath})");
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"ApplicationDeploymentPaths:{keyApplication}"))
+                return Conflict("Another deployment path order change is in progress. Retry the operation.");
 
             var applicationDeploymentPathToDelete = await dbContext.ApplicationDeploymentPaths.FirstOrDefaultAsync(e =>
                 e.Application == keyApplication &&
@@ -83,6 +87,10 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest("HierarchieNumber is required.");
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(
+                    dbContext,
+                    $"ApplicationDeploymentPaths:{applicationDeploymentPath.Application}"))
+                return Conflict("Another deployment path order change is in progress. Retry the operation.");
 
             if (!await dbContext.Applications.AnyAsync(e =>
                     e.Id == applicationDeploymentPath.Application &&
@@ -129,6 +137,8 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest("FromIndex, ToIndex, and ExpectedOrder are required.");
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"ApplicationDeploymentPaths:{keyApplication}"))
+                return Conflict("Another deployment path order change is in progress. Retry the operation.");
 
             if (!await dbContext.Applications.AnyAsync(e =>
                     e.Id == keyApplication &&
