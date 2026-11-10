@@ -125,8 +125,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            if (!TryReadIndices(parameters, out var fromIndex, out var toIndex))
-                return BadRequest("FromIndex and ToIndex must be integers.");
+            if (!TryReadReorderRequest(parameters, out var fromIndex, out var toIndex, out var expectedOrder))
+                return BadRequest("FromIndex, ToIndex, and ExpectedOrder are required.");
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
@@ -139,6 +139,9 @@ namespace at.D365.PowerCID.Portal.Controllers
             var assignment = assignments.FirstOrDefault(x => x.DeploymentPath == keyDeploymentPath);
             if (assignment == null)
                 return NotFound();
+
+            if (!assignments.Select(x => x.DeploymentPath).SequenceEqual(expectedOrder))
+                return Conflict("The deployment path order changed. Reload the application and retry the move.");
 
             if (fromIndex < 1 || fromIndex > assignments.Count)
                 return BadRequest($"FromIndex must be between 1 and {assignments.Count}.");
@@ -183,10 +186,15 @@ namespace at.D365.PowerCID.Portal.Controllers
             return assignments.Select((assignment, index) => assignment.HierarchieNumber == index + 1).All(isValid => isValid);
         }
 
-        private static bool TryReadIndices(object parameters, out int fromIndex, out int toIndex)
+        private static bool TryReadReorderRequest(
+            object parameters,
+            out int fromIndex,
+            out int toIndex,
+            out int[] expectedOrder)
         {
             fromIndex = 0;
             toIndex = 0;
+            expectedOrder = Array.Empty<int>();
             if (parameters == null)
                 return false;
 
@@ -200,10 +208,23 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return false;
             }
 
-            return request["FromIndex"]?.Type == JTokenType.Integer &&
-                request["ToIndex"]?.Type == JTokenType.Integer &&
-                int.TryParse(request["FromIndex"].ToString(), out fromIndex) &&
-                int.TryParse(request["ToIndex"].ToString(), out toIndex);
+            if (request["FromIndex"]?.Type != JTokenType.Integer ||
+                request["ToIndex"]?.Type != JTokenType.Integer ||
+                !int.TryParse(request["FromIndex"].ToString(), out fromIndex) ||
+                !int.TryParse(request["ToIndex"].ToString(), out toIndex) ||
+                request["ExpectedOrder"] is not JArray orderTokens)
+                return false;
+
+            var parsedOrder = new List<int>(orderTokens.Count);
+            foreach (var token in orderTokens)
+            {
+                if (token.Type != JTokenType.Integer || !int.TryParse(token.ToString(), out var id))
+                    return false;
+                parsedOrder.Add(id);
+            }
+
+            expectedOrder = parsedOrder.ToArray();
+            return true;
         }
     }
 }

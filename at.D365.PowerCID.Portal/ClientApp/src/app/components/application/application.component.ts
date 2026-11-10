@@ -224,7 +224,11 @@ export class ApplicationComponent {
           Application: this.currentApplicationId,
           DeploymentPath: itemDataId,
         },
-        { ToIndex: toIndex, FromIndex: fromIndex }
+        {
+          ToIndex: toIndex,
+          FromIndex: fromIndex,
+          ExpectedOrder: this.applicationDeploymentPaths.map((path) => path.Id),
+        }
       )
       .then(() => {
         e.toData.splice(e.fromIndex, 1);

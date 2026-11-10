@@ -192,7 +192,7 @@ export class DeploymentpathComponent {
         .insert({
           Environment: FromItemDataId,
           DeploymentPath: ToItemDataId,
-          StepNumber: toNode.itemData.Environments.length + 1,
+          StepNumber: (toNode.itemData.DeploymentPathEnvironments ?? []).length + 1,
         })
         .then(() => {
           this.loadDeploymentPaths().then(
@@ -207,26 +207,38 @@ export class DeploymentpathComponent {
           return this.loadDeploymentPaths();
         });
     } else {
+      const requestedStepNumber = toNode.itemData.StepNumber;
+      if (requestedStepNumber === undefined) {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "The destination position could not be determined.",
+        });
+        return;
+      }
+
       toItems.forEach((element) => {
         if (
-          element.DeploymentPathEnvironments.length !=
-          element.Environments.length
+          (element.DeploymentPathEnvironments ?? []).length !=
+          (element.Environments ?? []).length
         ) {
           const ToItemDataId = element.Id;
           if (
-            element.DeploymentPathEnvironments.findIndex(
+            (element.DeploymentPathEnvironments ?? []).findIndex(
               (t) => t.Environment == fromNode.itemData.Id
             ) != -1
           ) {
             return;
           }
+          const insertionIndex = Math.min(
+            requestedStepNumber,
+            (element.DeploymentPathEnvironments ?? []).length + 1
+          );
           this.deploymentPathEnvironmentService
             .getStore()
             .insert({
               Environment: FromItemDataId,
               DeploymentPath: ToItemDataId,
-              StepNumber:
-                e.toIndex - toItems.findIndex((e) => e.Id == ToItemDataId),
+              StepNumber: insertionIndex,
             })
 
             .then(() => {
@@ -352,7 +364,11 @@ export class DeploymentpathComponent {
           Environment: environmentId,
           DeploymentPath: deploymentPathId,
         },
-        { ToIndex: toIndex, FromIndex: fromIndex }
+        {
+          ToIndex: toIndex,
+          FromIndex: fromIndex,
+          ExpectedOrder: assignments.map(assignment => assignment.Environment),
+        }
       )
       .then(() => {
         this.loadDeploymentPaths().then(() => {
