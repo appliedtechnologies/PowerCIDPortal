@@ -1,7 +1,7 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ChangeDetectionStrategy, NgZone, ViewChild } from "@angular/core";
 import { DxTreeViewComponent } from "devextreme-angular";
 import { confirm } from "devextreme/ui/dialog";
-import dxTreeView from "devextreme/ui/tree_view";
+import dxTreeView, { dxTreeViewNode } from "devextreme/ui/tree_view";
 import { ExternalDeploymentPath } from "src/app/shared/models/externaldeploymentpath.model";
 import { ExternalDeploymentPathEnvironment } from "src/app/shared/models/externaldeploymentpathenvironment.model";
 import { ExternalEnvironment } from "src/app/shared/models/externalenvironment.model";
@@ -16,6 +16,7 @@ import {
 } from "src/app/shared/services/layout.service";
 
 type ExternalDeploymentPathTreeItem = ExternalDeploymentPath & ExternalDeploymentPathEnvironment;
+type ExternalDeploymentPathTreeNode = dxTreeViewNode<ExternalDeploymentPathTreeItem, number>;
 
 @Component({
   selector: "app-external-deploymentpath",
@@ -382,15 +383,15 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
       : this.treeViewExternalEnvironment.instance;
   }
 
-  private findNode(treeView: dxTreeView, index: number): any {
+  private findNode(treeView: dxTreeView<ExternalDeploymentPathTreeItem, number>, index: number): ExternalDeploymentPathTreeNode | null {
     const nodeElement = treeView.element().querySelectorAll(".dx-treeview-node")[index];
     if (!nodeElement) return null;
     return this.findNodeById(treeView.getNodes(), nodeElement.getAttribute("data-item-id"));
   }
 
-  private findNodeById(nodes: any[], id: string | null): any {
+  private findNodeById(nodes: ExternalDeploymentPathTreeNode[], id: string | null): ExternalDeploymentPathTreeNode | null {
     for (const node of nodes) {
-      if (node.itemData?.Id == id) return node;
+      if (node.itemData?.Id?.toString() === id) return node;
       if (node.children) {
         const found = this.findNodeById(node.children, id);
         if (found) return found;

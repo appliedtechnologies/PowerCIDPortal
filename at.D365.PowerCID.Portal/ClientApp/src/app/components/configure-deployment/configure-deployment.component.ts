@@ -155,6 +155,9 @@ export class ConfigureDeploymentComponent implements OnInit {
                 if (response.manifestStatus === "Draft" && response.settings.length === 0) {
                     this.status = {
                         manifestStatus: response.manifestStatus,
+                        isFallbackManifest: response.isFallbackManifest === true,
+                        manifestSourceSolutionId: response.manifestSourceSolutionId,
+                        manifestSourceSolutionVersion: response.manifestSourceSolutionVersion,
                         configurationStatus: "Unavailable",
                         total: 0,
                         configured: 0,
