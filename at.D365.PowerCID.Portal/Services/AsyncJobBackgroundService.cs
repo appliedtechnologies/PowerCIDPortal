@@ -84,7 +84,7 @@ namespace at.D365.PowerCID.Portal.Services
                     }
                     catch (System.Exception e)
                     {
-                        logger.LogError($"Error: AsyncJobBackgroundService ScheduleJob() Exception: {e}");
+                        logger.LogError(e, "Error: AsyncJobBackgroundService ScheduleJob()");
                     }
 
                 }
@@ -165,6 +165,11 @@ namespace at.D365.PowerCID.Portal.Services
                                                             }
                                                             catch (Exception e)
                                                             {
+                                                                logger.LogError(
+                                                                    e,
+                                                                    "Could not create an import action for export action {ActionId}.",
+                                                                    asyncJob.Action);
+
                                                                 dbContext.Actions.Add(new Data.Models.Action
                                                                 {
                                                                     Name = $"{asyncJob.ActionNavigation.SolutionNavigation.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
@@ -172,7 +177,7 @@ namespace at.D365.PowerCID.Portal.Services
                                                                     Type = 2,
                                                                     Status = 3,
                                                                     Result = 2,
-                                                                    ErrorMessage = e.Message,
+                                                                    ErrorMessage = "Could not start the import after export.",
                                                                     StartTime = DateTime.Now,
                                                                     Solution = asyncJob.ActionNavigation.Solution,
                                                                 });
@@ -183,7 +188,7 @@ namespace at.D365.PowerCID.Portal.Services
                                                 }
                                                 else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
                                                 {
-                                                    await actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
+                                                    await actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"]);
                                                     dbContext.AsyncJobs.Remove(asyncJob);
                                                 }
                                                 logger.LogInformation("Export completed: AsyncJobBackgroundService DoBackgroundWork() ");
@@ -222,7 +227,9 @@ namespace at.D365.PowerCID.Portal.Services
                                                     if ((bool)solutionHistoryEntry["msdyn_result"] == false){
                                                         if((string)solutionHistoryEntry["msdyn_errorcode"] == "80072031")
                                                             continue;
-                                                        await actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
+                                                        await actionService.UpdateFailedAction(
+                                                            asyncJob.ActionNavigation,
+                                                            (string)solutionHistoryEntry["msdyn_exceptionmessage"]);
                                                     }
                                                     else
                                                         await actionService.FinishSuccessfulApplyUpgradeAction(asyncJob.ActionNavigation);
@@ -239,7 +246,11 @@ namespace at.D365.PowerCID.Portal.Services
                                 }
                                 catch (Exception e)
                                 {
-                                    logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() Exception: {e}");
+                                    logger.LogError(
+                                        e,
+                                        "Async job {AsyncJobId} for action {ActionId} failed.",
+                                        asyncJob.Id,
+                                        asyncJob.Action);
 
                                     continue;
                                 }
@@ -247,7 +258,7 @@ namespace at.D365.PowerCID.Portal.Services
                         }
                         catch (Exception e)
                         {
-                            logger.LogError($"Error: AsyncJobBackgroundService DoBackgroundWork() Exception: {e}");
+                            logger.LogError(e, "Error: AsyncJobBackgroundService DoBackgroundWork()");
 
                             continue;
                         }
