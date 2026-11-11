@@ -77,19 +77,46 @@ export class ApplicationService {
     application: Application,
     sortStepNumber: boolean
   ) {
-    const deploymentPaths: DeploymentPath[] = [];
-    for (let i = 0; i < application?.ApplicationDeploymentPaths.length; i++) {
-      const hierarchieNumber =
-        application.ApplicationDeploymentPaths[i].HierarchieNumber;
-      deploymentPaths[hierarchieNumber - 1] = application.DeploymentPaths[i];
+    const deploymentPathsById = new Map<number, DeploymentPath>();
+    for (const deploymentPath of application?.DeploymentPaths ?? []) {
+      if (typeof deploymentPath.Id === "number") {
+        deploymentPathsById.set(deploymentPath.Id, deploymentPath);
+      }
     }
+
+    const deploymentPaths = (application?.ApplicationDeploymentPaths ?? [])
+      .map((assignment) => ({
+        hierarchieNumber: assignment.HierarchieNumber,
+        deploymentPath: deploymentPathsById.get(assignment.DeploymentPath),
+      }))
+      .filter(
+        (assignment): assignment is {
+          hierarchieNumber: number | undefined;
+          deploymentPath: DeploymentPath;
+        } => assignment.deploymentPath !== undefined
+      )
+      .sort((a, b) => {
+        const hierarchyA = Number.isFinite(a.hierarchieNumber)
+          ? a.hierarchieNumber
+          : Number.MAX_SAFE_INTEGER;
+        const hierarchyB = Number.isFinite(b.hierarchieNumber)
+          ? b.hierarchieNumber
+          : Number.MAX_SAFE_INTEGER;
+        return hierarchyA - hierarchyB ||
+          (a.deploymentPath.Id ?? 0) - (b.deploymentPath.Id ?? 0);
+      })
+      .map((assignment) => assignment.deploymentPath);
+
     if (sortStepNumber == true) {
       for (const deploymentPath of deploymentPaths) {
-        deploymentPath.Environments = deploymentPath.Environments.sort((a: Environment, b: Environment) => {
-          const stepA: DeploymentPathEnvironment = deploymentPath.DeploymentPathEnvironments.find(e => e.Environment == a.Id);
-          const stepB: DeploymentPathEnvironment = deploymentPath.DeploymentPathEnvironments.find(e => e.Environment == b.Id);
-          return (stepA.StepNumber > stepB.StepNumber) ? 1 : -1;
-        });
+        if (Array.isArray(deploymentPath.Environments)) {
+          const steps = deploymentPath.DeploymentPathEnvironments ?? [];
+          deploymentPath.Environments.sort((a: Environment, b: Environment) => {
+            const stepA = steps.find((step: DeploymentPathEnvironment) => step.Environment == a.Id)?.StepNumber;
+            const stepB = steps.find((step: DeploymentPathEnvironment) => step.Environment == b.Id)?.StepNumber;
+            return (stepA ?? Number.MAX_SAFE_INTEGER) - (stepB ?? Number.MAX_SAFE_INTEGER);
+          });
+        }
       }
     }
 
