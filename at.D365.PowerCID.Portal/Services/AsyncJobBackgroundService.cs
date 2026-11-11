@@ -210,7 +210,7 @@ namespace at.D365.PowerCID.Portal.Services
                                                 }
                                                 else if (((OptionSetValue)asyncOperationInDataverse["statecode"]).Value == 3 && ((OptionSetValue)asyncOperationInDataverse["statuscode"]).Value == 31) // Completed Failed
                                                 {
-                                                    await actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"]);
+                                                    await actionService.UpdateFailedAction(asyncJob.ActionNavigation, (string)asyncOperationInDataverse["friendlymessage"], asyncJob);
                                                     dbContext.AsyncJobs.Remove(asyncJob);
                                                 }
                                                 logger.LogInformation("Import completed: AsyncJobBackgroundService DoBackgroundWork() ");
