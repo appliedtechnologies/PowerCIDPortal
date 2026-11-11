@@ -1,7 +1,5 @@
 using System;
 using System.Linq;
-using System.ServiceModel;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using at.D365.PowerCID.Portal.Data.Models;
@@ -10,7 +8,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Xrm.Sdk;
 using Action = at.D365.PowerCID.Portal.Data.Models.Action;
 
 namespace at.D365.PowerCID.Portal.Services
@@ -82,7 +79,7 @@ namespace at.D365.PowerCID.Portal.Services
                     }
                     catch (System.Exception e)
                     {
-                        logger.LogError(e, "Error: ActionBackgroundService ScheduleBackgroundJob()");
+                        logger.LogError($"Error: ActionBackgroundService ScheduleBackgroundJob() Exception: {e}");
                     }
                 }
 
@@ -202,56 +199,16 @@ namespace at.D365.PowerCID.Portal.Services
                     }
                     catch (Exception e)
                     {
-                        logger.LogError(
-                            e,
-                            "Action {ActionId} of type {ActionType} failed in ActionBackgroundService. " +
-                            "Dataverse faults: {DataverseFaults}",
-                            queuedAction.Id,
-                            queuedAction.Type,
-                            GetDataverseFaultDetails(e));
-
-                        await actionService.UpdateFailedAction(
-                            queuedAction,
-                            GetActionFailureMessage(queuedAction.Type),
-                            queuedAction.AsyncJobs.FirstOrDefault());
+                        await actionService.UpdateFailedAction(queuedAction, e.Message, queuedAction.AsyncJobs.FirstOrDefault());
                         await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+
+                        logger.LogError(e, $"Error: ActionBackgroundService DoBackgroundWork() Exception: {e}");
 
                         continue;
                     }
                 }
             }
             logger.LogDebug("End: ActionBackgroundService DoBackgroundWork()");
-        }
-
-        private static string GetDataverseFaultDetails(Exception exception)
-        {
-            var details = new StringBuilder();
-            for (var currentException = exception; currentException != null; currentException = currentException.InnerException)
-            {
-                if (currentException is not FaultException<OrganizationServiceFault> faultException)
-                    continue;
-
-                var faultIndex = 0;
-                for (var fault = faultException.Detail; fault != null; fault = fault.InnerFault)
-                {
-                    details.AppendLine(
-                        $"Fault {faultIndex++}: Message: {fault.Message}; ErrorCode: {fault.ErrorCode}; TraceText: {fault.TraceText}");
-                }
-            }
-
-            return details.ToString();
-        }
-
-        private static string GetActionFailureMessage(int actionType)
-        {
-            return actionType switch
-            {
-                1 => "Could not start the export in Dataverse.",
-                2 => "Could not start the import in Dataverse.",
-                3 => "Could not apply the solution upgrade.",
-                4 => "Could not enable cloud flows.",
-                _ => "An unexpected error occurred."
-            };
         }
     }
 }

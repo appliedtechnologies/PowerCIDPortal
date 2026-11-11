@@ -17,11 +17,7 @@ namespace at.D365.PowerCID.Portal.Services
         private readonly SolutionService solutionService;
         private readonly SolutionHistoryService solutionHistoryService;
 
-        public ActionService(
-            ILogger<ActionService> logger,
-            atPowerCIDContext dbContext,
-            SolutionHistoryService solutionHistoryService,
-            SolutionService solutionService)
+        public ActionService(ILogger<ActionService> logger, atPowerCIDContext dbContext, SolutionHistoryService solutionHistoryService, SolutionService solutionService)
         {
             this.logger = logger;
             this.dbContext = dbContext;
@@ -40,38 +36,23 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: ActionService UpdateSuccessfulAction()");
         }
 
-        public async Task UpdateFailedAction(
-            Action action,
-            string friendlyErrormessage,
-            AsyncJob asyncJobForExceptionMessage = null)
+        public async Task UpdateFailedAction(Action action, string friendlyErrormessage, AsyncJob asyncJobForExeptionMessage = null)
         {
-            logger.LogDebug("Begin: ActionService UpdateFailedAction(actionId: {ActionId})", action.Id);
+            logger.LogDebug($"Begin: ActionService UpdateFailedAction(friendlyErrormessage: {friendlyErrormessage})");
 
             action.Status = 3;
             action.Result = 2;
             action.FinishTime = DateTime.Now;
 
             action.ErrorMessage = friendlyErrormessage;
-            if ((action.ErrorMessage == String.Empty || action.ErrorMessage == "An unexpected error occurred.")
-                && asyncJobForExceptionMessage != null)
+            if ((action.ErrorMessage == String.Empty || action.ErrorMessage == "An unexpected error occurred.")&& asyncJobForExeptionMessage != null)
             {
-                try
-                {
-                    var asyncJobExceptionMessage =
-                        await this.solutionHistoryService.GetExceptionMessage(asyncJobForExceptionMessage);
-                    if (!String.IsNullOrEmpty(asyncJobExceptionMessage))
-                        action.ErrorMessage = asyncJobExceptionMessage;
-                }
-                catch (Exception exception)
-                {
-                    logger.LogError(
-                        exception,
-                        "Could not retrieve solution history details for failed action {ActionId}.",
-                        action.Id);
-                }
+                var asyncJobExeptionMessage = await this.solutionHistoryService.GetExceptionMessage(asyncJobForExeptionMessage);
+                if(!String.IsNullOrEmpty(asyncJobExeptionMessage))
+                    action.ErrorMessage = asyncJobExeptionMessage; 
+                    
             }
-
-            logger.LogDebug("End: ActionService UpdateFailedAction(actionId: {ActionId})", action.Id);
+            logger.LogDebug($"End: ActionService UpdateSuccessfulAction(friendlyErrormessage: {friendlyErrormessage})");
         }
 
         public async Task FinishSuccessfulApplyUpgradeAction(Action finishedAction){

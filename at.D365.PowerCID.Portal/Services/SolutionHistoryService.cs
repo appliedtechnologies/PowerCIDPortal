@@ -28,10 +28,7 @@ namespace at.D365.PowerCID.Portal.Services
 
             using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
-                Entity response = await dataverseClient.RetrieveAsync(
-                    "msdyn_solutionhistory",
-                    solutionHistoryId,
-                    new ColumnSet("msdyn_status", "msdyn_endtime", "msdyn_result", "msdyn_errorcode", "msdyn_exceptionmessage"));
+                Entity response = await dataverseClient.RetrieveAsync("msdyn_solutionhistory", solutionHistoryId, new ColumnSet("msdyn_status", "msdyn_endtime", "msdyn_result", "msdyn_exceptionmessage"));
 
                 logger.LogDebug($"End: SolutionHistoryService GetEntryById(solutionHistoryId: {solutionHistoryId.ToString()}, basicUrl: {basicUrl})");
 
@@ -57,42 +54,33 @@ namespace at.D365.PowerCID.Portal.Services
                         return exceptionMessage;
                     }
                 }
-                catch (Exception exception)
+                catch (Exception ex)
                 {
-                    logger.LogWarning(
-                        exception,
-                        "Could not retrieve solution history entry {SolutionHistoryId}; trying the latest entry for the solution.",
-                        asyncJob.JobId.Value);
+                    logger.LogWarning(ex, $"Failed to retrieve solution history entry {asyncJob.JobId.Value} from {asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl}; falling back to latest-by-name query.");
                 }
             }
 
-            using (var dataverseClient = new ServiceClient(
-                new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl),
-                configuration["AzureAd:ClientId"],
-                configuration["AzureAd:ClientSecret"],
-                true))
+            using (var dataverseClient = new ServiceClient(new Uri(asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
                 var query = new QueryExpression("msdyn_solutionhistory")
                 {
                     ColumnSet = new ColumnSet("msdyn_exceptionmessage"),
-                    PageInfo = new PagingInfo
+                    PageInfo = new PagingInfo()
                     {
                         Count = 1,
                         PageNumber = 1
                     }
                 };
-                query.Criteria.AddCondition(
-                    "msdyn_name",
-                    ConditionOperator.Equal,
-                    new[] { asyncJob.ActionNavigation.SolutionNavigation.UniqueName });
-                query.Criteria.AddCondition(
-                    "msdyn_solutionversion",
-                    ConditionOperator.Equal,
-                    new[] { asyncJob.ActionNavigation.SolutionNavigation.Version });
+                query.Criteria.AddCondition("msdyn_name", ConditionOperator.Equal, new[] { asyncJob.ActionNavigation.SolutionNavigation.UniqueName });
+                query.Criteria.AddCondition("msdyn_solutionversion", ConditionOperator.Equal, new[] { asyncJob.ActionNavigation.SolutionNavigation.Version });
+
                 query.AddOrder("msdyn_starttime", OrderType.Descending);
 
                 EntityCollection response = await dataverseClient.RetrieveMultipleAsync(query);
-                return response.Entities.FirstOrDefault()?.GetAttributeValue<string>("msdyn_exceptionmessage");
+
+                logger.LogDebug($"Begin: SolutionHistoryService GetExceptionMessage(asyncJob BasicUrl: {asyncJob.ActionNavigation.TargetEnvironmentNavigation.BasicUrl})");
+
+                return (string)response.Entities.FirstOrDefault()?["msdyn_exceptionmessage"];
             }
         }
 
