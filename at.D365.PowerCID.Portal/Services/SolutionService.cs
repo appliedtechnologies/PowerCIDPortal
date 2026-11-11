@@ -25,6 +25,13 @@ namespace at.D365.PowerCID.Portal.Services
 {
     public class SolutionService
     {
+        public sealed class ExportRenewalNotAllowedException : InvalidOperationException
+        {
+            public ExportRenewalNotAllowedException(string message) : base(message)
+            {
+            }
+        }
+
         private readonly ILogger logger;
         private readonly atPowerCIDContext dbContext;
         private readonly DeploymentSettingsService deploymentSettingsService;
@@ -52,6 +59,7 @@ namespace at.D365.PowerCID.Portal.Services
             }
 
             Solution solution = dbContext.Solutions.First(e => e.Id == key);
+            await this.EnsureExportRenewalAllowed(solution);
 
             Data.Models.Action newAction = new Data.Models.Action
             {
@@ -71,6 +79,29 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: SolutionService AddExportAction(key: {key}, tenantMsIdCurrentUser: {tenantMsIdCurrentUser.ToString()}, msIdCurrentUser: {msIdCurrentUser.ToString()} exportOnly: {exportOnly})");
 
             return newAction;
+        }
+
+        private async Task EnsureExportRenewalAllowed(Solution solution)
+        {
+            bool hasSuccessfulImport = await this.dbContext.Actions.AnyAsync(e =>
+                e.Solution == solution.Id &&
+                e.Type == 2 &&
+                e.Result == 1);
+            if (hasSuccessfulImport)
+            {
+                throw new ExportRenewalNotAllowedException(
+                    "The export cannot be renewed because this solution version has already been imported successfully.");
+            }
+
+            bool hasNewerUpgrade = await this.dbContext.Upgrades.AnyAsync(e =>
+                e.Application == solution.Application &&
+                (e.CreatedOn > solution.CreatedOn ||
+                    (e.CreatedOn == solution.CreatedOn && e.Id > solution.Id)));
+            if (hasNewerUpgrade)
+            {
+                throw new ExportRenewalNotAllowedException(
+                    "The export cannot be renewed because a newer upgrade exists for this application.");
+            }
         }
 
         public async Task<Data.Models.Action> AddImportAction(int key, int targetEnvironmentId, Guid msIdCurrentUser)
@@ -226,26 +257,23 @@ namespace at.D365.PowerCID.Portal.Services
 
             using (var dataverseClient = new ServiceClient(new Uri(basicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
-                try
-                {
-                    ExportSolutionAsyncResponse response = (ExportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(exportSolutionRequest);
-                    AsyncJob asyncJob = new AsyncJob
-                    {
-                        AsyncOperationId = response.AsyncOperationId,
-                        JobId = response.ExportJobId,
-                        IsManaged = isManaged,
-                        Action = action.Id
-                    };
-                    logger.LogDebug($"End: SolutionService StartExportInDataverse(solutionUniqueName: {solutionUniqueName}, isManaged: {isManaged}, basicUrl: {basicUrl}, action Id: {action.Id}, tenantMsIdCurrentUser: {tenantMsIdCurrentUser.ToString()}, environmentId: {environmentId}, targetEnvironment: {targetEnvironment})");
+                logger.LogInformation(
+                    "Executing Dataverse request {RequestName} for action {ActionId} with parameters {RequestParameters}.",
+                    nameof(ExportSolutionAsyncRequest),
+                    action.Id,
+                    $"SolutionName={exportSolutionRequest.SolutionName}; Managed={exportSolutionRequest.Managed}");
 
-                    return asyncJob;
-                }
-                catch (Exception e)
+                ExportSolutionAsyncResponse response = (ExportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(exportSolutionRequest);
+                AsyncJob asyncJob = new AsyncJob
                 {
-                    logger.LogError($"Error: SolutionService StartExportInDataverse() Exception: {e}");
+                    AsyncOperationId = response.AsyncOperationId,
+                    JobId = response.ExportJobId,
+                    IsManaged = isManaged,
+                    Action = action.Id
+                };
+                logger.LogDebug($"End: SolutionService StartExportInDataverse(solutionUniqueName: {solutionUniqueName}, isManaged: {isManaged}, basicUrl: {basicUrl}, action Id: {action.Id}, tenantMsIdCurrentUser: {tenantMsIdCurrentUser.ToString()}, environmentId: {environmentId}, targetEnvironment: {targetEnvironment})");
 
-                    throw new Exception("Could not start Export in Dataverse");
-                }
+                return asyncJob;
             }
         }
 
@@ -271,6 +299,16 @@ namespace at.D365.PowerCID.Portal.Services
 
             using (var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
+                logger.LogInformation(
+                    "Executing Dataverse request {RequestName} for action {ActionId} with parameters {RequestParameters}.",
+                    nameof(ImportSolutionAsyncRequest),
+                    action.Id,
+                    $"CustomizationFileBytes={solutionFileData.Length}; " +
+                    $"OverwriteUnmanagedCustomizations={importSolutionAsyncRequest.OverwriteUnmanagedCustomizations}; " +
+                    $"PublishWorkflows={importSolutionAsyncRequest.PublishWorkflows}; " +
+                    $"HoldingSolution={importSolutionAsyncRequest.HoldingSolution}; " +
+                    $"ComponentParameters={DescribeComponentParameters(solutionComponentParameters)}");
+
                 ImportSolutionAsyncResponse response = (ImportSolutionAsyncResponse)await dataverseClient.ExecuteAsync(importSolutionAsyncRequest);
                 action.DeploymentDetails = deploymentDetails;
 
@@ -308,6 +346,15 @@ namespace at.D365.PowerCID.Portal.Services
 
             using (var dataverseClient = new ServiceClient(new Uri(action.TargetEnvironmentNavigation.BasicUrl), configuration["AzureAd:ClientId"], configuration["AzureAd:ClientSecret"], true))
             {
+                logger.LogInformation(
+                    "Executing Dataverse request {RequestName} for action {ActionId} with parameters {RequestParameters}.",
+                    nameof(StageAndUpgradeAsyncRequest),
+                    action.Id,
+                    $"CustomizationFileBytes={solutionFileData.Length}; " +
+                    $"OverwriteUnmanagedCustomizations={stageAndUpgradeRequest.OverwriteUnmanagedCustomizations}; " +
+                    $"PublishWorkflows={stageAndUpgradeRequest.PublishWorkflows}; " +
+                    $"ComponentParameters={DescribeComponentParameters(solutionComponentParameters)}");
+
                 StageAndUpgradeAsyncResponse response = (StageAndUpgradeAsyncResponse)await dataverseClient.ExecuteAsync(stageAndUpgradeRequest);
                 action.DeploymentDetails = deploymentDetails;
 
@@ -538,12 +585,14 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"Begin: SolutionService GetSolutionComponentsForImport(actionId: {actionId})");
 
             var settings = await deploymentSettingsService.GetSettingsForAction(actionId);
-            var solutionComponentParameters = new EntityCollection();
+            EntityCollection solutionComponentParameters = null;
             var connectionReferenceCount = 0;
             var environmentVariableCount = 0;
 
             foreach (var setting in settings)
             {
+                solutionComponentParameters ??= new EntityCollection();
+
                 if (setting.Kind == DeploymentSettingKind.ConnectionReference)
                 {
                     var connectionReference = new Entity("connectionreference");
@@ -587,5 +636,19 @@ namespace at.D365.PowerCID.Portal.Services
                 $"End: SolutionService GetSolutionComponentsForImport(actionId: {actionId}, settingCount: {settings.Count})");
             return (solutionComponentParameters, deploymentDetails.ToString());
         }
+
+        private static string DescribeComponentParameters(EntityCollection componentParameters)
+        {
+            if (componentParameters == null)
+                return "null";
+
+            return $"{componentParameters.Entities.Count} component(s): " +
+                string.Join(
+                    ", ",
+                    componentParameters.Entities.Select(entity =>
+                        $"{entity.LogicalName} [{string.Join(", ", entity.Attributes.Keys.OrderBy(name => name))}]"));
+        }
+
+
     }
 }

@@ -8,14 +8,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Web;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Net.Http;
 using Newtonsoft.Json.Linq;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.OData;
+using at.D365.PowerCID.Portal.Helpers;
 
 
 namespace at.D365.PowerCID.Portal.Controllers
@@ -34,7 +34,10 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: DeploymentPathEnvironmentsController Get()");
 
-            return base.dbContext.DeploymentPathEnvironments.OrderBy(s => s.StepNumber).Where(e => e.EnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            return base.dbContext.DeploymentPathEnvironments
+                .Where(e => e.EnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)
+                .OrderBy(e => e.StepNumber)
+                .ThenBy(e => e.Environment);
         }
 
         [Authorize(Roles = "atPowerCID.Admin, atPowerCID.Manager")]
@@ -43,18 +46,27 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Delete(keyDeploymentPath: {keyDeploymentPath}, keyEnvironment: {keyEnvironment})");
 
-            if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == keyEnvironment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"DeploymentPathEnvironments:{keyDeploymentPath}"))
+                return Conflict("Another environment order change is in progress. Retry the operation.");
+
+            if (!await CanAccessAssignmentAsync(keyDeploymentPath, keyEnvironment))
                 return Forbid();
 
-            var deploymentPathEnvironmentToDelete = await this.dbContext.DeploymentPathEnvironments.FindAsync(keyDeploymentPath, keyEnvironment);
-
+            var deploymentPathEnvironmentToDelete = await dbContext.DeploymentPathEnvironments.FirstOrDefaultAsync(e =>
+                e.DeploymentPath == keyDeploymentPath && e.Environment == keyEnvironment);
             if (deploymentPathEnvironmentToDelete == null)
                 return NotFound();
 
-            var stepnumber = deploymentPathEnvironmentToDelete.StepNumber;
-            sortWhenDeleted(keyDeploymentPath, keyEnvironment, stepnumber);
-            this.dbContext.Remove(deploymentPathEnvironmentToDelete);
-            await this.dbContext.SaveChangesAsync();
+            var assignments = await GetOrderedAssignmentsAsync(keyDeploymentPath);
+            assignments.Remove(deploymentPathEnvironmentToDelete);
+            Renumber(assignments);
+            if (!HasValidStepSequence(assignments))
+                return Conflict("The environment order could not be normalized.");
+
+            dbContext.Remove(deploymentPathEnvironmentToDelete);
+            await dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             logger.LogDebug($"End: DeploymentPathEnvironmentsController Delete(keyDeploymentPath: {keyDeploymentPath}, keyEnvironment: {keyEnvironment})");
 
@@ -65,26 +77,41 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] DeploymentPathEnvironment deploymentPathEnvironment)
         {
+            if (deploymentPathEnvironment == null)
+                return BadRequest("DeploymentPath and Environment are required.");
+
             logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Post(deploymentPathEnvironment stepnumber: {deploymentPathEnvironment.StepNumber})");
 
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == deploymentPathEnvironment.Environment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(
+                    dbContext,
+                    $"DeploymentPathEnvironments:{deploymentPathEnvironment.DeploymentPath}"))
+                return Conflict("Another environment order change is in progress. Retry the operation.");
+
+            if (!await CanAccessAssignmentAsync(deploymentPathEnvironment.DeploymentPath, deploymentPathEnvironment.Environment))
                 return Forbid();
 
-            var stepnumber = deploymentPathEnvironment.StepNumber;
-            /* var maxStepNumberFind = base.dbContext.DeploymentPathEnvironments.Max(s => s.StepNumber);
-            deploymentPathEnvironment.StepNumber = maxStepNumberFind + 1;
- */
+            if (await dbContext.DeploymentPathEnvironments.AnyAsync(e =>
+                    e.DeploymentPath == deploymentPathEnvironment.DeploymentPath &&
+                    e.Environment == deploymentPathEnvironment.Environment))
+                return BadRequest("No changes");
 
-            sortWhenAdded(deploymentPathEnvironment.DeploymentPath, deploymentPathEnvironment.Environment, deploymentPathEnvironment.StepNumber);
-            base.dbContext.DeploymentPathEnvironments.Add(deploymentPathEnvironment);
+            var assignments = await GetOrderedAssignmentsAsync(deploymentPathEnvironment.DeploymentPath);
+            var toIndex = deploymentPathEnvironment.StepNumber;
+            if (toIndex < 1 || toIndex > assignments.Count + 1)
+                return BadRequest($"StepNumber must be between 1 and {assignments.Count + 1}.");
 
-            base.dbContext.DeploymentPathEnvironments.OrderBy(s => s.StepNumber);
-            await base.dbContext.SaveChangesAsync();
+            assignments.Insert(toIndex - 1, deploymentPathEnvironment);
+            Renumber(assignments);
+            if (!HasValidStepSequence(assignments))
+                return Conflict("The environment order could not be validated.");
+
+            dbContext.DeploymentPathEnvironments.Add(deploymentPathEnvironment);
+            await dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             logger.LogDebug($"End: DeploymentPathEnvironmentsController Post(deploymentPathEnvironment stepnumber: {deploymentPathEnvironment.StepNumber})");
 
@@ -98,85 +125,118 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"Begin: DeploymentPathEnvironmentsController Patch(keyEnvironment: {keyEnvironment}, keyDeploymentPath: {keyDeploymentPath})");
 
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
-            if ((await this.dbContext.Environments.FirstOrDefaultAsync(e => e.Id == keyEnvironment && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+
+            if (!TryReadReorderRequest(parameters, out var fromIndex, out var toIndex, out var expectedOrder))
+                return BadRequest("FromIndex, ToIndex, and ExpectedOrder are required.");
+
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"DeploymentPathEnvironments:{keyDeploymentPath}"))
+                return Conflict("Another environment order change is in progress. Retry the operation.");
+
+            if (!await CanAccessAssignmentAsync(keyDeploymentPath, keyEnvironment))
                 return Forbid();
 
-            var parametersAsJObject = JsonConvert.DeserializeObject<JObject>(parameters.ToString());
-            int fromIndex = (int)parametersAsJObject["FromIndex"];
-            int toIndex = (int)parametersAsJObject["ToIndex"];
+            var assignments = await GetOrderedAssignmentsAsync(keyDeploymentPath);
+            var assignment = assignments.FirstOrDefault(e => e.Environment == keyEnvironment);
+            if (assignment == null)
+                return NotFound();
 
-            if(toIndex > dbContext.DeploymentPathEnvironments.Count(e => e.DeploymentPath == keyDeploymentPath))
-                return BadRequest(new ODataError { Code = "400", Message = "ToIndex is out of range." });
+            if (!assignments.Select(e => e.Environment).SequenceEqual(expectedOrder))
+                return Conflict("The environment order changed. Reload the deployment path and retry the move.");
 
-            sortWhenUpdated(keyDeploymentPath, fromIndex, toIndex);
+            if (fromIndex < 1 || fromIndex > assignments.Count)
+                return BadRequest($"FromIndex must be between 1 and {assignments.Count}.");
+            if (toIndex < 1 || toIndex > assignments.Count)
+                return BadRequest($"ToIndex must be between 1 and {assignments.Count}.");
 
-            //ApplicationDeploymentPath applicationDeploymentPathFromIndex = dbContext.ApplicationDeploymentPaths.FirstOrDefault(x => x.Application == keyApplication && x.DeploymentPath == keyDeploymentPath);
-            //applicationDeploymentPathFromIndex.HierarchieNumber = toIndex;
+            var currentIndex = assignments.IndexOf(assignment) + 1;
+            if (fromIndex != currentIndex)
+                return Conflict("The environment order changed. Reload the deployment path and retry the move.");
 
-            DeploymentPathEnvironment deploymentPathEnvironmenToUpdate = dbContext.DeploymentPathEnvironments.FirstOrDefault(x => x.Environment == keyEnvironment && x.DeploymentPath == keyDeploymentPath);
-            deploymentPathEnvironmenToUpdate.StepNumber = toIndex;
+            assignments.RemoveAt(currentIndex - 1);
+            assignments.Insert(toIndex - 1, assignment);
+            Renumber(assignments);
+            if (!HasValidStepSequence(assignments))
+                return Conflict("The environment order could not be validated.");
 
-            await base.dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             logger.LogDebug($"End: DeploymentPathEnvironmentsController Patch(keyEnvironment: {keyEnvironment}, keyDeploymentPath: {keyDeploymentPath})");
 
-            return Updated(deploymentPathEnvironmenToUpdate);
+            return Updated(assignment);
         }
 
-        private void sortWhenUpdated(int deploymentPathId, int fromIndex, int toIndex)
+        private async Task<bool> CanAccessAssignmentAsync(int deploymentPathId, int environmentId)
         {
-            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, fromIndex: {fromIndex}, toIndex:{toIndex})");
-
-            if (fromIndex < toIndex)
-            {
-                var DeploymentPathEnvironmentsInBetween = dbContext.DeploymentPathEnvironments.Where(x => x.DeploymentPath == deploymentPathId && x.StepNumber > fromIndex && x.StepNumber <= toIndex);
-
-                foreach (var depolymentPathEnvironment in DeploymentPathEnvironmentsInBetween)
-                {
-                    depolymentPathEnvironment.StepNumber = depolymentPathEnvironment.StepNumber - 1;
-                }
-                logger.LogDebug($"End: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, fromIndex: {fromIndex}, toIndex:{toIndex})");
-            }
-            else
-            {
-                var DeploymentPathEnvironmentsInBetween = dbContext.DeploymentPathEnvironments.Where(x => x.DeploymentPath == deploymentPathId && x.StepNumber < fromIndex && x.StepNumber >= toIndex);
-
-                foreach (var depolymentPathEnvironment in DeploymentPathEnvironmentsInBetween)
-                {
-                    depolymentPathEnvironment.StepNumber = depolymentPathEnvironment.StepNumber + 1;
-                }
-                logger.LogDebug($"End: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, fromIndex: {fromIndex}, toIndex:{toIndex})");
-            }
+            return await dbContext.DeploymentPaths.AnyAsync(path =>
+                    path.Id == deploymentPathId &&
+                    path.TenantNavigation.MsId == msIdTenantCurrentUser) &&
+                await dbContext.Environments.AnyAsync(environment =>
+                    environment.Id == environmentId &&
+                    environment.TenantNavigation.MsId == msIdTenantCurrentUser);
         }
 
-
-        private void sortWhenAdded(int deploymentPathId, int enviromentId, int Stepnumber)
+        private async Task<List<DeploymentPathEnvironment>> GetOrderedAssignmentsAsync(int deploymentPathId)
         {
-            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, enviromentId: {enviromentId}, Stepnumber:{Stepnumber})");
-
-            var deploymentPathEnvironmentsWithHigherNumber = dbContext.DeploymentPathEnvironments.Where(e => e.StepNumber >= Stepnumber && e.DeploymentPath == deploymentPathId);
-            foreach (var deploymentPathEnvironment in deploymentPathEnvironmentsWithHigherNumber)
-            {
-                deploymentPathEnvironment.StepNumber = deploymentPathEnvironment.StepNumber + 1;
-
-            }
-            logger.LogDebug($"End: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, enviromentId: {enviromentId}, Stepnumber:{Stepnumber})");
+            return await dbContext.DeploymentPathEnvironments
+                .Where(e => e.DeploymentPath == deploymentPathId)
+                .OrderBy(e => e.StepNumber)
+                .ThenBy(e => e.Environment)
+                .ToListAsync();
         }
 
-        private void sortWhenDeleted(int deploymentPathId, int enviromentId, int Stepnumber)
+        private static void Renumber(IList<DeploymentPathEnvironment> assignments)
         {
-            logger.LogDebug($"Begin: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, enviromentId: {enviromentId}, Stepnumber:{Stepnumber})");
+            for (var index = 0; index < assignments.Count; index++)
+                assignments[index].StepNumber = index + 1;
+        }
 
-            var deploymentPathEnvironmentsWithHigherNumber = dbContext.DeploymentPathEnvironments.Where(e => e.StepNumber >= Stepnumber && e.DeploymentPath == deploymentPathId);
-            foreach (var deploymentPathEnvironment in deploymentPathEnvironmentsWithHigherNumber)
+        private static bool HasValidStepSequence(IList<DeploymentPathEnvironment> assignments)
+        {
+            return assignments.Select((assignment, index) => assignment.StepNumber == index + 1).All(isValid => isValid);
+        }
+
+        private static bool TryReadReorderRequest(
+            object parameters,
+            out int fromIndex,
+            out int toIndex,
+            out int[] expectedOrder)
+        {
+            fromIndex = 0;
+            toIndex = 0;
+            expectedOrder = Array.Empty<int>();
+            if (parameters == null)
+                return false;
+
+            JObject request;
+            try
             {
-                deploymentPathEnvironment.StepNumber = deploymentPathEnvironment.StepNumber - 1;
-
+                request = parameters as JObject ?? JObject.Parse(parameters.ToString());
             }
-            logger.LogDebug($"End: DeploymentPathEnvironmentsController sortWhenUpdated(deploymentPathId: {deploymentPathId}, enviromentId: {enviromentId}, Stepnumber:{Stepnumber})");
+            catch (JsonException)
+            {
+                return false;
+            }
+
+            if (request["FromIndex"]?.Type != JTokenType.Integer ||
+                request["ToIndex"]?.Type != JTokenType.Integer ||
+                !int.TryParse(request["FromIndex"].ToString(), out fromIndex) ||
+                !int.TryParse(request["ToIndex"].ToString(), out toIndex) ||
+                request["ExpectedOrder"] is not JArray orderTokens)
+                return false;
+
+            var parsedOrder = new List<int>(orderTokens.Count);
+            foreach (var token in orderTokens)
+            {
+                if (token.Type != JTokenType.Integer || !int.TryParse(token.ToString(), out var id))
+                    return false;
+                parsedOrder.Add(id);
+            }
+
+            expectedOrder = parsedOrder.ToArray();
+            return true;
         }
     }
 }
