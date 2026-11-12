@@ -12,8 +12,8 @@ export function isNewerUpgrade(upgrade: Upgrade, solution: Solution): boolean {
     return false;
   }
 
-  const upgradeCreatedOn = Date.parse(upgrade.CreatedOn);
-  const solutionCreatedOn = Date.parse(solution.CreatedOn);
+  const upgradeCreatedOn = getDateTimeMilliseconds(upgrade.CreatedOn);
+  const solutionCreatedOn = getDateTimeMilliseconds(solution.CreatedOn);
   if (Number.isNaN(upgradeCreatedOn) || Number.isNaN(solutionCreatedOn)) {
     return false;
   }
@@ -22,16 +22,9 @@ export function isNewerUpgrade(upgrade: Upgrade, solution: Solution): boolean {
     return upgradeCreatedOn > solutionCreatedOn;
   }
 
-  const upgradeSubMillisecondTicks = getSubMillisecondTicks(upgrade.CreatedOn);
-  const solutionSubMillisecondTicks = getSubMillisecondTicks(solution.CreatedOn);
-  if (upgradeSubMillisecondTicks !== solutionSubMillisecondTicks) {
-    return upgradeSubMillisecondTicks > solutionSubMillisecondTicks;
-  }
-
   return upgrade.Id > solution.Id;
 }
 
-function getSubMillisecondTicks(value: string): number {
-  const fractionalSeconds = value.match(/T\d{2}:\d{2}:\d{2}\.(\d+)/)?.[1] ?? "";
-  return Number(fractionalSeconds.padEnd(7, "0").slice(3, 7));
+function getDateTimeMilliseconds(value: string | Date): number {
+  return value instanceof Date ? value.getTime() : Date.parse(value);
 }
