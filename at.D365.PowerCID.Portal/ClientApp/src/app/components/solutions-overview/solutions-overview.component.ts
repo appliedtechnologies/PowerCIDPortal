@@ -1160,6 +1160,10 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   }
 
   private onClickRefreshSolutionsGrid(): void {
+    if (!this.dataGrid?.instance) {
+      return;
+    }
+
     if (this.selectedApplication?.Id != null) {
       void this.loadLatestUpgrade(this.selectedApplication.Id);
     }

@@ -56,6 +56,7 @@ export class ODataService {
         Upgrades: {
           key: "Id",
           keyType: "Int32",
+          processDatesAsUtc: false,
         },
         Users: {
           key: "Id",
@@ -67,6 +68,7 @@ export class ODataService {
         Solutions: {
           key: "Id",
           keyType: "Int32",
+          processDatesAsUtc: false,
         },
         DeploymentPaths: {
           key: "Id",
