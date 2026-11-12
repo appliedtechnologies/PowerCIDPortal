@@ -13,6 +13,7 @@ import { Environment } from "src/app/shared/models/environment.model";
 import { EnvironmentService } from "src/app/shared/services/environment.service";
 import { Action } from "src/app/shared/models/action.model";
 import { Solution } from "src/app/shared/models/solution.model";
+import { Upgrade } from "src/app/shared/models/upgrade.model";
 import dxButton from "devextreme/ui/button";
 import { ActionService } from "src/app/shared/services/action.service";
 import {
@@ -32,6 +33,8 @@ import { ExternalEnvironment } from "src/app/shared/models/externalenvironment.m
 import { ExternalDeploymentPathService } from "src/app/shared/services/externaldeploymentpath.service";
 import { TenantService } from "src/app/shared/services/tenant.service";
 import { SolutionDeploymentSettingsService } from "src/app/shared/services/solution-deployment-settings.service";
+import { UpgradeService } from "src/app/shared/services/upgrade.service";
+import { isNewerUpgrade } from "./solution-version.helper";
 
 type SolutionRowData = Solution & {
   ApplyManually?: unknown;
@@ -115,6 +118,9 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   private externalDeploymentPaths: ExternalDeploymentPath[] = [];
   private externalDeliveryDataLoaded = false;
   private restoringExternalSelections = false;
+  private latestUpgrade: Upgrade | null = null;
+  private latestUpgradeLoadedForApplicationId: number | null = null;
+  private latestUpgradeLoadRequestId = 0;
 
   private refreshAfterPopupClose = false;
 
@@ -131,6 +137,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     private externalDeploymentPathService: ExternalDeploymentPathService,
     private tenantService: TenantService,
     private deploymentSettingsService: SolutionDeploymentSettingsService,
+    private upgradeService: UpgradeService,
     private changeDetectorRef: ChangeDetectorRef
   ) {
     this.selectionToolbarItems = this.createSelectionToolbarItems();
@@ -265,6 +272,9 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       return;
     }
     this.selectedApplication = this.externalApplications.find((a) => a.Id === applicationId);
+    if (applicationId !== undefined && applicationId !== null) {
+      void this.loadLatestUpgrade(applicationId);
+    }
     if (applicationId === undefined || applicationId === null) {
       localStorage.removeItem(externalApplicationStorageKey);
     } else {
@@ -429,7 +439,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           stylingMode: "contained",
           type: "success",
           hint: "Refresh the table.",
-          onClick: () => this.dataGrid?.instance.refresh(),
+          onClick: this.onClickRefreshSolutionsGrid.bind(this),
         },
       },
     ];
@@ -679,6 +689,9 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     void e;
     this.isSolutionDetailPopupVisible = false;
     this.resetSolutionDetailPopup();
+    if (this.selectedApplication?.Id != null) {
+      void this.loadLatestUpgrade(this.selectedApplication.Id);
+    }
     this.dataGrid.instance.refresh();
   }
 
@@ -746,6 +759,18 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
 
   public hasSuccessfulImport(solution: Solution): boolean {
     return solution.Actions?.some((action) => action.Type === 2 && action.Result === 1) ?? false;
+  }
+
+  public canRenewExport(solution: Solution): boolean {
+    if (this.hasSuccessfulImport(solution)) {
+      return false;
+    }
+
+    if (solution.Application == null || this.latestUpgradeLoadedForApplicationId !== solution.Application) {
+      return false;
+    }
+
+    return !this.latestUpgrade || !isNewerUpgrade(this.latestUpgrade, solution);
   }
 
   public getLastExternalAction(cellInfo): Action {
@@ -1135,7 +1160,44 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   }
 
   private onClickRefreshSolutionsGrid(): void {
+    if (this.selectedApplication?.Id != null) {
+      void this.loadLatestUpgrade(this.selectedApplication.Id);
+    }
     this.dataGrid.instance.refresh();
+  }
+
+  private async loadLatestUpgrade(applicationId: number): Promise<void> {
+    const requestId = ++this.latestUpgradeLoadRequestId;
+    this.latestUpgradeLoadedForApplicationId = null;
+    this.latestUpgrade = null;
+
+    try {
+      const upgrades = await this.upgradeService.getStore().load({
+        filter: ["Application", "=", applicationId],
+        select: ["Id", "Application", "CreatedOn"],
+        sort: [
+          { selector: "CreatedOn", desc: true },
+          { selector: "Id", desc: true },
+        ],
+        take: 1,
+      }) as Upgrade[];
+
+      if (requestId !== this.latestUpgradeLoadRequestId) {
+        return;
+      }
+
+      this.latestUpgrade = upgrades[0] ?? null;
+      this.latestUpgradeLoadedForApplicationId = applicationId;
+    } catch {
+      if (requestId !== this.latestUpgradeLoadRequestId) {
+        return;
+      }
+
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "Could not check for newer upgrades. Export renewal remains hidden until the upgrade list is refreshed.",
+      });
+    }
   }
 
   private setSelectedApplicationId(id: number) {
@@ -1147,6 +1209,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
 
       this.applicationService.getApplicationById(id).then((application) => {
         this.selectedApplication = application;
+        void this.loadLatestUpgrade(id);
         this.selectedApplicationGroup = this.selectedApplication.Group ?? null;
         this.applicationSelectBoxInstance?.option(
           "dataSource",
