@@ -205,7 +205,7 @@
           role="button"
         ></i>
         <i
-          *ngIf="cellInfo.data.WasDeleted !== true && !hasSuccessfulImport(cellInfo.data)"
+          *ngIf="cellInfo.data.WasDeleted !== true && canRenewExport(cellInfo.data)"
           class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
           (keydown.enter)="onClickDeploySolution(cellInfo, true)"
@@ -261,7 +261,7 @@
           role="button"
         ></i>
         <i
-          *ngIf="cellInfo.data.WasDeleted !== true && !hasSuccessfulImport(cellInfo.data)"
+          *ngIf="cellInfo.data.WasDeleted !== true && canRenewExport(cellInfo.data)"
           class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
           (keydown.enter)="onClickDeploySolution(cellInfo, true)"
