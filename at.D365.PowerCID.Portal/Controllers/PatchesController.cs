@@ -89,7 +89,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Patches.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { nameof(Solution.Name), nameof(Solution.Description) };
+            string[] propertyNamesAllowedToChange = { nameof(Solution.Name), nameof(Solution.Description), nameof(Solution.DeploymentNotes) };
             if (patch.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() == 0)
             {
                 if (!ModelState.IsValid)

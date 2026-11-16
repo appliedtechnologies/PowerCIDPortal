@@ -5,7 +5,7 @@ import { Column } from "devextreme/ui/data_grid";
 import dxSelectBox from "devextreme/ui/select_box";
 import { ApplicationService } from "src/app/shared/services/application.service";
 import { PatchService } from "src/app/shared/services/patch.service";
-import { SolutionService } from "src/app/shared/services/solution.service";
+import { DeploymentNote, SolutionService } from "src/app/shared/services/solution.service";
 import { UserService } from "src/app/shared/services/user.service";
 import { Patch } from "src/app/shared/models/patch.model";
 import { Application } from "src/app/shared/models/application.model";
@@ -616,7 +616,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           confirmResult.then((result) => {
             this.layoutService.change(LayoutParameter.ShowLoading, true);
             if (result == true) {
-              this.startImport(cellInfo.data.Id, targetEnvironmentId, deploymentPathId)
+              this.startImport(cellInfo.data, targetEnvironmentId, deploymentPathId)
                 .then(() => {
                   this.layoutService.change(LayoutParameter.ShowLoading, false);
                 });
@@ -627,7 +627,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           });
         }
         else {
-          this.startImport(cellInfo.data.Id, targetEnvironmentId, deploymentPathId)
+          this.startImport(cellInfo.data, targetEnvironmentId, deploymentPathId)
             .then(() => {
               this.layoutService.change(LayoutParameter.ShowLoading, false);
             });
@@ -832,12 +832,38 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       .finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
   }
 
-  private startExternalDeployment(solution: Solution, externalEnvironmentId: number, pathId: number): Promise<void> {
+  private startExternalDeployment(
+    solution: Solution,
+    externalEnvironmentId: number,
+    pathId: number,
+    closeSelectionPopup = false
+  ): Promise<void> {
+    const targetEnvironmentId = this.externalEnvironments.find(
+      (environment) => environment.Id === externalEnvironmentId
+    )?.Environment;
+    if (targetEnvironmentId == null) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The external environment could not be found.",
+      });
+      return Promise.resolve();
+    }
+
     this.layoutService.change(LayoutParameter.ShowLoading, true);
-    return this.solutionService.externalImport(solution.Id, externalEnvironmentId, pathId)
-      .then((action) => {
-        this.layoutService.notify({ type: NotificationType.Success, message: "The deployment has been started." });
-        this.startAutoRefresh(action);
+    return this.confirmDeploymentNotes(solution, targetEnvironmentId)
+      .then((shouldContinue) => {
+        if (!shouldContinue) {
+          return;
+        }
+        return this.solutionService.externalImport(solution.Id, externalEnvironmentId, pathId)
+          .then((action) => {
+            if (closeSelectionPopup) {
+              this.isExternalDeployPopupVisible = false;
+              this.dataSourceSolutions?.reload();
+            }
+            this.layoutService.notify({ type: NotificationType.Success, message: "The deployment has been started." });
+            this.startAutoRefresh(action);
+          });
       })
       .catch((error) => {
         this.layoutService.notify({
@@ -859,22 +885,12 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       return;
     }
 
-    this.layoutService.change(LayoutParameter.ShowLoading, true);
-    this.solutionService.externalImport(
-      this.selectedSolutionForExternalDeploy.Id,
+    this.startExternalDeployment(
+      this.selectedSolutionForExternalDeploy,
       this.selectedExternalStep.ExternalEnvironment,
-      this.selectedExternalDeploymentPath.Id
-    ).then((action) => {
-      this.isExternalDeployPopupVisible = false;
-      this.startAutoRefresh(action);
-      this.layoutService.notify({ type: NotificationType.Success, message: "The deployment has been started." });
-      this.dataSourceSolutions?.reload();
-    }).catch((error) => {
-      this.layoutService.notify({
-        type: NotificationType.Error,
-        message: this.getDeploymentErrorMessage(error),
-      });
-    }).finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
+      this.selectedExternalDeploymentPath.Id,
+      true
+    );
   }
 
   public onExternalDeploymentPathChanged(path: ExternalDeploymentPath): void {
@@ -965,15 +981,21 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     this.refreshAfterPopupClose = true;
   }
 
-  private startImport(solutionId: number, targetEnvironmentId, deploymentPathId): Promise<void> {
-    return this.solutionService
-      .import(solutionId, targetEnvironmentId, deploymentPathId)
-      .then((action) => {
-        this.layoutService.notify({
-          type: NotificationType.Success,
-          message: "Import started...",
-        });
-        this.startAutoRefresh(action);
+  private startImport(solution: Solution, targetEnvironmentId: number, deploymentPathId: number): Promise<void> {
+    return this.confirmDeploymentNotes(solution, targetEnvironmentId)
+      .then((shouldContinue) => {
+        if (!shouldContinue) {
+          return;
+        }
+        return this.solutionService
+          .import(solution.Id, targetEnvironmentId, deploymentPathId)
+          .then((action) => {
+            this.layoutService.notify({
+              type: NotificationType.Success,
+              message: "Import started...",
+            });
+            this.startAutoRefresh(action);
+          });
       })
       .catch((error) => {
         this.layoutService.notify({
@@ -984,6 +1006,52 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           ),
         });
       });
+  }
+
+  private async confirmDeploymentNotes(solution: Solution, targetEnvironmentId: number): Promise<boolean> {
+    let notes: DeploymentNote[];
+    try {
+      notes = await this.solutionService.getDeploymentNotes(solution.Id, targetEnvironmentId);
+    } catch (error) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: this.getDeploymentErrorMessage(
+          error,
+          "Deployment notes could not be loaded. The deployment was not started."
+        ),
+      });
+      return false;
+    }
+
+    if (notes.length === 0) {
+      return true;
+    }
+
+    this.layoutService.change(LayoutParameter.ShowLoading, false);
+    const shouldContinue = await confirm(
+      this.formatDeploymentNotes(solution, notes),
+      "Deployment Notes"
+    );
+    if (shouldContinue) {
+      this.layoutService.change(LayoutParameter.ShowLoading, true);
+    }
+    return shouldContinue;
+  }
+
+  private formatDeploymentNotes(solution: Solution, notes: DeploymentNote[]): string {
+    const escapeHtml = (value: string): string =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    const noteSections = notes.map((note) =>
+      `<strong>${escapeHtml(note.solutionName)} ${escapeHtml(note.solutionVersion)}</strong><br>` +
+      escapeHtml(note.deploymentNotes).replace(/\r\n|\r|\n/g, "<br>")
+    ).join("<br><br>");
+
+    return `Please review the deployment notes for ${escapeHtml(solution.Name ?? "")} ${escapeHtml(solution.Version ?? "")} and all versions not yet successfully imported to this environment:<br><br>${noteSections}<br><br>Continue with the deployment?`;
   }
 
   private startApplyUpgrade(solutionId: number, targetEnvironmentId): Promise<void> {

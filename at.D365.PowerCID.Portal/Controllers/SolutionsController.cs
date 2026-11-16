@@ -44,6 +44,63 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [HttpGet]
+        [Route("odata/Solutions({key})/DeploymentNotes")]
+        public async Task<IActionResult> GetDeploymentNotes(
+            [FromRoute] int key,
+            [FromQuery] int environmentId)
+        {
+            var solution = await GetTenantSolution(key);
+            if (solution == null)
+                return Forbid();
+            if (!CanAccessConfiguration(solution.Application, environmentId))
+                return Forbid();
+
+            var lastSuccessfulImport = await this.dbContext.Actions
+                .Where(action =>
+                    action.SolutionNavigation.Application == solution.Application &&
+                    action.TargetEnvironment == environmentId &&
+                    action.Type == 2 &&
+                    action.Result == 1)
+                .OrderByDescending(action => action.CreatedOn)
+                .ThenByDescending(action => action.Id)
+                .Select(action => new
+                {
+                    action.SolutionNavigation.CreatedOn,
+                    action.SolutionNavigation.Id
+                })
+                .FirstOrDefaultAsync();
+
+            var versions = this.dbContext.Solutions
+                .Where(version =>
+                    version.Application == solution.Application &&
+                    (version.Id == solution.Id ||
+                        version.CreatedOn < solution.CreatedOn ||
+                        (version.CreatedOn == solution.CreatedOn && version.Id < solution.Id)));
+
+            if (lastSuccessfulImport != null)
+            {
+                versions = versions.Where(version =>
+                    version.Id == solution.Id ||
+                    version.CreatedOn > lastSuccessfulImport.CreatedOn ||
+                    (version.CreatedOn == lastSuccessfulImport.CreatedOn && version.Id > lastSuccessfulImport.Id));
+            }
+
+            var notes = await versions
+                .Where(version => version.DeploymentNotes != null && version.DeploymentNotes != "")
+                .OrderBy(version => version.CreatedOn)
+                .ThenBy(version => version.Id)
+                .Select(version => new
+                {
+                    solutionName = version.Name,
+                    solutionVersion = version.Version,
+                    deploymentNotes = version.DeploymentNotes
+                })
+                .ToListAsync();
+
+            return Ok(notes);
+        }
+
+        [HttpGet]
         [Route("odata/Solutions({key})/DeploymentSettings")]
         public async Task<IActionResult> GetDeploymentSettings(
             [FromRoute] int key,
