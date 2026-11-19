@@ -25,7 +25,7 @@
 
 ::ng-deep .full-width-checkbox-row {
   display: grid;
-  grid-template-columns: 300px max-content;
+  grid-template-columns: minmax(0, 300px) max-content;
   align-items: center;
   min-height: 28px;
   gap: 12px;
