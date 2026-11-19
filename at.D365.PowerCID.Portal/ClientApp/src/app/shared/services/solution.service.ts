@@ -57,7 +57,7 @@ export class SolutionService {
     return new Promise<DeploymentNote[]>((resolve, reject) => {
       this.http
         .get<DeploymentNote[]>(
-          `${AppConfig.settings.api.url}/Solutions(${solutionId})/DeploymentNotes?environmentId=${environmentId}`
+          `${AppConfig.settings.api.url}/Solutions(${solutionId})/PendingDeploymentNotes?environmentId=${environmentId}`
         )
         .subscribe({
           next: (notes) => resolve(notes),

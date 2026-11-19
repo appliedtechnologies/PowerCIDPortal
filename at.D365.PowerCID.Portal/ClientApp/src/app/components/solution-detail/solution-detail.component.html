@@ -54,6 +54,7 @@
             <dx-check-box
               [(value)]="this.applyManually"
               [disabled]="!this.isAdd"
+              [elementAttr]="{ 'aria-label': 'Apply manually' }"
             ></dx-check-box>
           </div>
         </div>
@@ -69,6 +70,7 @@
           <dx-check-box
             [(value)]="this.solution.OverwriteUnmanagedCustomizations"
             [disabled]="!this.isAdd"
+            [elementAttr]="{ 'aria-label': 'Overwrite unmanaged customizations' }"
           ></dx-check-box>
         </div>
       </div>
@@ -80,6 +82,7 @@
           <dx-check-box
             [(value)]="this.solution.EnableWorkflows"
             [disabled]="!this.isAdd"
+            [elementAttr]="{ 'aria-label': 'Enable workflows' }"
           ></dx-check-box>
         </div>
       </div>
@@ -121,6 +124,7 @@
             <dx-check-box
               [value]="this.isReleasedExternally"
               (onValueChanged)="onValueChangedIsReleasedExternally($event)"
+              [elementAttr]="{ 'aria-label': 'Released for external deployment' }"
             ></dx-check-box>
           </div>
         </div>

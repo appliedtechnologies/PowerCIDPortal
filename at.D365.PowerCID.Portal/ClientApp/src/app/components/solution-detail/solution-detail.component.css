@@ -32,6 +32,8 @@
 }
 
 ::ng-deep .full-width-checkbox-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: bold !important;
 }
 

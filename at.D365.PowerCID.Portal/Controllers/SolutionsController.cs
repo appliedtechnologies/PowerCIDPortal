@@ -44,7 +44,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [HttpGet]
-        [Route("odata/Solutions({key})/DeploymentNotes")]
+        [Route("odata/Solutions({key})/PendingDeploymentNotes")]
         public async Task<IActionResult> GetDeploymentNotes(
             [FromRoute] int key,
             [FromQuery] int environmentId)
