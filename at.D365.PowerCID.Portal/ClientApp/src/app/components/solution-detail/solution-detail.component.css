@@ -1,8 +1,53 @@
 ::ng-deep .second-group {
-  margin-top: 30px;
+  margin-top: 8px;
+  padding-top: 0 !important;
+}
+
+::ng-deep .deployment-release-group {
+  margin-top: 8px;
+}
+
+::ng-deep .deployment-release-group .dx-form-group-content {
+  padding-bottom: 0 !important;
+}
+
+::ng-deep .deployment-notes-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+::ng-deep .deployment-notes-label .dx-icon-info {
+  cursor: help;
+}
+
+::ng-deep .full-width-checkbox-row {
+  display: grid;
+  grid-template-columns: 300px max-content;
+  align-items: center;
+  min-height: 28px;
+  gap: 12px;
+}
+
+::ng-deep .full-width-checkbox-row > span {
+  font-weight: bold !important;
+}
+
+::ng-deep .compact-checkbox-item {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+::ng-deep .checkbox-options-start {
+  padding-top: 6px !important;
+}
+
+::ng-deep .external-release-checkbox {
+  padding-top: 8px !important;
 }
 
 ::ng-deep .dx-field-item-label-content{  
-  max-width: 150px;  
   white-space: normal;  
 } 

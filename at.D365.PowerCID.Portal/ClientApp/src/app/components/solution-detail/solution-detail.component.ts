@@ -45,6 +45,7 @@ export class SolutionDetailComponent implements OnChanges {
 
   public isUpgrade: boolean;
   public isAdd: boolean;
+  public applyManually = false;
   public buttonOptionsSaveAdd: Record<string, unknown>;
   public isReleasedExternally: boolean;
 
@@ -85,6 +86,7 @@ export class SolutionDetailComponent implements OnChanges {
       .setExternalRelease(this.solution.Id, e.value)
       .then(() => {
         this.solution.IsReleasedExternally = e.value;
+        this.isReleasedExternally = e.value;
         this.layoutService.notify({
           type: NotificationType.Success,
           message: e.value
@@ -124,7 +126,11 @@ export class SolutionDetailComponent implements OnChanges {
       this.solution.Description = this.textAreaDescription.value;
       this.solution.DeploymentNotes = this.textAreaDeploymentNotes.value || null;
       if (this.isAddUpgrade) {
-        await this.upgradeService.add(this.solution);
+        const upgrade: Upgrade = {
+          ...this.solution,
+          ApplyManually: this.applyManually,
+        };
+        await this.upgradeService.add(upgrade);
         this.layoutService.notify({
           type: NotificationType.Success,
           message: "Upgrade was successfully created.",
@@ -224,6 +230,9 @@ export class SolutionDetailComponent implements OnChanges {
     if (this.solution != undefined) {
       this.isUpgrade = "ApplyManually" in this.solution;
       this.isAdd = false;
+      this.applyManually = "ApplyManually" in this.solution
+        ? this.solution.ApplyManually === true
+        : false;
       if(this.solution.OverwriteUnmanagedCustomizations === null)
         this.solution.OverwriteUnmanagedCustomizations = false;
       if(this.solution.EnableWorkflows === null)
@@ -231,6 +240,7 @@ export class SolutionDetailComponent implements OnChanges {
       this.isReleasedExternally = this.solution.IsReleasedExternally === true;
     } else {
       this.isAdd = true;
+      this.applyManually = false;
       this.solution = {
         OverwriteUnmanagedCustomizations: false,
         EnableWorkflows: true,
