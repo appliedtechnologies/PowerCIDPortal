@@ -7,7 +7,7 @@ import {
   ViewChild,
   ChangeDetectionStrategy
 } from "@angular/core";
-import { DxTextBoxComponent } from "devextreme-angular";
+import { DxTextAreaComponent, DxTextBoxComponent } from "devextreme-angular";
 import { Application } from "src/app/shared/models/application.model";
 import { Patch } from "src/app/shared/models/patch.model";
 import { Upgrade } from "src/app/shared/models/upgrade.model";
@@ -41,9 +41,11 @@ export class SolutionDetailComponent implements OnChanges {
 
   @ViewChild("textBoxName") public textBoxName: DxTextBoxComponent;
   @ViewChild("textAreaDescription") public textAreaDescription: DxTextBoxComponent;
+  @ViewChild("textAreaDeploymentNotes") public textAreaDeploymentNotes: DxTextAreaComponent;
 
   public isUpgrade: boolean;
   public isAdd: boolean;
+  public applyManually = false;
   public buttonOptionsSaveAdd: Record<string, unknown>;
   public isReleasedExternally: boolean;
 
@@ -84,6 +86,7 @@ export class SolutionDetailComponent implements OnChanges {
       .setExternalRelease(this.solution.Id, e.value)
       .then(() => {
         this.solution.IsReleasedExternally = e.value;
+        this.isReleasedExternally = e.value;
         this.layoutService.notify({
           type: NotificationType.Success,
           message: e.value
@@ -110,52 +113,50 @@ export class SolutionDetailComponent implements OnChanges {
   }
 
 
-  public onClickSaveSolution(e) {
+  public async onClickSaveSolution(e): Promise<void> {
     const validation = e.validationGroup.validate();
-    if (validation.isValid) {
-      this.layoutService.change(LayoutParameter.ShowLoading, true);
+    if (!validation.isValid) {
+      return;
+    }
+
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    try {
       this.solution.Application = this.application.Id;
       this.solution.Name = this.textBoxName.value;
       this.solution.Description = this.textAreaDescription.value;
+      this.solution.DeploymentNotes = this.textAreaDeploymentNotes.value || null;
       if (this.isAddUpgrade) {
-        this.upgradeService
-          .add(this.solution)
-          .then(() => {
-            this.layoutService.notify({
-              type: NotificationType.Success,
-              message: "Upgrade was successfully created.",
-            });
-          })
-          .catch((error) => {
-            this.layoutService.notify({
-              type: NotificationType.Error,
-              message: error.message ? `An error occurred while creating the Upgrade: ${error.message}` : "An error occurred while creating the Upgrade."
-            });
-          })
-          .then(() => {
-            this.layoutService.change(LayoutParameter.ShowLoading, false);
-            this.saveCompleted.emit();
-          });
+        const upgrade: Upgrade = {
+          ...this.solution,
+          ApplyManually: this.applyManually,
+        };
+        await this.upgradeService.add(upgrade);
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Upgrade was successfully created.",
+        });
       } else {
-        this.patchService
-          .add(this.solution)
-          .then(() => {
-            this.layoutService.notify({
-              type: NotificationType.Success,
-              message: "Patch was successfully created.",
-            });
-          })
-          .catch((error: Error) => {
-            this.layoutService.notify({
-              type: NotificationType.Error,
-              message: error.message ? `An error occurred while creating the Patch: ${error.message}` : "An error occurred while creating the Patch."
-            });
-          })
-          .then(() => {
-            this.layoutService.change(LayoutParameter.ShowLoading, false);
-            this.saveCompleted.emit();
-          });
+        await this.patchService.add(this.solution);
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Patch was successfully created.",
+        });
       }
+    } catch (error) {
+      const message = error?.message;
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: this.isAddUpgrade
+          ? message
+            ? `An error occurred while creating the Upgrade: ${message}`
+            : "An error occurred while creating the Upgrade."
+          : message
+            ? `An error occurred while creating the Patch: ${message}`
+            : "An error occurred while creating the Patch.",
+      });
+    } finally {
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
+      this.saveCompleted.emit();
     }
   }
 
@@ -189,10 +190,49 @@ export class SolutionDetailComponent implements OnChanges {
     }
   }
 
+  public async onFocusOutDeploymentNotes(): Promise<void> {
+    if (this.isAdd) {
+      return;
+    }
+
+    const newValue: string = this.textAreaDeploymentNotes.value ?? "";
+    if (newValue === (this.solution.DeploymentNotes ?? "")) {
+      return;
+    }
+
+    const deploymentNotes = newValue || null;
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    try {
+      if (this.isUpgrade) {
+        await this.upgradeService.update(this.solution.Id, { DeploymentNotes: deploymentNotes });
+      } else {
+        await this.patchService.update(this.solution.Id, { DeploymentNotes: deploymentNotes });
+      }
+      this.solution.DeploymentNotes = deploymentNotes;
+      this.layoutService.notify({
+        type: NotificationType.Success,
+        message: "Deployment notes were successfully changed.",
+      });
+      this.renamed.emit();
+    } catch (error) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: error?.message
+          ? `An error occurred while changing deployment notes: ${error.message}`
+          : "An error occurred while changing deployment notes.",
+      });
+    } finally {
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
+    }
+  }
+
   public ngOnChanges(): void{
     if (this.solution != undefined) {
       this.isUpgrade = "ApplyManually" in this.solution;
       this.isAdd = false;
+      this.applyManually = "ApplyManually" in this.solution
+        ? this.solution.ApplyManually === true
+        : false;
       if(this.solution.OverwriteUnmanagedCustomizations === null)
         this.solution.OverwriteUnmanagedCustomizations = false;
       if(this.solution.EnableWorkflows === null)
@@ -200,9 +240,11 @@ export class SolutionDetailComponent implements OnChanges {
       this.isReleasedExternally = this.solution.IsReleasedExternally === true;
     } else {
       this.isAdd = true;
+      this.applyManually = false;
       this.solution = {
         OverwriteUnmanagedCustomizations: false,
-        EnableWorkflows: true
+        EnableWorkflows: true,
+        DeploymentNotes: null
       };
     }
   }

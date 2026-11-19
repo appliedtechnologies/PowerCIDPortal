@@ -1,0 +1,4 @@
+::ng-deep .action-history-group {
+  margin-top: 8px;
+  padding-top: 0 !important;
+}

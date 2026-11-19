@@ -1,29 +1,33 @@
-<dx-form id="form" [(formData)]="solution" [readOnly]="!this.isAdd">
+<dx-form id="form" [(formData)]="solution" [readOnly]="!this.isAdd" labelLocation="top">
   <dxi-item itemType="group" cssClass="first-group" [colCount]="1">
-    <dxi-item dataField="Name" [isRequired]="this.isAdd">
-      <div *dxTemplate>
-        <dx-text-box
-          #textBoxName
-          [value]="this.solution.Name"
-          [readOnly]="false"
-          (onFocusOut)="onFocusOutSolutionName($event)">
-        </dx-text-box>
-      </div>
-      <dxi-validation-rule type="stringLength" [max]="100" message="Name must not be longer than 100 characters."> </dxi-validation-rule>
-      @if (this.isAdd) {
-        <dxi-validation-rule type="required" message="A name must be entered."> </dxi-validation-rule>
+    <dxi-item itemType="group" [colCount]="this.isAdd ? 1 : 2">
+      <dxi-item dataField="Name" [isRequired]="this.isAdd">
+        <div *dxTemplate>
+          <dx-text-box
+            #textBoxName
+            [value]="this.solution.Name"
+            [readOnly]="false"
+            (onFocusOut)="onFocusOutSolutionName($event)">
+          </dx-text-box>
+        </div>
+        <dxi-validation-rule type="stringLength" [max]="100" message="Name must not be longer than 100 characters."> </dxi-validation-rule>
+        @if (this.isAdd) {
+          <dxi-validation-rule type="required" message="A name must be entered."> </dxi-validation-rule>
+        }
+      </dxi-item>
+      @if (!this.isAdd) {
+        <dxi-item dataField="UniqueName"></dxi-item>
       }
     </dxi-item>
-    <dxi-item dataField="Version" [editorOptions]="{placeholder: 'leave blank to get next version number according to schema'}"></dxi-item>
-    <dxi-item [isRequired]="this.isAdd" [label]="{ text: 'Application' }">
-      <div *dxTemplate>
-        <dx-text-box [value]="$safeNavigationMigration(this.application?.Name)" [readOnly]="true">
-        </dx-text-box>
-      </div>
+    <dxi-item itemType="group" [colCount]="2">
+      <dxi-item [isRequired]="this.isAdd" [label]="{ text: 'Application' }">
+        <div *dxTemplate>
+          <dx-text-box [value]="$safeNavigationMigration(this.application?.Name)" [readOnly]="true">
+          </dx-text-box>
+        </div>
+      </dxi-item>
+      <dxi-item dataField="Version" [editorOptions]="{placeholder: 'leave blank to get next version number according to schema'}"></dxi-item>
     </dxi-item>
-    @if (!this.isAdd) {
-      <dxi-item dataField="UniqueName"></dxi-item>
-    }
     @if (!this.isAdd) {
       <dxi-item
         dataField="UrlMakerportal"
@@ -43,19 +47,89 @@
       <dxi-validation-rule type="stringLength" [max]="5000" message="Description must not be longer than 5000 characters."> </dxi-validation-rule>
     </dxi-item>
     @if (isUpgrade || isAddUpgrade) {
-      <dxi-item
-        editorType="dxCheckBox"
-        dataField="ApplyManually"
-      ></dxi-item>
+      <dxi-item cssClass="compact-checkbox-item checkbox-options-start" [label]="{ visible: false }">
+        <div *dxTemplate>
+          <div class="full-width-checkbox-row">
+            <span>Apply manually:</span>
+            <dx-check-box
+              [(value)]="this.applyManually"
+              [disabled]="!this.isAdd"
+              [elementAttr]="{ 'aria-label': 'Apply manually' }"
+            ></dx-check-box>
+          </div>
+        </div>
+      </dxi-item>
     }
     <dxi-item
-      editorType="dxCheckBox"
-      dataField="OverwriteUnmanagedCustomizations"
-    ></dxi-item>
-    <dxi-item
-      editorType="dxCheckBox"
-      dataField="EnableWorkflows"
-    ></dxi-item>
+      [cssClass]="isUpgrade || isAddUpgrade ? 'compact-checkbox-item' : 'compact-checkbox-item checkbox-options-start'"
+      [label]="{ visible: false }"
+    >
+      <div *dxTemplate>
+        <div class="full-width-checkbox-row">
+          <span>Overwrite unmanaged customizations:</span>
+          <dx-check-box
+            [(value)]="this.solution.OverwriteUnmanagedCustomizations"
+            [disabled]="!this.isAdd"
+            [elementAttr]="{ 'aria-label': 'Overwrite unmanaged customizations' }"
+          ></dx-check-box>
+        </div>
+      </div>
+    </dxi-item>
+    <dxi-item cssClass="compact-checkbox-item" [label]="{ visible: false }">
+      <div *dxTemplate>
+        <div class="full-width-checkbox-row">
+          <span>Enable workflows:</span>
+          <dx-check-box
+            [(value)]="this.solution.EnableWorkflows"
+            [disabled]="!this.isAdd"
+            [elementAttr]="{ 'aria-label': 'Enable workflows' }"
+          ></dx-check-box>
+        </div>
+      </div>
+    </dxi-item>
+  </dxi-item>
+
+  <dxi-item
+    itemType="group"
+    cssClass="deployment-release-group"
+    caption="Deployment & release"
+    [colCount]="1"
+  >
+    <dxi-item [label]="{ visible: false }">
+      <div *dxTemplate>
+        <div class="deployment-notes-label">
+          <span>Deployment notes</span>
+          <i
+            class="dx-icon-info"
+            title="These notes are shown when starting a deployment, together with notes for versions not yet successfully imported into the target environment since its last successful import."
+            aria-label="Deployment notes information"
+            role="img"
+          ></i>
+        </div>
+        <dx-text-area
+          #textAreaDeploymentNotes
+          [value]="this.solution.DeploymentNotes ?? ''"
+          height="100"
+          [inputAttr]="{ 'aria-label': 'Deployment notes' }"
+          [readOnly]="false"
+          (onFocusOut)="onFocusOutDeploymentNotes()">
+        </dx-text-area>
+      </div>
+    </dxi-item>
+    @if (!this.isAdd && this.canManageExternalRelease) {
+      <dxi-item cssClass="compact-checkbox-item external-release-checkbox" [label]="{ visible: false }">
+        <div *dxTemplate>
+          <div class="full-width-checkbox-row">
+            <span>Released for external deployment:</span>
+            <dx-check-box
+              [value]="this.isReleasedExternally"
+              (onValueChanged)="onValueChangedIsReleasedExternally($event)"
+              [elementAttr]="{ 'aria-label': 'Released for external deployment' }"
+            ></dx-check-box>
+          </div>
+        </div>
+      </dxi-item>
+    }
   </dxi-item>
 
   <dxi-item
@@ -82,9 +156,8 @@
       </dxi-item>
       <dxi-item
         dataField="CreatedOn"
-      [editorOptions]="{
-        displayFormat: 'dd.MM.yyyy HH:mm:ss'
-      }"
+        editorType="dxDateBox"
+        [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
         [label]="{ text: 'Created on' }"
       ></dxi-item>
       <dxi-item [label]="{ text: 'Modified by' }">
@@ -95,25 +168,10 @@
       </dxi-item>
       <dxi-item
         dataField="ModifiedOn"
-      [editorOptions]="{
-        displayFormat: 'dd.MM.yyyy HH:mm:ss'
-      }"
+        editorType="dxDateBox"
+        [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
         [label]="{ text: 'Modified on' }"
       ></dxi-item>
     </dxi-item>
   }
 </dx-form>
-
-@if (!this.isAdd && this.canManageExternalRelease) {
-  <div id="external-release-section">
-    <div class="dx-field">
-      <div class="dx-field-label">Released for external deployment</div>
-      <div class="dx-field-value">
-        <dx-check-box
-          [value]="this.isReleasedExternally"
-          (onValueChanged)="onValueChangedIsReleasedExternally($event)"
-        ></dx-check-box>
-      </div>
-    </div>
-  </div>
-}

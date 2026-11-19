@@ -7,6 +7,7 @@ export interface Solution {
   MsId?: string;
   Name?: string;
   Description?: string;
+  DeploymentNotes?: string | null;
   Application?: number;
   Version?: string;
   UrlMakerportal?: string;

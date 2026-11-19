@@ -5,6 +5,12 @@ import { AppConfig } from "../config/app.config";
 import { Action } from "../models/action.model";
 import { ODataService } from "./odata.service";
 
+export interface DeploymentNote {
+  solutionName: string;
+  solutionVersion: string;
+  deploymentNotes: string;
+}
+
 @Injectable({
   providedIn: "root",
 })
@@ -42,6 +48,19 @@ export class SolutionService {
         })
         .subscribe({
           next: (data) => resolve(data as Action),
+          error: (error) => reject(error),
+        });
+    });
+  }
+
+  public getDeploymentNotes(solutionId: number, environmentId: number): Promise<DeploymentNote[]> {
+    return new Promise<DeploymentNote[]>((resolve, reject) => {
+      this.http
+        .get<DeploymentNote[]>(
+          `${AppConfig.settings.api.url}/Solutions(${solutionId})/PendingDeploymentNotes?environmentId=${environmentId}`
+        )
+        .subscribe({
+          next: (notes) => resolve(notes),
           error: (error) => reject(error),
         });
     });

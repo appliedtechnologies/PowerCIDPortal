@@ -886,6 +886,10 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("Created On");
 
+                    b.Property<string>("DeploymentNotes")
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(5000)
                         .IsUnicode(true)
