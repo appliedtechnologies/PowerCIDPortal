@@ -310,6 +310,7 @@
           <div class="widget-container">
             <dx-list
               [dataSource]="applicationExternalDeploymentPaths"
+              [disabled]="isExternalDeploymentPathMutationPending"
               [repaintChangesOnly]="true"
               keyExpr="Id"
               noDataText="No external deployment path assigned "
@@ -330,6 +331,7 @@
             </dx-list>
             <dx-list
               [dataSource]="externalDeploymentPaths"
+              [disabled]="isExternalDeploymentPathMutationPending"
               [repaintChangesOnly]="true"
               keyExpr="Id"
               >

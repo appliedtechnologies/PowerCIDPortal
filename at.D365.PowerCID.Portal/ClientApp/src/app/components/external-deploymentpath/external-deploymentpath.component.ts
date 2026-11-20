@@ -194,27 +194,47 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
 
     if (!fromNode || !toNode) return;
 
-    const targetPath = toNode.itemData.ExternalEnvironmentNavigation
-      ? toNode.parent?.itemData
-      : toNode.itemData;
     const environment = fromNode.itemData as ExternalEnvironment;
-    const path = targetPath as ExternalDeploymentPath;
+    if (!environment?.Id) return;
 
-    if (!path?.Id || !environment?.Id) return;
+    const isPathHeader = !toNode.itemData.ExternalEnvironmentNavigation;
+    let path: ExternalDeploymentPath | undefined;
+    let targetStepIndex: number;
+    if (isPathHeader && !e.dropInsideItem) {
+      const headerIndex = this.externalDeploymentPaths.findIndex(
+        (deploymentPath) => deploymentPath.Id === toNode.itemData.Id
+      );
+      if (headerIndex < 1) {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "Drop the environment inside an external deployment path to add its first step.",
+        });
+        return;
+      }
 
-    const steps = path.ExternalDeploymentPathEnvironments || [];
-    if (steps.some((step) => step.ExternalEnvironment === environment.Id)) {
-      return;
+      path = this.externalDeploymentPaths[headerIndex - 1];
+      targetStepIndex = path.ExternalDeploymentPathEnvironments?.length ?? 0;
+    } else if (isPathHeader) {
+      path = toNode.itemData as ExternalDeploymentPath;
+      targetStepIndex = path.ExternalDeploymentPathEnvironments?.length ?? 0;
+    } else {
+      path = toNode.parent?.itemData as ExternalDeploymentPath | undefined;
+      const steps = path?.ExternalDeploymentPathEnvironments ?? [];
+      targetStepIndex = steps.findIndex(
+        (step) => step.ExternalEnvironment === toNode.itemData.ExternalEnvironment
+      );
     }
 
-    const targetStepIndex = toNode.itemData.ExternalEnvironmentNavigation
-      ? steps.findIndex((step) => step.ExternalEnvironment === toNode.itemData.ExternalEnvironment)
-      : steps.length;
-    if (targetStepIndex < 0) {
+    if (!path?.Id || targetStepIndex < 0) {
       this.layoutService.notify({
         type: NotificationType.Error,
         message: "The destination position could not be determined.",
       });
+      return;
+    }
+
+    const steps = path.ExternalDeploymentPathEnvironments || [];
+    if (steps.some((step) => step.ExternalEnvironment === environment.Id)) {
       return;
     }
 

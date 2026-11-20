@@ -51,8 +51,10 @@ export class ApplicationComponent {
   currentApplicationName: string;
 
   isAssignExternalDeploymentPaths = false;
+  isExternalDeploymentPathMutationPending = false;
   externalDeploymentPaths: ExternalDeploymentPath[] = [];
   applicationExternalDeploymentPaths: ExternalDeploymentPath[] = [];
+  private assignedExternalDeploymentPathOrder: number[] = [];
   private externalEnvironmentTenantNames = new Map<number, string>();
 
   constructor(
@@ -261,58 +263,97 @@ export class ApplicationComponent {
   }
 
   onAddExternal(e) {
+    if (this.isExternalDeploymentPathMutationPending) {
+      e.cancel = true;
+      return;
+    }
+
     if (this.applicationExternalDeploymentPaths.some((x) => x.Id == e.itemData.Id)) {
       e.cancel = true;
     } else {
-      const expectedOrder = this.applicationExternalDeploymentPaths.map((path) => path.Id);
+      const applicationId = this.currentApplicationId;
+      const expectedOrder = [...this.assignedExternalDeploymentPathOrder];
+      this.isExternalDeploymentPathMutationPending = true;
       e.toData.splice(e.toIndex, 0, e.itemData);
       const itemDataId = e.itemData.Id;
       const toIndex = e.toIndex + 1;
 
       this.applicationExternalDeploymentPathService.getStore().insert({
-        Application: this.currentApplicationId,
+        Application: applicationId,
         ExternalDeploymentPath: itemDataId,
         HierarchieNumber: toIndex,
         ExpectedOrder: expectedOrder,
-      }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}))
+      }).then(() => this.loadAssignedExternalDeploymentPaths(applicationId)
+        .then(() => this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Changes have been saved",
+          displayTime: 1000,
+        }))
+        .catch(() => this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "The external deployment path was saved, but the latest order could not be loaded.",
+        })))
         .catch((error: Error) => {
           this.layoutService.notify({
             type: NotificationType.Error,
             message: error?.message || "Could not save the external deployment path order.",
           });
-          return this.loadAssignedExternalDeploymentPaths(this.currentApplicationId).catch(() =>
+          return this.loadAssignedExternalDeploymentPaths(applicationId).catch(() =>
             this.layoutService.notify({
               type: NotificationType.Error,
               message: "Could not reload the external deployment path order.",
             })
           );
+        })
+        .finally(() => {
+          this.isExternalDeploymentPathMutationPending = false;
         });
     }
   }
 
   onRemoveExternal(e) {
+    if (this.isExternalDeploymentPathMutationPending) return;
+
+    const applicationId = this.currentApplicationId;
+    this.isExternalDeploymentPathMutationPending = true;
     e.fromData.splice(e.fromIndex, 1);
     const itemDataId = e.itemData.Id;
 
     this.applicationExternalDeploymentPathService.getStore().remove({
-      Application: this.currentApplicationId,
+      Application: applicationId,
       ExternalDeploymentPath: itemDataId,
-    }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}))
+    }).then(() => this.loadAssignedExternalDeploymentPaths(applicationId)
+      .then(() => this.layoutService.notify({
+        type: NotificationType.Success,
+        message: "Changes have been saved",
+        displayTime: 1000,
+      }))
+      .catch(() => this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The external deployment path was removed, but the latest order could not be loaded.",
+      })))
       .catch((error: Error) => {
         this.layoutService.notify({
           type: NotificationType.Error,
           message: error?.message || "Could not remove the external deployment path.",
         });
-        return this.loadAssignedExternalDeploymentPaths(this.currentApplicationId).catch(() =>
+        return this.loadAssignedExternalDeploymentPaths(applicationId).catch(() =>
           this.layoutService.notify({
             type: NotificationType.Error,
             message: "Could not reload the external deployment path order.",
           })
         );
+      })
+      .finally(() => {
+        this.isExternalDeploymentPathMutationPending = false;
       });
   }
 
   onReorderExternal(e) {
+    if (this.isExternalDeploymentPathMutationPending) return;
+
+    const applicationId = this.currentApplicationId;
+    this.isExternalDeploymentPathMutationPending = true;
     const itemDataId = e.itemData.Id;
     const fromIndex = e.fromIndex + 1;
     const toIndex = e.toIndex + 1;
@@ -321,31 +362,39 @@ export class ApplicationComponent {
       .getStore()
       .update(
         {
-          Application: this.currentApplicationId,
+          Application: applicationId,
           ExternalDeploymentPath: itemDataId,
         },
         {
           ToIndex: toIndex,
           FromIndex: fromIndex,
-          ExpectedOrder: this.applicationExternalDeploymentPaths.map((path) => path.Id),
+          ExpectedOrder: [...this.assignedExternalDeploymentPathOrder],
         }
       )
-      .then(() => {
-        e.toData.splice(e.fromIndex, 1);
-        e.toData.splice(e.toIndex, 0, e.itemData);
-        this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000});
-      })
+      .then(() => this.loadAssignedExternalDeploymentPaths(applicationId)
+        .then(() => this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Changes have been saved",
+          displayTime: 1000,
+        }))
+        .catch(() => this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "The external deployment path order was saved, but the latest order could not be loaded.",
+        })))
       .catch((error: Error) => {
         this.layoutService.notify({
           type: NotificationType.Error,
           message: error?.message || "Could not save the external deployment path order.",
         });
-        return this.loadAssignedExternalDeploymentPaths(this.currentApplicationId).catch(() =>
+        return this.loadAssignedExternalDeploymentPaths(applicationId).catch(() =>
           this.layoutService.notify({
             type: NotificationType.Error,
             message: "Could not reload the external deployment path order.",
           })
         );
+      })
+      .finally(() => {
+        this.isExternalDeploymentPathMutationPending = false;
       });
   }
 
@@ -434,6 +483,9 @@ export class ApplicationComponent {
             return hierarchyA - hierarchyB || (a.path.Id ?? 0) - (b.path.Id ?? 0);
           })
           .map((assignment) => assignment.path);
+        this.assignedExternalDeploymentPathOrder = this.applicationExternalDeploymentPaths
+          .map((path) => path.Id)
+          .filter((id): id is number => typeof id === "number");
       });
   }
 

@@ -83,7 +83,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         public async Task<IActionResult> Post([FromBody] object parameters)
         {
             if (!TryReadInsertRequest(parameters, out var externalDeploymentPathEnvironment, out var expectedOrder))
-                return BadRequest("ExternalDeploymentPath, ExternalEnvironment, StepNumber, and ExpectedOrder are required.");
+                return BadRequest("ExternalDeploymentPath, ExternalEnvironment, and StepNumber are required.");
 
             logger.LogDebug($"Begin: ExternalDeploymentPathEnvironmentsController Post(externalDeploymentPathEnvironment StepNumber: {externalDeploymentPathEnvironment.StepNumber})");
 
@@ -95,6 +95,11 @@ namespace at.D365.PowerCID.Portal.Controllers
                     dbContext,
                     $"ExternalDeploymentPathEnvironments:{externalDeploymentPathEnvironment.ExternalDeploymentPath}"))
                 return Conflict("Another external environment order change is in progress. Retry the operation.");
+
+            if (!await DeploymentPathOrderLock.AcquireAsync(
+                    dbContext,
+                    $"ExternalEnvironment:{externalDeploymentPathEnvironment.ExternalEnvironment}"))
+                return Conflict("The external environment is being changed. Retry the operation.");
 
             if (!await CanAccessPathAsync(externalDeploymentPathEnvironment.ExternalDeploymentPath))
                 return Forbid();
@@ -122,25 +127,32 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest("No changes");
 
             var assignments = await GetOrderedAssignmentsAsync(externalDeploymentPathEnvironment.ExternalDeploymentPath);
-            if (!assignments.Select(e => e.ExternalEnvironment).SequenceEqual(expectedOrder))
+            if (expectedOrder != null &&
+                !assignments.Select(e => e.ExternalEnvironment).SequenceEqual(expectedOrder))
                 return Conflict("The external environment order changed. Reload the deployment path and retry the insert.");
 
             var toIndex = externalDeploymentPathEnvironment.StepNumber;
             if (toIndex < 1 || toIndex > assignments.Count + 1)
                 return BadRequest($"StepNumber must be between 1 and {assignments.Count + 1}.");
 
-            assignments.Insert(toIndex - 1, externalDeploymentPathEnvironment);
+            var assignment = new ExternalDeploymentPathEnvironment
+            {
+                ExternalDeploymentPath = externalDeploymentPathEnvironment.ExternalDeploymentPath,
+                ExternalEnvironment = externalDeploymentPathEnvironment.ExternalEnvironment,
+                StepNumber = externalDeploymentPathEnvironment.StepNumber,
+            };
+            assignments.Insert(toIndex - 1, assignment);
             Renumber(assignments);
             if (!HasValidStepSequence(assignments))
                 return Conflict("The external environment order could not be validated.");
 
-            dbContext.ExternalDeploymentPathEnvironments.Add(externalDeploymentPathEnvironment);
+            dbContext.ExternalDeploymentPathEnvironments.Add(assignment);
             await dbContext.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            logger.LogDebug($"End: ExternalDeploymentPathEnvironmentsController Post(externalDeploymentPathEnvironment StepNumber: {externalDeploymentPathEnvironment.StepNumber})");
+            logger.LogDebug($"End: ExternalDeploymentPathEnvironmentsController Post(externalDeploymentPathEnvironment StepNumber: {assignment.StepNumber})");
 
-            return Created(externalDeploymentPathEnvironment);
+            return Created(assignment);
         }
 
         [HttpPatch]
@@ -152,7 +164,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest(ModelState);
 
             if (!TryReadReorderRequest(parameters, out var fromIndex, out var toIndex, out var expectedOrder))
-                return BadRequest("FromIndex, ToIndex, and ExpectedOrder are required.");
+                return BadRequest("FromIndex and ToIndex are required.");
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"ExternalDeploymentPathEnvironments:{keyExternalDeploymentPath}"))
@@ -166,7 +178,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (assignment == null)
                 return NotFound();
 
-            if (!assignments.Select(e => e.ExternalEnvironment).SequenceEqual(expectedOrder))
+            if (expectedOrder != null &&
+                !assignments.Select(e => e.ExternalEnvironment).SequenceEqual(expectedOrder))
                 return Conflict("The external environment order changed. Reload the deployment path and retry the move.");
 
             if (fromIndex < 1 || fromIndex > assignments.Count)
@@ -225,20 +238,21 @@ namespace at.D365.PowerCID.Portal.Controllers
             out int[] expectedOrder)
         {
             assignment = null;
-            expectedOrder = Array.Empty<int>();
+            expectedOrder = null;
             if (!TryReadRequestObject(parameters, out var request) ||
+                !TryReadInteger(request, "ExternalDeploymentPath", out var externalDeploymentPathId) ||
+                !TryReadInteger(request, "ExternalEnvironment", out var externalEnvironmentId) ||
+                !TryReadInteger(request, "StepNumber", out var stepNumber) ||
                 !TryReadExpectedOrder(request["ExpectedOrder"], out expectedOrder))
                 return false;
 
-            try
+            assignment = new ExternalDeploymentPathEnvironment
             {
-                assignment = request.ToObject<ExternalDeploymentPathEnvironment>();
-                return assignment != null;
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
+                ExternalDeploymentPath = externalDeploymentPathId,
+                ExternalEnvironment = externalEnvironmentId,
+                StepNumber = stepNumber,
+            };
+            return true;
         }
 
         private static bool TryReadReorderRequest(
@@ -249,7 +263,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             fromIndex = 0;
             toIndex = 0;
-            expectedOrder = Array.Empty<int>();
+            expectedOrder = null;
             if (!TryReadRequestObject(parameters, out var request))
                 return false;
 
@@ -282,7 +296,10 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private static bool TryReadExpectedOrder(JToken token, out int[] expectedOrder)
         {
-            expectedOrder = Array.Empty<int>();
+            expectedOrder = null;
+            if (token == null || token.Type == JTokenType.Null)
+                return true;
+
             if (token is not JArray orderTokens)
                 return false;
 
@@ -296,6 +313,13 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             expectedOrder = parsedOrder.ToArray();
             return true;
+        }
+
+        private static bool TryReadInteger(JObject request, string propertyName, out int value)
+        {
+            value = 0;
+            var token = request[propertyName];
+            return token?.Type == JTokenType.Integer && int.TryParse(token.ToString(), out value);
         }
     }
 }
