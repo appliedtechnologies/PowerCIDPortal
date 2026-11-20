@@ -69,6 +69,34 @@ namespace at.D365.PowerCID.Portal
             builder.EntitySet<ApplicationExternalDeploymentPath>("ApplicationExternalDeploymentPaths").EntityType.HasKey(ad => new { ad.Application, ad.ExternalDeploymentPath });
             builder.EntitySet<UserExternalTenant>("UserExternalTenants").EntityType.HasKey(e => new { e.User, e.Tenant });
 
+            var insertApplicationExternalDeploymentPath = builder.EntityType<ApplicationExternalDeploymentPath>().Collection.Action("InsertWithExpectedOrder")
+                .ReturnsFromEntitySet<ApplicationExternalDeploymentPath>("ApplicationExternalDeploymentPaths");
+            insertApplicationExternalDeploymentPath.Parameter<int>("applicationId");
+            insertApplicationExternalDeploymentPath.Parameter<int>("externalDeploymentPathId");
+            insertApplicationExternalDeploymentPath.Parameter<int>("hierarchyNumber");
+            insertApplicationExternalDeploymentPath.CollectionParameter<int>("expectedOrder");
+            var moveApplicationExternalDeploymentPath = builder.EntityType<ApplicationExternalDeploymentPath>().Collection.Action("MoveWithExpectedOrder")
+                .ReturnsFromEntitySet<ApplicationExternalDeploymentPath>("ApplicationExternalDeploymentPaths");
+            moveApplicationExternalDeploymentPath.Parameter<int>("applicationId");
+            moveApplicationExternalDeploymentPath.Parameter<int>("externalDeploymentPathId");
+            moveApplicationExternalDeploymentPath.Parameter<int>("fromIndex");
+            moveApplicationExternalDeploymentPath.Parameter<int>("toIndex");
+            moveApplicationExternalDeploymentPath.CollectionParameter<int>("expectedOrder");
+
+            var insertExternalDeploymentPathEnvironment = builder.EntityType<ExternalDeploymentPathEnvironment>().Collection.Action("InsertWithExpectedOrder")
+                .ReturnsFromEntitySet<ExternalDeploymentPathEnvironment>("ExternalDeploymentPathEnvironments");
+            insertExternalDeploymentPathEnvironment.Parameter<int>("externalDeploymentPathId");
+            insertExternalDeploymentPathEnvironment.Parameter<int>("externalEnvironmentId");
+            insertExternalDeploymentPathEnvironment.Parameter<int>("stepNumber");
+            insertExternalDeploymentPathEnvironment.CollectionParameter<int>("expectedOrder");
+            var moveExternalDeploymentPathEnvironment = builder.EntityType<ExternalDeploymentPathEnvironment>().Collection.Action("MoveWithExpectedOrder")
+                .ReturnsFromEntitySet<ExternalDeploymentPathEnvironment>("ExternalDeploymentPathEnvironments");
+            moveExternalDeploymentPathEnvironment.Parameter<int>("externalDeploymentPathId");
+            moveExternalDeploymentPathEnvironment.Parameter<int>("externalEnvironmentId");
+            moveExternalDeploymentPathEnvironment.Parameter<int>("fromIndex");
+            moveExternalDeploymentPathEnvironment.Parameter<int>("toIndex");
+            moveExternalDeploymentPathEnvironment.CollectionParameter<int>("expectedOrder");
+
             builder.EntityType<User>().Collection.Action("Login");
 
             builder.EntityType<Application>().Action("GetMakerPortalUrl");
