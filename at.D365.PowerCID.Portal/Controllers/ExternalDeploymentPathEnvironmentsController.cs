@@ -83,7 +83,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         public async Task<IActionResult> Post([FromBody] object parameters)
         {
             if (!TryReadInsertRequest(parameters, out var externalDeploymentPathEnvironment, out var expectedOrder))
-                return BadRequest("ExternalDeploymentPath, ExternalEnvironment, and StepNumber are required.");
+                return BadRequest("ExternalDeploymentPath, ExternalEnvironment, StepNumber, and ExpectedOrder are required.");
 
             logger.LogDebug($"Begin: ExternalDeploymentPathEnvironmentsController Post(externalDeploymentPathEnvironment StepNumber: {externalDeploymentPathEnvironment.StepNumber})");
 
@@ -127,8 +127,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest("No changes");
 
             var assignments = await GetOrderedAssignmentsAsync(externalDeploymentPathEnvironment.ExternalDeploymentPath);
-            if (expectedOrder != null &&
-                !assignments.Select(e => e.ExternalEnvironment).SequenceEqual(expectedOrder))
+            if (!assignments.Select(e => e.ExternalEnvironment).SequenceEqual(expectedOrder))
                 return Conflict("The external environment order changed. Reload the deployment path and retry the insert.");
 
             var toIndex = externalDeploymentPathEnvironment.StepNumber;
@@ -164,7 +163,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest(ModelState);
 
             if (!TryReadReorderRequest(parameters, out var fromIndex, out var toIndex, out var expectedOrder))
-                return BadRequest("FromIndex and ToIndex are required.");
+                return BadRequest("FromIndex, ToIndex, and ExpectedOrder are required.");
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"ExternalDeploymentPathEnvironments:{keyExternalDeploymentPath}"))
@@ -178,8 +177,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (assignment == null)
                 return NotFound();
 
-            if (expectedOrder != null &&
-                !assignments.Select(e => e.ExternalEnvironment).SequenceEqual(expectedOrder))
+            if (!assignments.Select(e => e.ExternalEnvironment).SequenceEqual(expectedOrder))
                 return Conflict("The external environment order changed. Reload the deployment path and retry the move.");
 
             if (fromIndex < 1 || fromIndex > assignments.Count)
@@ -238,7 +236,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             out int[] expectedOrder)
         {
             assignment = null;
-            expectedOrder = null;
+            expectedOrder = Array.Empty<int>();
             if (!TryReadRequestObject(parameters, out var request) ||
                 !TryReadInteger(request, "ExternalDeploymentPath", out var externalDeploymentPathId) ||
                 !TryReadInteger(request, "ExternalEnvironment", out var externalEnvironmentId) ||
@@ -263,7 +261,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             fromIndex = 0;
             toIndex = 0;
-            expectedOrder = null;
+            expectedOrder = Array.Empty<int>();
             if (!TryReadRequestObject(parameters, out var request))
                 return false;
 
@@ -296,10 +294,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private static bool TryReadExpectedOrder(JToken token, out int[] expectedOrder)
         {
-            expectedOrder = null;
-            if (token == null || token.Type == JTokenType.Null)
-                return true;
-
+            expectedOrder = Array.Empty<int>();
             if (token is not JArray orderTokens)
                 return false;
 
