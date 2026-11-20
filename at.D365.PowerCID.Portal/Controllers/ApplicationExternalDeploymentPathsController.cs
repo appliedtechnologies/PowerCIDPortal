@@ -83,10 +83,10 @@ namespace at.D365.PowerCID.Portal.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] ApplicationExternalDeploymentPath applicationExternalDeploymentPath)
+        public async Task<IActionResult> Post([FromBody] object parameters)
         {
-            if (applicationExternalDeploymentPath == null)
-                return BadRequest("Application and ExternalDeploymentPath are required.");
+            if (!TryReadInsertRequest(parameters, out var applicationExternalDeploymentPath, out var expectedOrder))
+                return BadRequest("Application, ExternalDeploymentPath, HierarchieNumber, and ExpectedOrder are required.");
 
             logger.LogDebug($"Begin: ApplicationExternalDeploymentPathsController Post(applicationExternalDeploymentPath: {applicationExternalDeploymentPath.ExternalDeploymentPath})");
 
@@ -118,6 +118,9 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest("No changes");
 
             var assignments = await GetOrderedAssignmentsAsync(applicationExternalDeploymentPath.Application);
+            if (!assignments.Select(x => x.ExternalDeploymentPath).SequenceEqual(expectedOrder))
+                return Conflict("The external deployment path order changed. Reload the application and retry the insert.");
+
             var toIndex = applicationExternalDeploymentPath.HierarchieNumber.Value;
             if (toIndex < 1 || toIndex > assignments.Count + 1)
                 return BadRequest($"HierarchieNumber must be between 1 and {assignments.Count + 1}.");
@@ -213,6 +216,28 @@ namespace at.D365.PowerCID.Portal.Controllers
             return assignments.Select((assignment, index) => assignment.HierarchieNumber == index + 1).All(isValid => isValid);
         }
 
+        private static bool TryReadInsertRequest(
+            object parameters,
+            out ApplicationExternalDeploymentPath assignment,
+            out int[] expectedOrder)
+        {
+            assignment = null;
+            expectedOrder = Array.Empty<int>();
+            if (!TryReadRequestObject(parameters, out var request) ||
+                !TryReadExpectedOrder(request["ExpectedOrder"], out expectedOrder))
+                return false;
+
+            try
+            {
+                assignment = request.ToObject<ApplicationExternalDeploymentPath>();
+                return assignment != null;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
         private static bool TryReadReorderRequest(
             object parameters,
             out int fromIndex,
@@ -222,30 +247,46 @@ namespace at.D365.PowerCID.Portal.Controllers
             fromIndex = 0;
             toIndex = 0;
             expectedOrder = Array.Empty<int>();
-            if (parameters == null)
+            if (!TryReadRequestObject(parameters, out var request))
                 return false;
-
-            JObject request;
-            try
-            {
-                request = parameters as JObject ?? JObject.Parse(parameters.ToString());
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
 
             if (request["FromIndex"]?.Type != JTokenType.Integer ||
                 request["ToIndex"]?.Type != JTokenType.Integer ||
                 !int.TryParse(request["FromIndex"].ToString(), out fromIndex) ||
                 !int.TryParse(request["ToIndex"].ToString(), out toIndex) ||
-                request["ExpectedOrder"] is not JArray orderTokens)
+                !TryReadExpectedOrder(request["ExpectedOrder"], out expectedOrder))
+                return false;
+
+            return true;
+        }
+
+        private static bool TryReadRequestObject(object parameters, out JObject request)
+        {
+            request = null;
+            if (parameters == null)
+                return false;
+
+            try
+            {
+                request = parameters as JObject ?? JObject.Parse(parameters.ToString());
+                return true;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        private static bool TryReadExpectedOrder(JToken token, out int[] expectedOrder)
+        {
+            expectedOrder = Array.Empty<int>();
+            if (token is not JArray orderTokens)
                 return false;
 
             var parsedOrder = new List<int>(orderTokens.Count);
-            foreach (var token in orderTokens)
+            foreach (var orderToken in orderTokens)
             {
-                if (token.Type != JTokenType.Integer || !int.TryParse(token.ToString(), out var id))
+                if (orderToken.Type != JTokenType.Integer || !int.TryParse(orderToken.ToString(), out var id))
                     return false;
                 parsedOrder.Add(id);
             }

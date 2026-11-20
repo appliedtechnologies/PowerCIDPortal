@@ -479,7 +479,24 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
         visible: false,
       },
     ];
-    const paths = this.externalDeploymentPaths.filter((path) =>
+    const assignedPaths = (this.selectedApplication?.ApplicationExternalDeploymentPaths ?? [])
+      .map((assignment) => ({
+        path: this.externalDeploymentPaths.find((path) => path.Id === assignment.ExternalDeploymentPath) ??
+          assignment.ExternalDeploymentPathNavigation,
+        hierarchyNumber: assignment.HierarchieNumber,
+      }))
+      .filter((assignment) => assignment.path !== undefined)
+      .sort((a, b) => {
+        const hierarchyA = Number.isFinite(a.hierarchyNumber)
+          ? a.hierarchyNumber
+          : Number.MAX_SAFE_INTEGER;
+        const hierarchyB = Number.isFinite(b.hierarchyNumber)
+          ? b.hierarchyNumber
+          : Number.MAX_SAFE_INTEGER;
+        return hierarchyA - hierarchyB || (a.path.Id ?? 0) - (b.path.Id ?? 0);
+      })
+      .map((assignment) => assignment.path);
+    const paths = assignedPaths.filter((path) =>
       !this.selectedExternalTenantId ||
       this.getExternalDeploymentPathTenantId(path) === this.selectedExternalTenantId
     );
