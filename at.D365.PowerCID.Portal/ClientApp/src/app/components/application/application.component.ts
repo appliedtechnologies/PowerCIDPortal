@@ -446,6 +446,10 @@ export class ApplicationComponent {
   }
 
   private loadAssignedExternalDeploymentPaths(applicationId: number): Promise<void> {
+    if (applicationId !== this.currentApplicationId) {
+      return Promise.resolve();
+    }
+
     const requestGeneration = ++this.assignedExternalDeploymentPathsLoadGeneration;
     return Promise.all([
       this.externalDeploymentPathService.getStore().load({
