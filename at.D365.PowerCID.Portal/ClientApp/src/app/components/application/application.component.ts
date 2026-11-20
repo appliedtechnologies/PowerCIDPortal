@@ -51,8 +51,8 @@ export class ApplicationComponent {
   currentApplicationName: string;
 
   isAssignExternalDeploymentPaths = false;
-  externalDeploymentPaths: ExternalDeploymentPath[];
-  applicationExternalDeploymentPaths;
+  externalDeploymentPaths: ExternalDeploymentPath[] = [];
+  applicationExternalDeploymentPaths: ExternalDeploymentPath[] = [];
   private externalEnvironmentTenantNames = new Map<number, string>();
 
   constructor(
@@ -272,7 +272,19 @@ export class ApplicationComponent {
         Application: this.currentApplicationId,
         ExternalDeploymentPath: itemDataId,
         HierarchieNumber: toIndex,
-      }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+      }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}))
+        .catch((error: Error) => {
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: error?.message || "Could not save the external deployment path order.",
+          });
+          return this.loadAssignedExternalDeploymentPaths(this.currentApplicationId).catch(() =>
+            this.layoutService.notify({
+              type: NotificationType.Error,
+              message: "Could not reload the external deployment path order.",
+            })
+          );
+        });
     }
   }
 
@@ -283,7 +295,19 @@ export class ApplicationComponent {
     this.applicationExternalDeploymentPathService.getStore().remove({
       Application: this.currentApplicationId,
       ExternalDeploymentPath: itemDataId,
-    }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}));
+    }).then(() => this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000}))
+      .catch((error: Error) => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: error?.message || "Could not remove the external deployment path.",
+        });
+        return this.loadAssignedExternalDeploymentPaths(this.currentApplicationId).catch(() =>
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: "Could not reload the external deployment path order.",
+          })
+        );
+      });
   }
 
   onReorderExternal(e) {
@@ -298,12 +322,28 @@ export class ApplicationComponent {
           Application: this.currentApplicationId,
           ExternalDeploymentPath: itemDataId,
         },
-        { ToIndex: toIndex, FromIndex: fromIndex }
+        {
+          ToIndex: toIndex,
+          FromIndex: fromIndex,
+          ExpectedOrder: this.applicationExternalDeploymentPaths.map((path) => path.Id),
+        }
       )
       .then(() => {
         e.toData.splice(e.fromIndex, 1);
         e.toData.splice(e.toIndex, 0, e.itemData);
         this.layoutService.notify({type: NotificationType.Success, message: "Changes have been saved", displayTime: 1000});
+      })
+      .catch((error: Error) => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: error?.message || "Could not save the external deployment path order.",
+        });
+        return this.loadAssignedExternalDeploymentPaths(this.currentApplicationId).catch(() =>
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: "Could not reload the external deployment path order.",
+          })
+        );
       });
   }
 
@@ -326,7 +366,7 @@ export class ApplicationComponent {
   onClickAssignExternalDeploymentPaths(e) {
     this.currentApplicationName = e.row.data.Name;
     this.currentApplicationId = e.row.data.Id;
-    const externalDataPromise = Promise.all([
+    Promise.all([
       this.externalDeploymentPathService.getStore().load({
         expand: ["ExternalDeploymentPathEnvironments.ExternalEnvironmentNavigation"],
       }),
@@ -334,35 +374,57 @@ export class ApplicationComponent {
         expand: ["EnvironmentNavigation.TenantNavigation"],
       }),
     ]).then(([paths, environments]) => {
-      this.externalDeploymentPaths = paths;
+      this.externalDeploymentPaths = paths as ExternalDeploymentPath[];
       this.externalEnvironmentTenantNames = new Map(
-        environments.map((environment) => [
+        (environments as { Id: number; EnvironmentNavigation?: { TenantNavigation?: { Name?: string } } }[]).map((environment) => [
           environment.Id,
           environment.EnvironmentNavigation?.TenantNavigation?.Name,
         ])
       );
+      return this.loadAssignedExternalDeploymentPaths(this.currentApplicationId);
+    }).catch((error: Error) => {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: error?.message || "Could not load external deployment paths.",
+      });
     });
 
-    externalDataPromise.then(() => this.applicationService
-      .getStore()
-      .load({
-        filter: "Id eq " + this.currentApplicationId,
-        expand: ["ExternalDeploymentPaths", "ApplicationExternalDeploymentPaths"],
-        select: "ExternalDeploymentPaths",
-      }))
-      .then((ad) => {
-        const application = ad[0];
-        const sorted: ExternalDeploymentPath[] = [];
-        for (let i = 0; i < (application?.ApplicationExternalDeploymentPaths.length ?? 0); i++) {
-          const hierarchieNumber = application.ApplicationExternalDeploymentPaths[i].HierarchieNumber;
-          sorted[hierarchieNumber - 1] =
-            this.externalDeploymentPaths.find((path) => path.Id === application.ExternalDeploymentPaths[i].Id) ??
-            application.ExternalDeploymentPaths[i];
-        }
-        this.applicationExternalDeploymentPaths = sorted;
-      });
-
     this.isAssignExternalDeploymentPaths = true;
+  }
+
+  private loadAssignedExternalDeploymentPaths(applicationId: number): Promise<void> {
+    return this.applicationService.getStore()
+      .load({
+        filter: "Id eq " + applicationId,
+        expand: ["ApplicationExternalDeploymentPaths"],
+      })
+      .then((applications) => {
+        if (applicationId !== this.currentApplicationId) return;
+
+        const application = applications[0] as Application | undefined;
+        const pathsById = new Map(
+          this.externalDeploymentPaths
+            .filter((path): path is ExternalDeploymentPath & { Id: number } => typeof path.Id === "number")
+            .map((path) => [path.Id, path])
+        );
+
+        this.applicationExternalDeploymentPaths = (application?.ApplicationExternalDeploymentPaths ?? [])
+          .map((assignment) => ({
+            path: pathsById.get(assignment.ExternalDeploymentPath),
+            hierarchyNumber: assignment.HierarchieNumber,
+          }))
+          .filter((assignment) => assignment.path !== undefined)
+          .sort((a, b) => {
+            const hierarchyA = Number.isFinite(a.hierarchyNumber)
+              ? a.hierarchyNumber
+              : Number.MAX_SAFE_INTEGER;
+            const hierarchyB = Number.isFinite(b.hierarchyNumber)
+              ? b.hierarchyNumber
+              : Number.MAX_SAFE_INTEGER;
+            return hierarchyA - hierarchyB || (a.path.Id ?? 0) - (b.path.Id ?? 0);
+          })
+          .map((assignment) => assignment.path);
+      });
   }
 
   externalDeploymentPathDisplayName(path: ExternalDeploymentPath): string {

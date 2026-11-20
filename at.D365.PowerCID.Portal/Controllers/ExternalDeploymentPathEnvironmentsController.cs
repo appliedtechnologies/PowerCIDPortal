@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using at.D365.PowerCID.Portal.Data.Models;
@@ -37,7 +40,10 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug("Begin & End: ExternalDeploymentPathEnvironmentsController Get()");
 
-            return base.dbContext.ExternalDeploymentPathEnvironments.OrderBy(s => s.StepNumber).Where(e => e.ExternalDeploymentPathNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            return base.dbContext.ExternalDeploymentPathEnvironments
+                .Where(e => e.ExternalDeploymentPathNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)
+                .OrderBy(e => e.StepNumber)
+                .ThenBy(e => e.ExternalEnvironment);
         }
 
         [HttpDelete]
@@ -45,18 +51,28 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: ExternalDeploymentPathEnvironmentsController Delete(keyExternalDeploymentPath: {keyExternalDeploymentPath}, keyExternalEnvironment: {keyExternalEnvironment})");
 
-            if ((await this.dbContext.ExternalDeploymentPaths.FirstOrDefaultAsync(e => e.Id == keyExternalDeploymentPath && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"ExternalDeploymentPathEnvironments:{keyExternalDeploymentPath}"))
+                return Conflict("Another external environment order change is in progress. Retry the operation.");
+
+            if (!await CanAccessPathAsync(keyExternalDeploymentPath))
                 return Forbid();
 
-            var externalDeploymentPathEnvironmentToDelete = await this.dbContext.ExternalDeploymentPathEnvironments.FindAsync(keyExternalDeploymentPath, keyExternalEnvironment);
-
+            var externalDeploymentPathEnvironmentToDelete = await dbContext.ExternalDeploymentPathEnvironments.FirstOrDefaultAsync(e =>
+                e.ExternalDeploymentPath == keyExternalDeploymentPath &&
+                e.ExternalEnvironment == keyExternalEnvironment);
             if (externalDeploymentPathEnvironmentToDelete == null)
                 return NotFound();
 
-            var stepNumber = externalDeploymentPathEnvironmentToDelete.StepNumber;
-            SortWhenDeleted(keyExternalDeploymentPath, stepNumber);
-            this.dbContext.Remove(externalDeploymentPathEnvironmentToDelete);
-            await this.dbContext.SaveChangesAsync();
+            var assignments = await GetOrderedAssignmentsAsync(keyExternalDeploymentPath);
+            assignments.Remove(externalDeploymentPathEnvironmentToDelete);
+            Renumber(assignments);
+            if (!HasValidStepSequence(assignments))
+                return Conflict("The external environment order could not be normalized.");
+
+            dbContext.Remove(externalDeploymentPathEnvironmentToDelete);
+            await dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             logger.LogDebug($"End: ExternalDeploymentPathEnvironmentsController Delete(keyExternalDeploymentPath: {keyExternalDeploymentPath}, keyExternalEnvironment: {keyExternalEnvironment})");
 
@@ -66,24 +82,33 @@ namespace at.D365.PowerCID.Portal.Controllers
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] ExternalDeploymentPathEnvironment externalDeploymentPathEnvironment)
         {
+            if (externalDeploymentPathEnvironment == null)
+                return BadRequest("ExternalDeploymentPath and ExternalEnvironment are required.");
+
             logger.LogDebug($"Begin: ExternalDeploymentPathEnvironmentsController Post(externalDeploymentPathEnvironment StepNumber: {externalDeploymentPathEnvironment.StepNumber})");
 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            if ((await this.dbContext.ExternalDeploymentPaths.FirstOrDefaultAsync(e => e.Id == externalDeploymentPathEnvironment.ExternalDeploymentPath && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(
+                    dbContext,
+                    $"ExternalDeploymentPathEnvironments:{externalDeploymentPathEnvironment.ExternalDeploymentPath}"))
+                return Conflict("Another external environment order change is in progress. Retry the operation.");
+
+            if (!await CanAccessPathAsync(externalDeploymentPathEnvironment.ExternalDeploymentPath))
                 return Forbid();
 
-            if ((await this.dbContext.ExternalEnvironments.FirstOrDefaultAsync(e => e.Id == externalDeploymentPathEnvironment.ExternalEnvironment)) == null)
+            if (!await dbContext.ExternalEnvironments.AnyAsync(e => e.Id == externalDeploymentPathEnvironment.ExternalEnvironment))
                 return NotFound();
 
             // All environments used by one external deployment path must belong to the same foreign tenant.
-            System.Guid newStepTenantMsId = await this.dbContext.ExternalEnvironments
+            Guid newStepTenantMsId = await dbContext.ExternalEnvironments
                 .Where(e => e.Id == externalDeploymentPathEnvironment.ExternalEnvironment)
                 .Select(e => e.EnvironmentNavigation.TenantNavigation.MsId)
                 .FirstAsync();
 
-            System.Guid existingStepTenantMsId = await this.dbContext.ExternalDeploymentPathEnvironments
+            Guid existingStepTenantMsId = await dbContext.ExternalDeploymentPathEnvironments
                 .Where(e => e.ExternalDeploymentPath == externalDeploymentPathEnvironment.ExternalDeploymentPath)
                 .Select(e => e.ExternalEnvironmentNavigation.EnvironmentNavigation.TenantNavigation.MsId)
                 .FirstOrDefaultAsync();
@@ -91,9 +116,24 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (existingStepTenantMsId != default && existingStepTenantMsId != newStepTenantMsId)
                 return BadRequest(new ODataError { Code = "400", Message = "All environments of an external deployment path must belong to the same foreign (customer) tenant." });
 
-            SortWhenAdded(externalDeploymentPathEnvironment.ExternalDeploymentPath, externalDeploymentPathEnvironment.StepNumber);
-            base.dbContext.ExternalDeploymentPathEnvironments.Add(externalDeploymentPathEnvironment);
-            await base.dbContext.SaveChangesAsync();
+            if (await dbContext.ExternalDeploymentPathEnvironments.AnyAsync(e =>
+                    e.ExternalDeploymentPath == externalDeploymentPathEnvironment.ExternalDeploymentPath &&
+                    e.ExternalEnvironment == externalDeploymentPathEnvironment.ExternalEnvironment))
+                return BadRequest("No changes");
+
+            var assignments = await GetOrderedAssignmentsAsync(externalDeploymentPathEnvironment.ExternalDeploymentPath);
+            var toIndex = externalDeploymentPathEnvironment.StepNumber;
+            if (toIndex < 1 || toIndex > assignments.Count + 1)
+                return BadRequest($"StepNumber must be between 1 and {assignments.Count + 1}.");
+
+            assignments.Insert(toIndex - 1, externalDeploymentPathEnvironment);
+            Renumber(assignments);
+            if (!HasValidStepSequence(assignments))
+                return Conflict("The external environment order could not be validated.");
+
+            dbContext.ExternalDeploymentPathEnvironments.Add(externalDeploymentPathEnvironment);
+            await dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             logger.LogDebug($"End: ExternalDeploymentPathEnvironmentsController Post(externalDeploymentPathEnvironment StepNumber: {externalDeploymentPathEnvironment.StepNumber})");
 
@@ -108,70 +148,113 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            if ((await this.dbContext.ExternalDeploymentPaths.FirstOrDefaultAsync(e => e.Id == keyExternalDeploymentPath && e.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
+            if (!TryReadReorderRequest(parameters, out var fromIndex, out var toIndex, out var expectedOrder))
+                return BadRequest("FromIndex, ToIndex, and ExpectedOrder are required.");
+
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"ExternalDeploymentPathEnvironments:{keyExternalDeploymentPath}"))
+                return Conflict("Another external environment order change is in progress. Retry the operation.");
+
+            if (!await CanAccessPathAsync(keyExternalDeploymentPath))
                 return Forbid();
 
-            var parametersAsJObject = JsonConvert.DeserializeObject<JObject>(parameters.ToString());
-            int fromIndex = (int)parametersAsJObject["FromIndex"];
-            int toIndex = (int)parametersAsJObject["ToIndex"];
+            var assignments = await GetOrderedAssignmentsAsync(keyExternalDeploymentPath);
+            var assignment = assignments.FirstOrDefault(e => e.ExternalEnvironment == keyExternalEnvironment);
+            if (assignment == null)
+                return NotFound();
 
-            if (toIndex > dbContext.ExternalDeploymentPathEnvironments.Count(e => e.ExternalDeploymentPath == keyExternalDeploymentPath))
-                return BadRequest(new ODataError { Code = "400", Message = "ToIndex is out of range." });
+            if (!assignments.Select(e => e.ExternalEnvironment).SequenceEqual(expectedOrder))
+                return Conflict("The external environment order changed. Reload the deployment path and retry the move.");
 
-            SortWhenUpdated(keyExternalDeploymentPath, fromIndex, toIndex);
+            if (fromIndex < 1 || fromIndex > assignments.Count)
+                return BadRequest($"FromIndex must be between 1 and {assignments.Count}.");
+            if (toIndex < 1 || toIndex > assignments.Count)
+                return BadRequest($"ToIndex must be between 1 and {assignments.Count}.");
 
-            ExternalDeploymentPathEnvironment stepToUpdate = dbContext.ExternalDeploymentPathEnvironments.FirstOrDefault(x => x.ExternalEnvironment == keyExternalEnvironment && x.ExternalDeploymentPath == keyExternalDeploymentPath);
-            stepToUpdate.StepNumber = toIndex;
+            var currentIndex = assignments.IndexOf(assignment) + 1;
+            if (fromIndex != currentIndex)
+                return Conflict("The external environment order changed. Reload the deployment path and retry the move.");
+
+            assignments.RemoveAt(currentIndex - 1);
+            assignments.Insert(toIndex - 1, assignment);
+            Renumber(assignments);
+            if (!HasValidStepSequence(assignments))
+                return Conflict("The external environment order could not be validated.");
 
             await base.dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             logger.LogDebug($"End: ExternalDeploymentPathEnvironmentsController Patch(keyExternalEnvironment: {keyExternalEnvironment}, keyExternalDeploymentPath: {keyExternalDeploymentPath})");
 
-            return Updated(stepToUpdate);
+            return Updated(assignment);
         }
 
-        private void SortWhenUpdated(int externalDeploymentPathId, int fromIndex, int toIndex)
+        private Task<bool> CanAccessPathAsync(int externalDeploymentPathId)
         {
-            logger.LogDebug($"Begin: ExternalDeploymentPathEnvironmentsController SortWhenUpdated(externalDeploymentPathId: {externalDeploymentPathId}, fromIndex: {fromIndex}, toIndex: {toIndex})");
+            return dbContext.ExternalDeploymentPaths.AnyAsync(e =>
+                e.Id == externalDeploymentPathId &&
+                e.TenantNavigation.MsId == msIdTenantCurrentUser);
+        }
 
-            if (fromIndex < toIndex)
+        private async Task<List<ExternalDeploymentPathEnvironment>> GetOrderedAssignmentsAsync(int externalDeploymentPathId)
+        {
+            return await dbContext.ExternalDeploymentPathEnvironments
+                .Where(e => e.ExternalDeploymentPath == externalDeploymentPathId)
+                .OrderBy(e => e.StepNumber)
+                .ThenBy(e => e.ExternalEnvironment)
+                .ToListAsync();
+        }
+
+        private static void Renumber(IList<ExternalDeploymentPathEnvironment> assignments)
+        {
+            for (var index = 0; index < assignments.Count; index++)
+                assignments[index].StepNumber = index + 1;
+        }
+
+        private static bool HasValidStepSequence(IList<ExternalDeploymentPathEnvironment> assignments)
+        {
+            return assignments.Select((assignment, index) => assignment.StepNumber == index + 1).All(isValid => isValid);
+        }
+
+        private static bool TryReadReorderRequest(
+            object parameters,
+            out int fromIndex,
+            out int toIndex,
+            out int[] expectedOrder)
+        {
+            fromIndex = 0;
+            toIndex = 0;
+            expectedOrder = Array.Empty<int>();
+            if (parameters == null)
+                return false;
+
+            JObject request;
+            try
             {
-                var stepsInBetween = dbContext.ExternalDeploymentPathEnvironments.Where(x => x.ExternalDeploymentPath == externalDeploymentPathId && x.StepNumber > fromIndex && x.StepNumber <= toIndex);
-
-                foreach (var step in stepsInBetween)
-                    step.StepNumber = step.StepNumber - 1;
+                request = parameters as JObject ?? JObject.Parse(parameters.ToString());
             }
-            else
+            catch (JsonException)
             {
-                var stepsInBetween = dbContext.ExternalDeploymentPathEnvironments.Where(x => x.ExternalDeploymentPath == externalDeploymentPathId && x.StepNumber < fromIndex && x.StepNumber >= toIndex);
-
-                foreach (var step in stepsInBetween)
-                    step.StepNumber = step.StepNumber + 1;
+                return false;
             }
 
-            logger.LogDebug($"End: ExternalDeploymentPathEnvironmentsController SortWhenUpdated(externalDeploymentPathId: {externalDeploymentPathId}, fromIndex: {fromIndex}, toIndex: {toIndex})");
-        }
+            if (request["FromIndex"]?.Type != JTokenType.Integer ||
+                request["ToIndex"]?.Type != JTokenType.Integer ||
+                !int.TryParse(request["FromIndex"].ToString(), out fromIndex) ||
+                !int.TryParse(request["ToIndex"].ToString(), out toIndex) ||
+                request["ExpectedOrder"] is not JArray orderTokens)
+                return false;
 
-        private void SortWhenAdded(int externalDeploymentPathId, int stepNumber)
-        {
-            logger.LogDebug($"Begin: ExternalDeploymentPathEnvironmentsController SortWhenAdded(externalDeploymentPathId: {externalDeploymentPathId}, stepNumber: {stepNumber})");
+            var parsedOrder = new List<int>(orderTokens.Count);
+            foreach (var token in orderTokens)
+            {
+                if (token.Type != JTokenType.Integer || !int.TryParse(token.ToString(), out var id))
+                    return false;
+                parsedOrder.Add(id);
+            }
 
-            var stepsWithHigherNumber = dbContext.ExternalDeploymentPathEnvironments.Where(e => e.StepNumber >= stepNumber && e.ExternalDeploymentPath == externalDeploymentPathId);
-            foreach (var step in stepsWithHigherNumber)
-                step.StepNumber = step.StepNumber + 1;
-
-            logger.LogDebug($"End: ExternalDeploymentPathEnvironmentsController SortWhenAdded(externalDeploymentPathId: {externalDeploymentPathId}, stepNumber: {stepNumber})");
-        }
-
-        private void SortWhenDeleted(int externalDeploymentPathId, int stepNumber)
-        {
-            logger.LogDebug($"Begin: ExternalDeploymentPathEnvironmentsController SortWhenDeleted(externalDeploymentPathId: {externalDeploymentPathId}, stepNumber: {stepNumber})");
-
-            var stepsWithHigherNumber = dbContext.ExternalDeploymentPathEnvironments.Where(e => e.StepNumber >= stepNumber && e.ExternalDeploymentPath == externalDeploymentPathId);
-            foreach (var step in stepsWithHigherNumber)
-                step.StepNumber = step.StepNumber - 1;
-
-            logger.LogDebug($"End: ExternalDeploymentPathEnvironmentsController SortWhenDeleted(externalDeploymentPathId: {externalDeploymentPathId}, stepNumber: {stepNumber})");
+            expectedOrder = parsedOrder.ToArray();
+            return true;
         }
     }
 }
