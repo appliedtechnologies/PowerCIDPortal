@@ -240,13 +240,7 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
 
     const expectedOrder = steps.map((step) => step.ExternalEnvironment);
     this.externalDeploymentPathEnvironmentService
-      .getStore()
-      .insert({
-        ExternalDeploymentPath: path.Id,
-        ExternalEnvironment: environment.Id,
-        StepNumber: targetStepIndex + 1,
-        ExpectedOrder: expectedOrder,
-      })
+      .insertWithExpectedOrder(path.Id, environment.Id, targetStepIndex + 1, expectedOrder)
       .then(() => {
         return this.loadData().then(() =>
           this.layoutService.notify({
@@ -358,14 +352,12 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
     }
 
     this.externalDeploymentPathEnvironmentService
-      .getStore()
-      .update(
-        { ExternalDeploymentPath: step.ExternalDeploymentPath, ExternalEnvironment: step.ExternalEnvironment },
-        {
-          ToIndex: toIndex,
-          FromIndex: fromIndex,
-          ExpectedOrder: assignments.map((assignment) => assignment.ExternalEnvironment),
-        }
+      .moveWithExpectedOrder(
+        step.ExternalDeploymentPath,
+        step.ExternalEnvironment,
+        fromIndex,
+        toIndex,
+        assignments.map((assignment) => assignment.ExternalEnvironment)
       )
       .then(() => {
         return this.loadData().then(() =>

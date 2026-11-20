@@ -86,7 +86,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         public async Task<IActionResult> Post([FromBody] object parameters)
         {
             if (!TryReadInsertRequest(parameters, out var applicationExternalDeploymentPath, out var expectedOrder))
-                return BadRequest("Application, ExternalDeploymentPath, HierarchieNumber, and ExpectedOrder are required.");
+                return BadRequest("Application, ExternalDeploymentPath, and HierarchieNumber are required.");
 
             logger.LogDebug($"Begin: ApplicationExternalDeploymentPathsController Post(applicationExternalDeploymentPath: {applicationExternalDeploymentPath.ExternalDeploymentPath})");
 
@@ -118,7 +118,8 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest("No changes");
 
             var assignments = await GetOrderedAssignmentsAsync(applicationExternalDeploymentPath.Application);
-            if (!assignments.Select(x => x.ExternalDeploymentPath).SequenceEqual(expectedOrder))
+            if (expectedOrder != null &&
+                !assignments.Select(x => x.ExternalDeploymentPath).SequenceEqual(expectedOrder))
                 return Conflict("The external deployment path order changed. Reload the application and retry the insert.");
 
             var toIndex = applicationExternalDeploymentPath.HierarchieNumber.Value;
@@ -139,6 +140,24 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Created(applicationExternalDeploymentPath);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> InsertWithExpectedOrder([FromBody] ODataActionParameters parameters)
+        {
+            if (!TryReadActionInteger(parameters, "applicationId", out var applicationId) ||
+                !TryReadActionInteger(parameters, "externalDeploymentPathId", out var externalDeploymentPathId) ||
+                !TryReadActionInteger(parameters, "hierarchyNumber", out var hierarchyNumber) ||
+                !TryReadActionExpectedOrder(parameters, out var expectedOrder))
+                return BadRequest("Application, ExternalDeploymentPath, HierarchieNumber, and ExpectedOrder are required.");
+
+            return await Post(new JObject
+            {
+                ["Application"] = applicationId,
+                ["ExternalDeploymentPath"] = externalDeploymentPathId,
+                ["HierarchieNumber"] = hierarchyNumber,
+                ["ExpectedOrder"] = JArray.FromObject(expectedOrder),
+            });
+        }
+
         [HttpPatch]
         public async Task<IActionResult> Patch([FromODataUri] int keyApplication, [FromODataUri] int keyExternalDeploymentPath, [FromBody] object parameters)
         {
@@ -148,7 +167,7 @@ namespace at.D365.PowerCID.Portal.Controllers
                 return BadRequest(ModelState);
 
             if (!TryReadReorderRequest(parameters, out var fromIndex, out var toIndex, out var expectedOrder))
-                return BadRequest("FromIndex, ToIndex, and ExpectedOrder are required.");
+                return BadRequest("FromIndex and ToIndex are required.");
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"ApplicationExternalDeploymentPaths:{keyApplication}"))
@@ -169,7 +188,8 @@ namespace at.D365.PowerCID.Portal.Controllers
             if (assignment == null)
                 return NotFound();
 
-            if (!assignments.Select(x => x.ExternalDeploymentPath).SequenceEqual(expectedOrder))
+            if (expectedOrder != null &&
+                !assignments.Select(x => x.ExternalDeploymentPath).SequenceEqual(expectedOrder))
                 return Conflict("The external deployment path order changed. Reload the application and retry the move.");
 
             if (fromIndex < 1 || fromIndex > assignments.Count)
@@ -193,6 +213,27 @@ namespace at.D365.PowerCID.Portal.Controllers
             logger.LogDebug($"End: ApplicationExternalDeploymentPathsController Patch(keyApplication: {keyApplication}, keyExternalDeploymentPath: {keyExternalDeploymentPath})");
 
             return Updated(assignment);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> MoveWithExpectedOrder([FromBody] ODataActionParameters parameters)
+        {
+            if (!TryReadActionInteger(parameters, "applicationId", out var applicationId) ||
+                !TryReadActionInteger(parameters, "externalDeploymentPathId", out var externalDeploymentPathId) ||
+                !TryReadActionInteger(parameters, "fromIndex", out var fromIndex) ||
+                !TryReadActionInteger(parameters, "toIndex", out var toIndex) ||
+                !TryReadActionExpectedOrder(parameters, out var expectedOrder))
+                return BadRequest("Application, ExternalDeploymentPath, FromIndex, ToIndex, and ExpectedOrder are required.");
+
+            return await Patch(
+                applicationId,
+                externalDeploymentPathId,
+                new JObject
+                {
+                    ["FromIndex"] = fromIndex,
+                    ["ToIndex"] = toIndex,
+                    ["ExpectedOrder"] = JArray.FromObject(expectedOrder),
+                });
         }
 
         private async Task<List<ApplicationExternalDeploymentPath>> GetOrderedAssignmentsAsync(int applicationId)
@@ -222,7 +263,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             out int[] expectedOrder)
         {
             assignment = null;
-            expectedOrder = Array.Empty<int>();
+            expectedOrder = null;
             if (!TryReadRequestObject(parameters, out var request) ||
                 !TryReadInteger(request, "Application", out var applicationId) ||
                 !TryReadInteger(request, "ExternalDeploymentPath", out var externalDeploymentPathId) ||
@@ -247,7 +288,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             fromIndex = 0;
             toIndex = 0;
-            expectedOrder = Array.Empty<int>();
+            expectedOrder = null;
             if (!TryReadRequestObject(parameters, out var request))
                 return false;
 
@@ -280,7 +321,10 @@ namespace at.D365.PowerCID.Portal.Controllers
 
         private static bool TryReadExpectedOrder(JToken token, out int[] expectedOrder)
         {
-            expectedOrder = Array.Empty<int>();
+            expectedOrder = null;
+            if (token == null || token.Type == JTokenType.Null)
+                return true;
+
             if (token is not JArray orderTokens)
                 return false;
 
@@ -294,6 +338,26 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             expectedOrder = parsedOrder.ToArray();
             return true;
+        }
+
+        private static bool TryReadActionInteger(ODataActionParameters parameters, string propertyName, out int value)
+        {
+            value = 0;
+            return parameters != null &&
+                parameters.TryGetValue(propertyName, out var token) &&
+                int.TryParse(token?.ToString(), out value);
+        }
+
+        private static bool TryReadActionExpectedOrder(ODataActionParameters parameters, out int[] expectedOrder)
+        {
+            expectedOrder = null;
+            if (parameters == null ||
+                !parameters.TryGetValue("expectedOrder", out var token) ||
+                token == null)
+                return false;
+
+            var orderToken = token as JToken ?? JToken.FromObject(token);
+            return TryReadExpectedOrder(orderToken, out expectedOrder) && expectedOrder != null;
         }
 
         private static bool TryReadInteger(JObject request, string propertyName, out int value)
