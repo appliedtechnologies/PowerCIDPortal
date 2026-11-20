@@ -798,7 +798,62 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     );
   }
 
+  public canDeployToExternalEnvironment(cellInfo): boolean {
+    const predecessor = this.getExternalDeploymentPredecessor(cellInfo);
+    if (!predecessor.required) {
+      return true;
+    }
+
+    const previousEnvironment = predecessor.step &&
+      (this.externalEnvironments.find((environment) =>
+        environment.Id === predecessor.step.ExternalEnvironment
+      ) ?? predecessor.step.ExternalEnvironmentNavigation);
+    if (!previousEnvironment?.Environment) {
+      return false;
+    }
+
+    return (cellInfo.data.Actions ?? []).some((action) =>
+      action.IsExternalDelivery === true &&
+      action.TargetEnvironment === previousEnvironment.Environment &&
+      action.Result === 1
+    );
+  }
+
+  public getPreviousExternalEnvironmentName(cellInfo): string {
+    const predecessor = this.getExternalDeploymentPredecessor(cellInfo);
+    return predecessor.step
+      ? this.stepDisplayName(predecessor.step)
+      : "previous environment";
+  }
+
+  private getExternalDeploymentPredecessor(
+    cellInfo
+  ): { required: boolean; step?: ExternalDeploymentPathEnvironment } {
+    const [pathIdValue, environmentIdValue] = cellInfo.column.name.split(",");
+    const pathId = Number(pathIdValue);
+    const environmentId = Number(environmentIdValue);
+    const path = this.externalDeploymentPaths.find((deploymentPath) =>
+      deploymentPath.Id === pathId
+    );
+    const steps = path?.ExternalDeploymentPathEnvironments ?? [];
+    const currentStep = steps.find((step) => step.ExternalEnvironment === environmentId);
+    const stepNumber = currentStep?.StepNumber;
+
+    if (stepNumber === undefined || stepNumber <= 1) {
+      return { required: false };
+    }
+
+    return {
+      required: true,
+      step: steps.find((step) => step.StepNumber === stepNumber - 1),
+    };
+  }
+
   public onClickExternalDeploy(cellInfo): void {
+    if (!this.canDeployToExternalEnvironment(cellInfo)) {
+      return;
+    }
+
     const pathId = Number(cellInfo.column.name.split(",")[0]);
     const externalEnvironmentId = Number(cellInfo.column.name.split(",")[1]);
     const externalEnvironment = this.externalEnvironments.find((environment) => environment.Id === externalEnvironmentId);

@@ -53,6 +53,12 @@
     {{ cellInfo.column.caption }}
   </div>
   <div *dxTemplate="let cellInfo of 'externalEnvironmentCellTemplate'">
+    <div *ngIf="!canDeployToExternalEnvironment(cellInfo); else externalCanDeploy">
+      <div class="card dx-card dx-theme-text-color card-not-yet-available">
+        via {{ getPreviousExternalEnvironmentName(cellInfo) }}
+      </div>
+    </div>
+    <ng-template #externalCanDeploy>
     <div class="card dx-card dx-theme-text-color"
       *ngIf="getLastExternalAction(cellInfo) as lastAction; else externalReady"
       [ngClass]="lastAction.Status !== 3 ? 'card-in-progress' : lastAction.Result === 1 ? 'card-success' : 'card-error'">
@@ -90,6 +96,7 @@
           tabindex="0" role="button"></i>
         deploy here
       </div>
+    </ng-template>
     </ng-template>
   </div>
 </dx-data-grid>
