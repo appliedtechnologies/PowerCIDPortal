@@ -254,10 +254,7 @@ namespace at.D365.PowerCID.Portal.Services
                     e.TargetEnvironment == targetEnvironmentId &&
                     e.Type == 2 &&
                     e.Result == 1 &&
-                    e.IsExternalDelivery == isExternalDelivery &&
-                    (!isExternalDelivery ||
-                        e.ExternalDeploymentPath == null ||
-                        e.ExternalDeploymentPath == externalDeploymentPathId))
+                    e.IsExternalDelivery == isExternalDelivery)
                 .OrderByDescending(e => e.CreatedOn)
                 .ThenByDescending(e => e.Id)
                 .FirstOrDefaultAsync();

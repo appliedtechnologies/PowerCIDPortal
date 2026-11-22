@@ -933,7 +933,9 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
 
     return this.getLatestAction(
       allActionOfSolution,
-      (action) => action.TargetEnvironment == targetEnvironmentId
+      (action) =>
+        action.IsExternalDelivery !== true &&
+        action.TargetEnvironment == targetEnvironmentId
     );
   }
 
@@ -954,16 +956,14 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   }
 
   public getLastExternalAction(cellInfo): Action {
-    const [pathIdValue, environmentIdValue] = cellInfo.column.name.split(",");
-    const pathId = Number(pathIdValue);
+    const [, environmentIdValue] = cellInfo.column.name.split(",");
     const environmentId = Number(environmentIdValue);
     const targetEnvironmentId = this.externalEnvironments.find((e) => e.Id === environmentId)?.Environment;
     return this.getLatestAction(
       cellInfo.data.Actions ?? [],
       (action) =>
-        action.IsExternalDelivery &&
-        action.TargetEnvironment === targetEnvironmentId &&
-        (action.ExternalDeploymentPath == null || action.ExternalDeploymentPath === pathId)
+        action.IsExternalDelivery === true &&
+        action.TargetEnvironment === targetEnvironmentId
     );
   }
 
