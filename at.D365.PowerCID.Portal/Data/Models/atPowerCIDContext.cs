@@ -460,9 +460,11 @@ namespace at.D365.PowerCID.Portal.Data.Models
                     .IsUnicode(false)
                     .HasColumnName("Deployment Details");
 
-                entity.Property(e => e.FinishTime).HasColumnName("Finish Time");
+                    entity.Property(e => e.ExternalDeploymentPath).HasColumnName("External Deployment Path");
 
-                entity.Property(e => e.Name)
+                    entity.Property(e => e.FinishTime).HasColumnName("Finish Time");
+
+                    entity.Property(e => e.Name)
                     .IsRequired()
                     .HasMaxLength(100)
                     .IsUnicode(false);
@@ -472,6 +474,12 @@ namespace at.D365.PowerCID.Portal.Data.Models
                 entity.Property(e => e.TargetEnvironment).HasColumnName("Target Environment");
 
                 entity.Property(e => e.ImportTargetEnvironment).HasColumnName("Import Target Environment");
+
+                entity.Property(e => e.DeploymentMode).HasColumnName("Deployment Mode");
+
+                entity.Property(e => e.OverwriteUnmanagedCustomizations).HasColumnName("Overwrite Unmanaged Customizations");
+
+                entity.Property(e => e.EnableWorkflows).HasColumnName("Enable Workflows");
 
                 entity.HasOne(d => d.CreatedByNavigation)
                     .WithMany(p => p.Actions)
@@ -722,6 +730,9 @@ namespace at.D365.PowerCID.Portal.Data.Models
                     .HasMaxLength(5000)
                     .IsUnicode(true);
 
+                entity.Property(e => e.DeploymentNotes)
+                    .IsUnicode(true);
+
                 entity.Property(e => e.UniqueName)
                     .IsRequired()
                     .HasMaxLength(200)
@@ -808,7 +819,7 @@ namespace at.D365.PowerCID.Portal.Data.Models
             {
                 entity.ToTable("Solution");
 
-                entity.Property(e => e.ApplyManually).HasColumnName("Apply Manually");
+                entity.Property(e => e.DefaultDeploymentMode).HasColumnName("Default Deployment Mode");
 
             });
 

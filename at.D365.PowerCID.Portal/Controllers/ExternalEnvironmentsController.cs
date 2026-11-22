@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
+using System.Data;
 using at.D365.PowerCID.Portal.Data.Models;
 using at.D365.PowerCID.Portal.Helpers;
 using Microsoft.AspNetCore.Authorization;
@@ -109,15 +110,24 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin: ExternalEnvironmentsController Delete(key: {key})");
 
-            var externalEnvironmentToDelete = await this.dbContext.ExternalEnvironments.FindAsync(key);
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            if (!await DeploymentPathOrderLock.AcquireAsync(dbContext, $"ExternalEnvironment:{key}"))
+                return Conflict("The external environment is being changed. Retry the operation.");
+
+            var externalEnvironmentToDelete = await dbContext.ExternalEnvironments.FindAsync(key);
             if (externalEnvironmentToDelete == null)
                 return NotFound();
 
-            if (this.dbContext.ExternalDeploymentPathEnvironments.Any(e => e.ExternalEnvironment == key))
-                return BadRequest(new ODataError { Code = "400", Message = $"The external environment is used in external deployment path '{this.dbContext.ExternalDeploymentPathEnvironments.First(e => e.ExternalEnvironment == key).ExternalDeploymentPathNavigation.Name}'." });
+            var pathName = await dbContext.ExternalDeploymentPathEnvironments
+                .Where(e => e.ExternalEnvironment == key)
+                .Select(e => e.ExternalDeploymentPathNavigation.Name)
+                .FirstOrDefaultAsync();
+            if (pathName != null)
+                return BadRequest(new ODataError { Code = "400", Message = $"The external environment is used in external deployment path '{pathName}'." });
 
             this.dbContext.Remove(externalEnvironmentToDelete);
             await this.dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             logger.LogDebug($"End: ExternalEnvironmentsController Delete(key: {key})");
 

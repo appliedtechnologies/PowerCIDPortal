@@ -1,72 +1,94 @@
-<dx-form id="form" [formData]="action" [readOnly]="true">
-  <dxi-item itemType="group" cssClass="first-group" [colCount]="1">
-    <dxi-item dataField="Name"></dxi-item>
+<dx-form id="form" [formData]="action" [readOnly]="true" labelLocation="top">
+  <dxi-item itemType="group" cssClass="first-group" [colCount]="2">
+    <dxi-item dataField="Name" [colSpan]="2"></dxi-item>
     <dxi-item
       dataField="SolutionNavigation.Name"
       [label]="{ text: 'Solution' }"
-      >
-    </dxi-item>
+    ></dxi-item>
     <dxi-item
       dataField="TargetEnvironmentNavigation.Name"
       [label]="{ text: 'Target environment' }"
-      >
-    </dxi-item>
-    <dxi-item dataField="TypeNavigation.Type" [label]="{ text: 'Type' }">
-    </dxi-item>
-    <dxi-item
-      dataField="StatusNavigation.Status"
-      [label]="{ text: 'Status' }"
     ></dxi-item>
-
-    <dxi-item dataField="ResultNavigation.Result" [label]="{ text: 'Result' }">
-    </dxi-item>
-    <dxi-item
-      dataField="StartTime"
-      [label]="{ text: 'Start time' }"
-      editorType="dxDateBox"
-      [editorOptions]="{
-        displayFormat: 'dd.MM.yyyy HH:mm:ss'
-      }"
-    ></dxi-item>
-    <dxi-item
-      dataField="FinishTime"
-      [label]="{ text: 'Finish time' }"
-      editorType="dxDateBox"
-      [editorOptions]="{
-        displayFormat: 'dd.MM.yyyy HH:mm:ss'
-      }"
-    ></dxi-item>
-    <dxi-item
-      [label]="{ text: 'Duration' }"
-      editorType="dxTextBox"
-      [editorOptions]="{
-        value: this.actionService.getDurationString(this.action)
-      }"
-    ></dxi-item>
-    <dxi-item
-      dataField="ErrorMessage"
-      editorType="dxTextArea"
-      [editorOptions]="{ height: 100 }"
-    ></dxi-item>
-    @if (this.action?.Type === 2) {
+    <dxi-item dataField="TypeNavigation.Type" [label]="{ text: 'Type' }"></dxi-item>
+    <dxi-item dataField="StatusNavigation.Status" [label]="{ text: 'Status' }"></dxi-item>
+    <dxi-item dataField="ResultNavigation.Result" [label]="{ text: 'Result' }"></dxi-item>
+    @if (this.action?.Type === 2 || this.action?.Type === 3) {
+      <dxi-item [label]="{ text: 'Deployment mode' }">
+        <div *dxTemplate>
+          <dx-text-box [value]="this.deploymentModeName" [readOnly]="true"></dx-text-box>
+        </div>
+      </dxi-item>
       <dxi-item
-        dataField="DeploymentDetails"
-        editorType="dxTextArea"
-        [editorOptions]="{ height: 100 }"
+        dataField="OverwriteUnmanagedCustomizations"
+        editorType="dxCheckBox"
+        [editorOptions]="{ disabled: true }"
+        [label]="{ text: 'Override unmanaged customizations', location: 'left' }"
+      ></dxi-item>
+      <dxi-item
+        dataField="EnableWorkflows"
+        editorType="dxCheckBox"
+        [editorOptions]="{ disabled: true }"
+        [label]="{ text: 'Enable workflows', location: 'left' }"
       ></dxi-item>
     }
-    <dxi-item [label]="{ text: 'Created by' }" >
+  </dxi-item>
+
+  @if (this.action?.ErrorMessage || this.action?.Type === 2) {
+    <dxi-item itemType="group" cssClass="action-message-group" [colCount]="1">
+      @if (this.action?.ErrorMessage) {
+        <dxi-item
+          dataField="ErrorMessage"
+          editorType="dxTextArea"
+          [editorOptions]="{ height: 100 }"
+        ></dxi-item>
+      }
+      @if (this.action?.Type === 2) {
+        <dxi-item
+          dataField="DeploymentDetails"
+          editorType="dxTextArea"
+          [editorOptions]="{ height: 100 }"
+        ></dxi-item>
+      }
+    </dxi-item>
+  }
+
+  <dxi-item
+    itemType="group"
+    cssClass="action-history-group"
+    caption="History"
+    [colCount]="2"
+  >
+    <dxi-item [label]="{ text: 'Created by' }">
       <div *dxTemplate>
-        <dx-text-box [readOnly]="true" value="{{$safeNavigationMigration(this.action?.CreatedByNavigation) | fullname}}" >
-        </dx-text-box>
+        <dx-text-box
+          [readOnly]="true"
+          value="{{$safeNavigationMigration(this.action?.CreatedByNavigation) | fullname}}"
+        ></dx-text-box>
       </div>
     </dxi-item>
     <dxi-item
       dataField="CreatedOn"
       [label]="{ text: 'Created on' }"
       editorType="dxDateBox"
+      [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
+    ></dxi-item>
+    <dxi-item
+      dataField="StartTime"
+      [label]="{ text: 'Start time' }"
+      editorType="dxDateBox"
+      [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
+    ></dxi-item>
+    <dxi-item
+      dataField="FinishTime"
+      [label]="{ text: 'Finish time' }"
+      editorType="dxDateBox"
+      [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
+    ></dxi-item>
+    <dxi-item
+      [label]="{ text: 'Duration' }"
+      editorType="dxTextBox"
       [editorOptions]="{
-        displayFormat: 'dd.MM.yyyy HH:mm:ss'
+        value: this.actionService.getDurationString(this.action)
       }"
     ></dxi-item>
   </dxi-item>

@@ -11,6 +11,7 @@
 ></dx-toolbar>
 <dx-data-grid
   *ngIf="externalMode && showSolutionsGrid"
+  #externalSolutionsGrid
   [dataSource]="dataSourceSolutions"
   [columns]="externalDataGridColumns"
   [showBorders]="true"
@@ -21,6 +22,7 @@
   height="100%"
   class="solutions-grid external-solutions-grid"
 >
+  <dxo-paging [pageSize]="50"></dxo-paging>
   <div *dxTemplate="let cellInfo of 'externalTypeCellTemplate'">
     <div class="card dx-card dx-theme-text-color">
       {{ cellInfo.value }}
@@ -53,9 +55,17 @@
     {{ cellInfo.column.caption }}
   </div>
   <div *dxTemplate="let cellInfo of 'externalEnvironmentCellTemplate'">
+    <div *ngIf="!canDeployToExternalEnvironment(cellInfo); else externalCanDeploy">
+      <div class="card dx-card dx-theme-text-color card-not-yet-available">
+        via {{ getPreviousExternalEnvironmentName(cellInfo) }}
+      </div>
+    </div>
+    <ng-template #externalCanDeploy>
     <div class="card dx-card dx-theme-text-color"
       *ngIf="getLastExternalAction(cellInfo) as lastAction; else externalReady"
-      [ngClass]="lastAction.Status !== 3 ? 'card-in-progress' : lastAction.Result === 1 ? 'card-success' : 'card-error'">
+      [ngClass]="canApplyTwoStepUpgrade(cellInfo, lastAction)
+        ? 'card-apply-pending'
+        : lastAction.Status !== 3 ? 'card-in-progress' : lastAction.Result === 1 ? 'card-success' : 'card-error'">
         <i class="dx-icon-info clickable-icon at-icon" title="show details"
           (click)="onClickActionInfo(lastAction)"
           (keydown.enter)="onClickActionInfo(lastAction)"
@@ -70,7 +80,7 @@
           tabindex="0"
           role="button"></i>
         <i
-          *ngIf="lastAction.Status === 3 && lastAction.Result !== 1"
+          *ngIf="lastAction.Status === 3 && lastAction.Result !== 1 && lastAction.Type !== 3"
           class="at-icon powercid-icon-handcart clickable-icon"
           title="try deployment again"
           (click)="onClickExternalDeploy(cellInfo)"
@@ -78,9 +88,32 @@
           (keydown.space)="$event.preventDefault(); onClickExternalDeploy(cellInfo)"
           tabindex="0"
           role="button"></i>
-        {{ lastAction.TypeNavigation?.Type }}
-        {{ lastAction.StatusNavigation?.Status }}
-        {{ lastAction.ResultNavigation?.Result }}
+        <i
+          *ngIf="canRetryApplyUpgrade(cellInfo, lastAction)"
+          class="at-icon powercid-icon-handcart clickable-icon"
+          title="retry apply upgrade"
+          (click)="onClickApplyUpgrade(cellInfo, lastAction)"
+          (keydown.enter)="onClickApplyUpgrade(cellInfo, lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickApplyUpgrade(cellInfo, lastAction)"
+          tabindex="0"
+          role="button"></i>
+        <i
+          *ngIf="canApplyTwoStepUpgrade(cellInfo, lastAction)"
+          class="at-icon powercid-icon-handcart clickable-icon"
+          title="apply upgrade"
+          (click)="onClickApplyUpgrade(cellInfo, lastAction)"
+          (keydown.enter)="onClickApplyUpgrade(cellInfo, lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickApplyUpgrade(cellInfo, lastAction)"
+          tabindex="0"
+          role="button"></i>
+        <ng-container *ngIf="canApplyTwoStepUpgrade(cellInfo, lastAction); else externalActionStatus">
+          holding import success, apply upgrade pending
+        </ng-container>
+        <ng-template #externalActionStatus>
+          {{ lastAction.TypeNavigation?.Type }}
+          {{ lastAction.StatusNavigation?.Status }}
+          {{ lastAction.ResultNavigation?.Result }}
+        </ng-template>
     </div>
     <ng-template #externalReady>
       <div class="card dx-card dx-theme-text-color card-ready">
@@ -90,6 +123,7 @@
           tabindex="0" role="button"></i>
         deploy here
       </div>
+    </ng-template>
     </ng-template>
   </div>
 </dx-data-grid>
@@ -205,7 +239,7 @@
           role="button"
         ></i>
         <i
-          *ngIf="cellInfo.data.WasDeleted !== true && !hasSuccessfulImport(cellInfo.data)"
+          *ngIf="cellInfo.data.WasDeleted !== true && canRenewExport(cellInfo.data)"
           class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
           (keydown.enter)="onClickDeploySolution(cellInfo, true)"
@@ -261,7 +295,7 @@
           role="button"
         ></i>
         <i
-          *ngIf="cellInfo.data.WasDeleted !== true && !hasSuccessfulImport(cellInfo.data)"
+          *ngIf="cellInfo.data.WasDeleted !== true && canRenewExport(cellInfo.data)"
           class="dx-icon-newfolder clickable-icon at-icon"
           (click)="onClickDeploySolution(cellInfo, true)"
           (keydown.enter)="onClickDeploySolution(cellInfo, true)"
@@ -310,7 +344,8 @@
       >
         <div
           *ngIf="lastAction.Result === 1"
-          class="card dx-card dx-theme-text-color card-success"
+          class="card dx-card dx-theme-text-color"
+          [ngClass]="canApplyTwoStepUpgrade(cellInfo, lastAction) ? 'card-apply-pending' : 'card-success'"
         >
           <i
             class="dx-icon-info clickable-icon at-icon"
@@ -322,17 +357,17 @@
           role="button"
           ></i>
           <i
-            *ngIf="!lastAction.TargetEnvironmentNavigation.DeployUnmanaged && lastAction.Type === 2 && (cellInfo.data | isPatch) === false && $any(cellInfo.data).ApplyManually === true"
+            *ngIf="canApplyTwoStepUpgrade(cellInfo, lastAction)"
             class="at-icon powercid-icon-handcart clickable-icon at-icon"
-            (click)="onClickDeploySolution(cellInfo, false, true)"
-          (keydown.enter)="onClickDeploySolution(cellInfo, false, true)"
-          (keydown.space)="$event.preventDefault(); onClickDeploySolution(cellInfo, false, true)"
+            (click)="onClickApplyUpgrade(cellInfo, lastAction)"
+          (keydown.enter)="onClickApplyUpgrade(cellInfo, lastAction)"
+          (keydown.space)="$event.preventDefault(); onClickApplyUpgrade(cellInfo, lastAction)"
           tabindex="0"
           role="button"
             title="apply upgrade"
           ></i>
           <i
-            *ngIf="lastAction.TargetEnvironmentNavigation.ConnectionsOwner && (lastAction.Type === 3 || (lastAction.Type === 2 && (cellInfo.data | isPatch) === false && $any(cellInfo.data).ApplyManually === false))"
+            *ngIf="lastAction.TargetEnvironmentNavigation.ConnectionsOwner && (lastAction.Type === 3 || (lastAction.Type === 2 && (cellInfo.data | isPatch) === false && !canApplyTwoStepUpgrade(cellInfo, lastAction)))"
             class="at-icon powercid-icon-handcart clickable-icon at-icon"
             (click)="onClickDeploySolution(cellInfo, false, false, true)"
           (keydown.enter)="onClickDeploySolution(cellInfo, false, false, true)"
@@ -341,9 +376,14 @@
           role="button"
             title="enable flows"
           ></i>
-          {{ lastAction.TypeNavigation.Type }}
-          {{ lastAction.StatusNavigation.Status }}
-          {{ lastAction.ResultNavigation?.Result }}
+          <ng-container *ngIf="canApplyTwoStepUpgrade(cellInfo, lastAction); else targetActionStatus">
+            holding import success, apply upgrade pending
+          </ng-container>
+          <ng-template #targetActionStatus>
+            {{ lastAction.TypeNavigation.Type }}
+            {{ lastAction.StatusNavigation.Status }}
+            {{ lastAction.ResultNavigation?.Result }}
+          </ng-template>
         </div>
         <div
           *ngIf="lastAction.Result !== 1 && lastAction.Status !== 3"
@@ -432,6 +472,188 @@
 </dx-data-grid>
 
 <dx-popup
+  *ngIf="isDeploymentDialogVisible"
+  class="deployment-options-popup"
+  [width]="900"
+  [maxWidth]="'95vw'"
+  height="auto"
+  [maxHeight]="'90%'"
+  [showTitle]="true"
+  title="Deployment options"
+  [hideOnOutsideClick]="false"
+  [(visible)]="isDeploymentDialogVisible"
+  (onHiding)="onCancelDeploymentDialog()"
+>
+  <dx-scroll-view>
+    <div class="deployment-dialog-content" *ngIf="pendingDeployment as deployment">
+      <div class="deployment-confirmation-summary">
+        <div class="deployment-summary-item">
+          <span>Solution:</span>
+          <strong>{{ deployment.solution.Name }} {{ deployment.solution.Version }}</strong>
+        </div>
+        <div class="deployment-summary-item">
+          <span>Target environment:</span>
+          <strong>{{ deployment.targetEnvironmentName || deployment.targetEnvironmentId }}</strong>
+        </div>
+      </div>
+
+      <div
+        class="deployment-settings-check deployment-settings-loading"
+        *ngIf="isDeploymentSettingsStatusLoading"
+        role="status"
+      >
+        <i class="dx-icon dx-icon-refresh" aria-hidden="true"></i>
+        <span>Checking Connection References and Environment Variables...</span>
+      </div>
+
+      <div
+        class="deployment-settings-check deployment-settings-error"
+        *ngIf="deploymentSettingsStatusError as statusError"
+        role="alert"
+      >
+        <i class="dx-icon dx-icon-warning" aria-hidden="true"></i>
+        <div class="deployment-settings-check-message">
+          <strong>Deployment settings could not be checked.</strong>
+          <span>{{ statusError }}</span>
+        </div>
+        <dx-button
+          icon="refresh"
+          text="Retry"
+          stylingMode="outlined"
+          [disabled]="isDeploymentSettingsStatusLoading"
+          (onClick)="refreshDeploymentSettingsStatus()"
+        ></dx-button>
+      </div>
+
+      <div
+        *ngIf="deploymentSettingsStatus as status"
+        class="deployment-settings-check"
+        [ngClass]="status.manifestStatus !== 'Ready'
+          ? 'deployment-settings-error'
+          : status.missing > 0
+            ? 'deployment-settings-warning'
+            : 'deployment-settings-success'"
+        role="status"
+      >
+        <i
+          class="dx-icon"
+          [ngClass]="status.manifestStatus !== 'Ready'
+            ? 'dx-icon-warning'
+            : status.missing > 0
+              ? 'dx-icon-info'
+              : 'dx-icon-check'"
+          aria-hidden="true"
+        ></i>
+        <div class="deployment-settings-check-message">
+          <strong *ngIf="status.manifestStatus !== 'Ready'">Deployment settings are not ready.</strong>
+          <strong *ngIf="status.manifestStatus === 'Ready' && status.total === 0">
+            No Connection References or Environment Variables need values.
+          </strong>
+          <strong *ngIf="status.manifestStatus === 'Ready' && status.total > 0 && status.missing === 0">
+            All Connection References and Environment Variables are configured.
+          </strong>
+          <strong *ngIf="status.manifestStatus === 'Ready' && status.missing > 0">
+            {{ status.missing }} deployment setting(s) need attention.
+          </strong>
+          <span *ngIf="status.total > 0">
+            {{ status.configured }} of {{ status.total }} settings configured.
+          </span>
+          <span *ngIf="status.missing > 0">
+            Missing: {{ getMissingDeploymentSettingNames(status) }}
+          </span>
+          <span *ngIf="status.manifestStatus !== 'Ready'">
+            Refresh the manifest and complete the settings before deploying.
+          </span>
+          <span *ngIf="status.isFallbackManifest">
+            Using the settings manifest from version {{ status.manifestSourceSolutionVersion }}.
+          </span>
+        </div>
+        <dx-button
+          icon="refresh"
+          [hint]="'Check deployment settings again'"
+          stylingMode="text"
+          [disabled]="isDeploymentSettingsStatusLoading"
+          (onClick)="refreshDeploymentSettingsStatus()"
+        ></dx-button>
+      </div>
+
+      <div class="deployment-option-row">
+        <div class="deployment-option-label">
+          <strong>Deployment mode:</strong>
+          <i
+            class="dx-icon-info deployment-info-icon"
+            title="Choose how this solution's changes are applied to the target: immediately, in two stages, or as an update without applying an upgrade."
+            aria-label="Choose how this solution's changes are applied to the target: immediately, in two stages, or as an update without applying an upgrade."
+            role="img"
+          ></i>
+        </div>
+        <dx-select-box
+          [items]="availableDeploymentModeOptions"
+          displayExpr="text"
+          valueExpr="value"
+          [(value)]="selectedDeploymentMode"
+          itemTemplate="deploymentModeOptionTemplate"
+          [inputAttr]="{ 'aria-label': 'Deployment mode' }"
+        >
+          <div *dxTemplate="let mode of 'deploymentModeOptionTemplate'" class="deployment-mode-option">
+            <span>{{ mode.text }}</span>
+            <i
+              class="dx-icon-info deployment-info-icon"
+              [title]="mode.description"
+              [attr.aria-label]="mode.description"
+              role="img"
+            ></i>
+          </div>
+        </dx-select-box>
+      </div>
+
+      <div class="deployment-option-row">
+        <div class="deployment-option-label">
+          <strong>Override unmanaged customizations:</strong>
+          <i
+            class="dx-icon-info deployment-info-icon"
+            title="When enabled, unmanaged customizations in the target are overwritten by values from this solution."
+            aria-label="When enabled, unmanaged customizations in the target are overwritten by values from this solution."
+            role="img"
+          ></i>
+        </div>
+        <dx-check-box
+          [(value)]="overwriteUnmanagedCustomizations"
+          [elementAttr]="{ 'aria-label': 'Override unmanaged customizations' }"
+        ></dx-check-box>
+      </div>
+
+      <div class="deployment-option-row">
+        <div class="deployment-option-label">
+          <strong>Enable workflows:</strong>
+          <i
+            class="dx-icon-info deployment-info-icon"
+            title="Publish workflows during import and, where applicable, enable associated cloud flows after a two-step apply."
+            aria-label="Publish workflows during import and, where applicable, enable associated cloud flows after a two-step apply."
+            role="img"
+          ></i>
+        </div>
+        <dx-check-box
+          [(value)]="enableWorkflows"
+          [elementAttr]="{ 'aria-label': 'Enable workflows' }"
+        ></dx-check-box>
+      </div>
+
+      <div class="deployment-confirmation-buttons">
+        <dx-button
+          text="Deploy"
+          type="success"
+          icon="upload"
+          [width]="'100%'"
+          [disabled]="!canConfirmDeployment"
+          (onClick)="onConfirmDeployment()"
+        ></dx-button>
+      </div>
+    </div>
+  </dx-scroll-view>
+</dx-popup>
+
+<dx-popup
   *ngIf="isExternalDeployPopupVisible"
   [width]="480"
   height="auto"
@@ -479,7 +701,8 @@
 
 <dx-popup
   *ngIf="isActionDetailPopupVisible"
-  [width]="700"
+  [width]="1100"
+  [maxWidth]="'95vw'"
   height="auto"
   [showTitle]="true"
   title="Action Details"
@@ -494,7 +717,8 @@
 
 <dx-popup
   *ngIf="isSolutionDetailPopupVisible"
-  [width]="700"
+  [width]="1100"
+  [maxWidth]="'95vw'"
   height="auto"
   [showTitle]="true"
   [title]="solutionDetailPopupTitle"

@@ -194,40 +194,74 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
 
     if (!fromNode || !toNode) return;
 
-    const targetPath = toNode.itemData.ExternalEnvironmentNavigation
-      ? toNode.parent?.itemData
-      : toNode.itemData;
     const environment = fromNode.itemData as ExternalEnvironment;
-    const path = targetPath as ExternalDeploymentPath;
+    if (!environment?.Id) return;
 
-    if (!path?.Id || !environment?.Id) return;
+    const isPathHeader = !toNode.itemData.ExternalEnvironmentNavigation;
+    let path: ExternalDeploymentPath | undefined;
+    let targetStepIndex: number;
+    if (isPathHeader && !e.dropInsideItem) {
+      const headerIndex = this.externalDeploymentPaths.findIndex(
+        (deploymentPath) => deploymentPath.Id === toNode.itemData.Id
+      );
+      if (headerIndex < 1) {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "Drop the environment inside an external deployment path to add its first step.",
+        });
+        return;
+      }
+
+      path = this.externalDeploymentPaths[headerIndex - 1];
+      targetStepIndex = path.ExternalDeploymentPathEnvironments?.length ?? 0;
+    } else if (isPathHeader) {
+      path = toNode.itemData as ExternalDeploymentPath;
+      targetStepIndex = path.ExternalDeploymentPathEnvironments?.length ?? 0;
+    } else {
+      path = toNode.parent?.itemData as ExternalDeploymentPath | undefined;
+      const steps = path?.ExternalDeploymentPathEnvironments ?? [];
+      targetStepIndex = steps.findIndex(
+        (step) => step.ExternalEnvironment === toNode.itemData.ExternalEnvironment
+      );
+    }
+
+    if (!path?.Id || targetStepIndex < 0) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The destination position could not be determined.",
+      });
+      return;
+    }
 
     const steps = path.ExternalDeploymentPathEnvironments || [];
     if (steps.some((step) => step.ExternalEnvironment === environment.Id)) {
       return;
     }
 
+    const expectedOrder = steps.map((step) => step.ExternalEnvironment);
     this.externalDeploymentPathEnvironmentService
-      .getStore()
-      .insert({
-        ExternalDeploymentPath: path.Id,
-        ExternalEnvironment: environment.Id,
-        StepNumber: steps.length + 1,
-      })
+      .insertWithExpectedOrder(path.Id, environment.Id, targetStepIndex + 1, expectedOrder)
       .then(() => {
-        this.loadData();
-        this.layoutService.notify({
-          type: NotificationType.Success,
-          message: "Changes have been saved",
-          displayTime: 1000,
-        });
+        return this.loadData().then(() =>
+          this.layoutService.notify({
+            type: NotificationType.Success,
+            message: "Changes have been saved",
+            displayTime: 1000,
+          })
+        );
       })
-      .catch((error: Error) =>
+      .catch((error: Error) => {
         this.layoutService.notify({
           type: NotificationType.Error,
           message: error?.message ? error.message : "The environment could not be added as a step.",
-        })
-      );
+        });
+        return this.loadData().catch(() =>
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: "Could not reload the external deployment path environment order.",
+          })
+        );
+      });
   }
 
   public onReorder(e): void {
@@ -238,39 +272,121 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
     const fromNode = this.findNode(treeView, e.fromIndex);
     const toNode = this.findNode(treeView, this.calculateToIndex(e));
 
-    if (!fromNode?.itemData.ExternalEnvironmentNavigation || !toNode?.itemData.ExternalEnvironmentNavigation) return;
-    if (fromNode.parent?.itemData.Id !== toNode.parent?.itemData.Id) {
+    if (!fromNode?.itemData.ExternalEnvironmentNavigation) return;
+
+    const step = fromNode.itemData as ExternalDeploymentPathEnvironment;
+    const path = fromNode.parent?.itemData as ExternalDeploymentPath | undefined;
+    const assignments = path?.ExternalDeploymentPathEnvironments ?? [];
+    const fromIndex = assignments.findIndex(
+      (assignment) => assignment.ExternalEnvironment === step.ExternalEnvironment
+    ) + 1;
+    const sourcePathIndex = this.externalDeploymentPaths.findIndex(
+      (deploymentPath) => deploymentPath.Id === step.ExternalDeploymentPath
+    );
+    if (!path || fromIndex < 1 || sourcePathIndex < 0) {
       this.layoutService.notify({
         type: NotificationType.Error,
-        message: "It is not possible to move environments between external deployment paths.",
+        message: "The environment order could not be determined. Reload the external deployment paths and try again.",
       });
       return;
     }
 
-    const step = fromNode.itemData as ExternalDeploymentPathEnvironment;
-    const fromIndex = step.StepNumber;
-    const toIndex = (toNode.itemData as ExternalDeploymentPathEnvironment).StepNumber;
+    let toIndex: number;
+    if (toNode === null) {
+      if (sourcePathIndex !== this.externalDeploymentPaths.length - 1) {
+        this.notifyEnvironmentMoveAcrossPaths();
+        return;
+      }
+      toIndex = assignments.length;
+    } else {
+      const targetStep = toNode.itemData as ExternalDeploymentPathTreeItem;
+      const targetPathId = targetStep.ExternalDeploymentPath ??
+        (toNode.parent === null && targetStep.ExternalEnvironmentNavigation === undefined
+          ? targetStep.Id
+          : undefined);
+      const targetPathIndex = this.externalDeploymentPaths.findIndex(
+        (deploymentPath) => deploymentPath.Id === targetPathId
+      );
+      const isEndOfCurrentPath =
+        !e.dropInsideItem &&
+        toNode.parent === null &&
+        sourcePathIndex + 1 === targetPathIndex;
+      const isPathHeader = targetStep.ExternalEnvironmentNavigation === undefined;
+
+      if (isPathHeader && !e.dropInsideItem && targetPathId === step.ExternalDeploymentPath) {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "Drop the environment inside its external deployment path or immediately before the next path.",
+        });
+        return;
+      }
+
+      if (targetPathId !== step.ExternalDeploymentPath && !isEndOfCurrentPath) {
+        this.notifyEnvironmentMoveAcrossPaths();
+        return;
+      }
+
+      if (isEndOfCurrentPath || (isPathHeader && e.dropInsideItem)) {
+        toIndex = assignments.length;
+      } else {
+        const targetIndex = assignments.findIndex(
+          (assignment) => assignment.ExternalEnvironment === targetStep.ExternalEnvironment
+        ) + 1;
+        if (targetIndex < 1) {
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: "The destination environment could not be determined. Reload the external deployment paths and try again.",
+          });
+          return;
+        }
+        toIndex = targetIndex > fromIndex ? targetIndex - 1 : targetIndex;
+      }
+    }
+
+    if (toIndex < 1) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The environment order could not be determined. Reload the external deployment paths and try again.",
+      });
+      return;
+    }
 
     this.externalDeploymentPathEnvironmentService
-      .getStore()
-      .update(
-        { ExternalDeploymentPath: step.ExternalDeploymentPath, ExternalEnvironment: step.ExternalEnvironment },
-        { ToIndex: toIndex, FromIndex: fromIndex }
+      .moveWithExpectedOrder(
+        step.ExternalDeploymentPath,
+        step.ExternalEnvironment,
+        fromIndex,
+        toIndex,
+        assignments.map((assignment) => assignment.ExternalEnvironment)
       )
       .then(() => {
-        this.loadData();
-        this.layoutService.notify({
-          type: NotificationType.Success,
-          message: "Changes have been saved",
-          displayTime: 1000,
-        });
+        return this.loadData().then(() =>
+          this.layoutService.notify({
+            type: NotificationType.Success,
+            message: "Changes have been saved",
+            displayTime: 1000,
+          })
+        );
       })
-      .catch((error: Error) =>
+      .catch((error: Error) => {
         this.layoutService.notify({
           type: NotificationType.Error,
           message: error?.message ? error.message : "The environment order could not be saved.",
-        })
-      );
+        });
+        return this.loadData().catch(() =>
+          this.layoutService.notify({
+            type: NotificationType.Error,
+            message: "Could not reload the external deployment path environment order.",
+          })
+        );
+      });
+  }
+
+  private notifyEnvironmentMoveAcrossPaths(): void {
+    this.layoutService.notify({
+      type: NotificationType.Error,
+      message: "It is not possible to move environments between external deployment paths.",
+    });
   }
 
   public onDragChange(e): void {
@@ -313,6 +429,11 @@ export class ExternalDeploymentpathComponent implements AfterViewInit {
     ]).then(([paths, assignments, environments]) => {
       this.allExternalDeploymentPaths = paths as ExternalDeploymentPath[];
       for (const path of this.allExternalDeploymentPaths) {
+        path.ExternalDeploymentPathEnvironments = (path.ExternalDeploymentPathEnvironments ?? [])
+          .sort((a, b) =>
+            (a.StepNumber ?? Number.MAX_SAFE_INTEGER) - (b.StepNumber ?? Number.MAX_SAFE_INTEGER) ||
+            (a.ExternalEnvironment ?? 0) - (b.ExternalEnvironment ?? 0)
+          );
         path.ApplicationExternalDeploymentPaths = (assignments as {
           ExternalDeploymentPath?: number;
         }[]).filter((assignment) => assignment.ExternalDeploymentPath === path.Id);

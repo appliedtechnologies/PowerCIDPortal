@@ -5,7 +5,7 @@ import { Column } from "devextreme/ui/data_grid";
 import dxSelectBox from "devextreme/ui/select_box";
 import { ApplicationService } from "src/app/shared/services/application.service";
 import { PatchService } from "src/app/shared/services/patch.service";
-import { SolutionService } from "src/app/shared/services/solution.service";
+import { DeploymentNote, DeploymentOptions, SolutionService } from "src/app/shared/services/solution.service";
 import { UserService } from "src/app/shared/services/user.service";
 import { Patch } from "src/app/shared/models/patch.model";
 import { Application } from "src/app/shared/models/application.model";
@@ -13,6 +13,7 @@ import { Environment } from "src/app/shared/models/environment.model";
 import { EnvironmentService } from "src/app/shared/services/environment.service";
 import { Action } from "src/app/shared/models/action.model";
 import { Solution } from "src/app/shared/models/solution.model";
+import { Upgrade } from "src/app/shared/models/upgrade.model";
 import dxButton from "devextreme/ui/button";
 import { ActionService } from "src/app/shared/services/action.service";
 import {
@@ -31,10 +32,16 @@ import { ExternalDeploymentPathEnvironment } from "src/app/shared/models/externa
 import { ExternalEnvironment } from "src/app/shared/models/externalenvironment.model";
 import { ExternalDeploymentPathService } from "src/app/shared/services/externaldeploymentpath.service";
 import { TenantService } from "src/app/shared/services/tenant.service";
-import { SolutionDeploymentSettingsService } from "src/app/shared/services/solution-deployment-settings.service";
+import {
+  DeploymentSettingsStatus,
+  SolutionDeploymentSettingsService,
+} from "src/app/shared/services/solution-deployment-settings.service";
+import { UpgradeService } from "src/app/shared/services/upgrade.service";
+import { isNewerUpgrade } from "./solution-version.helper";
+import { DeploymentMode } from "src/app/shared/models/deployment-mode.model";
 
 type SolutionRowData = Solution & {
-  ApplyManually?: unknown;
+  DefaultDeploymentMode?: DeploymentMode;
 };
 
 const ungroupedApplicationText = "Ungrouped";
@@ -51,7 +58,19 @@ interface SolutionCellInfo {
   data: SolutionRowData;
   column: {
     name: string;
+    environmentData?: Environment;
   };
+}
+
+interface PendingDeployment {
+  solution: SolutionRowData;
+  targetEnvironmentId: number;
+  targetEnvironmentName?: string;
+  targetIsUnmanaged?: boolean;
+  deploymentPathId?: number;
+  externalEnvironmentId?: number;
+  externalDeploymentPathId?: number;
+  closeSelectionPopup?: boolean;
 }
 
 @Component({
@@ -65,6 +84,8 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   @Input() public externalMode = false;
   @ViewChild(DxDataGridComponent, { static: false })
   dataGrid: DxDataGridComponent;
+  @ViewChild("externalSolutionsGrid", { static: false })
+  externalSolutionsGrid: DxDataGridComponent;
   @ViewChild("externalGroupSelectBox", { static: false })
   externalGroupSelectBox: DxSelectBoxComponent;
   @ViewChild("externalApplicationSelectBox", { static: false })
@@ -105,6 +126,40 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   public externalDataGridColumns: Column[] = [];
   public externalEnvironments: ExternalEnvironment[] = [];
   public isExternalDeployPopupVisible = false;
+  public isDeploymentDialogVisible = false;
+  public pendingDeployment: PendingDeployment;
+  public selectedDeploymentMode = DeploymentMode.OneStepUpgrade;
+  public overwriteUnmanagedCustomizations = true;
+  public enableWorkflows = true;
+  public availableDeploymentModeOptions: {
+    value: DeploymentMode;
+    text: string;
+    description: string;
+  }[] = [];
+  public readonly deploymentModeOptions = [
+    {
+      value: DeploymentMode.OneStepUpgrade,
+      text: "One-step upgrade",
+      description:
+        "Imports the solution and applies its upgrade in the same operation. Components removed from the new version are removed from the target.",
+    },
+    {
+      value: DeploymentMode.TwoStepUpgrade,
+      text: "Two-step upgrade",
+      description:
+        "Imports as a holding solution first. Start a separate Apply upgrade action later to promote it. Requires an existing managed solution and is not available for patches.",
+    },
+    {
+      value: DeploymentMode.UpdateOnly,
+      text: "Update only",
+      description:
+        "Imports updates without applying an upgrade. Components removed from the new version are retained in the target.",
+    },
+  ];
+  public deploymentSettingsStatus: DeploymentSettingsStatus;
+  public deploymentSettingsStatusError: string;
+  public isDeploymentSettingsStatusLoading = false;
+  private deploymentSettingsStatusRequestId = 0;
   public selectedExternalDeploymentPath: ExternalDeploymentPath;
   public selectedSolutionForExternalDeploy: Solution;
   public availableExternalDeploymentPaths: ExternalDeploymentPath[] = [];
@@ -115,6 +170,9 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   private externalDeploymentPaths: ExternalDeploymentPath[] = [];
   private externalDeliveryDataLoaded = false;
   private restoringExternalSelections = false;
+  private latestUpgrade: Upgrade | null = null;
+  private latestUpgradeLoadedForApplicationId: number | null = null;
+  private latestUpgradeLoadRequestId = 0;
 
   private refreshAfterPopupClose = false;
 
@@ -131,6 +189,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     private externalDeploymentPathService: ExternalDeploymentPathService,
     private tenantService: TenantService,
     private deploymentSettingsService: SolutionDeploymentSettingsService,
+    private upgradeService: UpgradeService,
     private changeDetectorRef: ChangeDetectorRef
   ) {
     this.selectionToolbarItems = this.createSelectionToolbarItems();
@@ -246,6 +305,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   }
 
   public onExternalTenantChanged(tenantId: number): void {
+    this.resetExternalGridPage();
     this.selectedExternalTenantId = tenantId;
     if (tenantId === undefined || tenantId === null) {
       localStorage.removeItem(externalTenantStorageKey);
@@ -264,7 +324,11 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     if (this.restoringExternalSelections && (applicationId === undefined || applicationId === null)) {
       return;
     }
+    this.resetExternalGridPage();
     this.selectedApplication = this.externalApplications.find((a) => a.Id === applicationId);
+    if (applicationId !== undefined && applicationId !== null) {
+      void this.loadLatestUpgrade(applicationId);
+    }
     if (applicationId === undefined || applicationId === null) {
       localStorage.removeItem(externalApplicationStorageKey);
     } else {
@@ -280,7 +344,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
         "Actions.TypeNavigation",
         "Actions.StatusNavigation",
         "Actions.ResultNavigation",
-        "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery)",
+        "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery, DeploymentMode)",
         "ApplicationNavigation",
       ],
     });
@@ -292,6 +356,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     if (this.restoringExternalSelections) {
       return;
     }
+    this.resetExternalGridPage();
     this.selectedApplicationGroup = group;
     if (group === null) {
       localStorage.removeItem(externalGroupStorageKey);
@@ -312,6 +377,14 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       this.selectedApplicationGroup === null ||
       (a.Group ?? null) === this.selectedApplicationGroup
     );
+  }
+
+  private resetExternalGridPage(): void {
+    if (this.externalSolutionsGrid) {
+      this.externalSolutionsGrid.instance.pageIndex(0);
+    } else {
+      this.dataSourceSolutions?.pageIndex(0);
+    }
   }
 
   private restoreExternalSelections(): void {
@@ -429,7 +502,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           stylingMode: "contained",
           type: "success",
           hint: "Refresh the table.",
-          onClick: () => this.dataGrid?.instance.refresh(),
+          onClick: this.onClickRefreshSolutionsGrid.bind(this),
         },
       },
     ];
@@ -444,7 +517,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
         allowReordering: false,
         cellTemplate: "externalTypeCellTemplate",
         calculateCellValue: (rowData: SolutionRowData) =>
-          rowData["ApplyManually"] === undefined ? "Patch" : "Upgrade",
+         rowData.DefaultDeploymentMode === undefined ? "Patch" : "Upgrade",
         visibleIndex: 0,
       },
       {
@@ -469,7 +542,24 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
         visible: false,
       },
     ];
-    const paths = this.externalDeploymentPaths.filter((path) =>
+    const assignedPaths = (this.selectedApplication?.ApplicationExternalDeploymentPaths ?? [])
+      .map((assignment) => ({
+        path: this.externalDeploymentPaths.find((path) => path.Id === assignment.ExternalDeploymentPath) ??
+          assignment.ExternalDeploymentPathNavigation,
+        hierarchyNumber: assignment.HierarchieNumber,
+      }))
+      .filter((assignment) => assignment.path !== undefined)
+      .sort((a, b) => {
+        const hierarchyA = Number.isFinite(a.hierarchyNumber)
+          ? a.hierarchyNumber
+          : Number.MAX_SAFE_INTEGER;
+        const hierarchyB = Number.isFinite(b.hierarchyNumber)
+          ? b.hierarchyNumber
+          : Number.MAX_SAFE_INTEGER;
+        return hierarchyA - hierarchyB || (a.path.Id ?? 0) - (b.path.Id ?? 0);
+      })
+      .map((assignment) => assignment.path);
+    const paths = assignedPaths.filter((path) =>
       !this.selectedExternalTenantId ||
       this.getExternalDeploymentPathTenantId(path) === this.selectedExternalTenantId
     );
@@ -542,9 +632,9 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
 
     this.layoutService.notify({ message: "Downloading solution...", type: NotificationType.Info });
 
-    const solutionType = cellInfo.data["ApplyManually"] === undefined
-        ? "Patch"
-        : "Upgrade";
+    const solutionType = "DefaultDeploymentMode" in cellInfo.data
+      ? "Upgrade"
+      : "Patch";
 
     const solutionVersion = cellInfo.data.Version;
 
@@ -568,7 +658,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   }
 
   public onClickDeploySolution(cellInfo, exportOnly = false, applyUpgradeOnly = false, enableFlowsOnly = false): void {
-    const targetEnvironmentId = cellInfo.column.name.split(",")[1];
+    const targetEnvironmentId = Number(cellInfo.column.name.split(",")[1]);
 
     if (exportOnly) {
       this.executeExport(cellInfo);
@@ -585,44 +675,156 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           this.layoutService.change(LayoutParameter.ShowLoading, false);
         });
     } else {
-      const deploymentPathId = cellInfo.column.name.split(",")[0];
-      this.layoutService.change(LayoutParameter.ShowLoading, true);
-      this.deploymentSettingsService.status(cellInfo.data.Id, targetEnvironmentId).then((status) => {
-        if (status.manifestStatus !== "Ready") {
-          alert(`Import is blocked because the deployment settings manifest is ${status.manifestStatus}. Refresh the manifest before importing.`, "Deployment Settings");
-          this.layoutService.change(LayoutParameter.ShowLoading, false);
-          return;
-        }
-        if (status.isFallbackManifest) {
-          this.layoutService.notify({
-            type: NotificationType.Info,
-            message: `This historical solution version uses the deployment settings manifest from version ${status.manifestSourceSolutionVersion}.`,
-          });
-        }
-        if (status.missing > 0) {
-          const missingNames = status.missingSettings.map(setting => setting.logicalName).join(", ");
-          const confirmResult = confirm(`Missing settings for this solution version: ${missingNames}. Import anyway?`, "Incomplete Deployment Settings");
-          this.layoutService.change(LayoutParameter.ShowLoading, false);
-          confirmResult.then((result) => {
-            this.layoutService.change(LayoutParameter.ShowLoading, true);
-            if (result == true) {
-              this.startImport(cellInfo.data.Id, targetEnvironmentId, deploymentPathId)
-                .then(() => {
-                  this.layoutService.change(LayoutParameter.ShowLoading, false);
-                });
-            }
-            else {
-              this.layoutService.change(LayoutParameter.ShowLoading, false);
-            }
-          });
-        }
-        else {
-          this.startImport(cellInfo.data.Id, targetEnvironmentId, deploymentPathId)
-            .then(() => {
-              this.layoutService.change(LayoutParameter.ShowLoading, false);
-            });
-        }
+      this.openDeploymentDialog({
+        solution: cellInfo.data,
+        targetEnvironmentId,
+        targetEnvironmentName: cellInfo.column.environmentData?.Name,
+        targetIsUnmanaged: cellInfo.column.environmentData?.DeployUnmanaged === true &&
+          this.selectedApplication?.ForceManagedDeployment !== true,
+        deploymentPathId: Number(cellInfo.column.name.split(",")[0]),
       });
+    }
+  }
+
+  private openDeploymentDialog(deployment: PendingDeployment): void {
+    this.pendingDeployment = deployment;
+    const isUpgrade = "DefaultDeploymentMode" in deployment.solution;
+    const canUseTwoStep = isUpgrade && deployment.targetIsUnmanaged !== true;
+    this.availableDeploymentModeOptions = this.deploymentModeOptions.filter(
+      (option) => option.value !== DeploymentMode.TwoStepUpgrade || canUseTwoStep
+    );
+    this.selectedDeploymentMode =
+      deployment.solution.DefaultDeploymentMode ?? DeploymentMode.OneStepUpgrade;
+    if (!this.availableDeploymentModeOptions.some(
+      (option) => option.value === this.selectedDeploymentMode
+    )) {
+      this.selectedDeploymentMode = DeploymentMode.OneStepUpgrade;
+    }
+    this.overwriteUnmanagedCustomizations =
+      deployment.solution.OverwriteUnmanagedCustomizations ?? true;
+    this.enableWorkflows = deployment.solution.EnableWorkflows ?? true;
+    this.deploymentSettingsStatus = undefined;
+    this.deploymentSettingsStatusError = undefined;
+    this.isDeploymentDialogVisible = true;
+    void this.refreshDeploymentSettingsStatus();
+  }
+
+  public onCancelDeploymentDialog(): void {
+    this.deploymentSettingsStatusRequestId++;
+    this.pendingDeployment = undefined;
+    this.deploymentSettingsStatus = undefined;
+    this.deploymentSettingsStatusError = undefined;
+    this.isDeploymentSettingsStatusLoading = false;
+  }
+
+  public get canConfirmDeployment(): boolean {
+    return this.pendingDeployment != null &&
+      !this.isDeploymentSettingsStatusLoading &&
+      !this.deploymentSettingsStatusError &&
+      this.deploymentSettingsStatus?.manifestStatus === "Ready";
+  }
+
+  public getMissingDeploymentSettingNames(status: DeploymentSettingsStatus): string {
+    return status.missingSettings.map((setting) => setting.logicalName).join(", ");
+  }
+
+  public async refreshDeploymentSettingsStatus(): Promise<void> {
+    const deployment = this.pendingDeployment;
+    if (!deployment) {
+      return;
+    }
+
+    const requestId = ++this.deploymentSettingsStatusRequestId;
+    this.isDeploymentSettingsStatusLoading = true;
+    this.deploymentSettingsStatus = undefined;
+    this.deploymentSettingsStatusError = undefined;
+
+    try {
+      const status = await this.deploymentSettingsService.status(
+        deployment.solution.Id,
+        deployment.targetEnvironmentId
+      );
+      if (requestId === this.deploymentSettingsStatusRequestId &&
+          this.pendingDeployment === deployment) {
+        this.deploymentSettingsStatus = status;
+      }
+    } catch (error) {
+      if (requestId === this.deploymentSettingsStatusRequestId &&
+          this.pendingDeployment === deployment) {
+        this.deploymentSettingsStatusError = this.getDeploymentErrorMessage(
+          error,
+          "Deployment settings could not be checked. The deployment was not started."
+        );
+      }
+    } finally {
+      if (requestId === this.deploymentSettingsStatusRequestId) {
+        this.isDeploymentSettingsStatusLoading = false;
+      }
+    }
+  }
+
+  public async onConfirmDeployment(): Promise<void> {
+    const deployment = this.pendingDeployment;
+    if (!deployment) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "No deployment is selected.",
+      });
+      return;
+    }
+
+    await this.refreshDeploymentSettingsStatus();
+    if (this.pendingDeployment !== deployment || !this.canConfirmDeployment) {
+      return;
+    }
+
+    const shouldContinue = await this.confirmDeploymentNotes(
+      deployment.solution,
+      deployment.targetEnvironmentId
+    );
+    if (!shouldContinue || this.pendingDeployment !== deployment) {
+      return;
+    }
+
+    const options: DeploymentOptions = {
+      deploymentMode: this.selectedDeploymentMode,
+      overwriteUnmanagedCustomizations: this.overwriteUnmanagedCustomizations,
+      enableWorkflows: this.enableWorkflows,
+    };
+
+    this.isDeploymentDialogVisible = false;
+    this.layoutService.change(LayoutParameter.ShowLoading, true);
+    try {
+      if (deployment.externalEnvironmentId !== undefined &&
+          deployment.externalDeploymentPathId !== undefined) {
+        if (deployment.closeSelectionPopup) {
+          this.isExternalDeployPopupVisible = false;
+        }
+        await this.startExternalDeployment(
+          deployment.solution,
+          deployment.externalEnvironmentId,
+          deployment.externalDeploymentPathId,
+          options
+        );
+      } else {
+        await this.startImport(
+          deployment.solution,
+          deployment.targetEnvironmentId,
+          deployment.deploymentPathId,
+          options
+        );
+      }
+    } catch (error) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: this.getDeploymentErrorMessage(
+          error,
+          "An error occurred while starting the deployment."
+        ),
+      });
+    } finally {
+      this.pendingDeployment = undefined;
+      this.layoutService.change(LayoutParameter.ShowLoading, false);
     }
   }
 
@@ -679,6 +881,9 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     void e;
     this.isSolutionDetailPopupVisible = false;
     this.resetSolutionDetailPopup();
+    if (this.selectedApplication?.Id != null) {
+      void this.loadLatestUpgrade(this.selectedApplication.Id);
+    }
     this.dataGrid.instance.refresh();
   }
 
@@ -733,14 +938,17 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   }
 
   public getLastActionForEnvironment(cellInfo): Action {
-    const allActionOfSolution: Action[] = cellInfo.data.Actions;
+    const allActionOfSolution: Action[] = cellInfo.data.Actions ?? [];
     const targetEnvironmentId =
       cellInfo.column.name.split(",").length > 1
         ? cellInfo.column.name.split(",")[1]
         : cellInfo.column.name;
 
-    return allActionOfSolution.find(
-      (e) => e.TargetEnvironment == targetEnvironmentId
+    return this.getLatestAction(
+      allActionOfSolution,
+      (action) =>
+        action.IsExternalDelivery !== true &&
+        action.TargetEnvironment == targetEnvironmentId
     );
   }
 
@@ -748,15 +956,125 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     return solution.Actions?.some((action) => action.Type === 2 && action.Result === 1) ?? false;
   }
 
+  public canRenewExport(solution: Solution): boolean {
+    if (this.hasSuccessfulImport(solution)) {
+      return false;
+    }
+
+    if (solution.Application == null || this.latestUpgradeLoadedForApplicationId !== solution.Application) {
+      return false;
+    }
+
+    return !this.latestUpgrade || !isNewerUpgrade(this.latestUpgrade, solution);
+  }
+
   public getLastExternalAction(cellInfo): Action {
-    const environmentId = Number(cellInfo.column.name.split(",")[1]);
+    const [, environmentIdValue] = cellInfo.column.name.split(",");
+    const environmentId = Number(environmentIdValue);
     const targetEnvironmentId = this.externalEnvironments.find((e) => e.Id === environmentId)?.Environment;
-    return (cellInfo.data.Actions ?? []).find((a) =>
-      a.IsExternalDelivery && a.TargetEnvironment === targetEnvironmentId
+    return this.getLatestAction(
+      cellInfo.data.Actions ?? [],
+      (action) =>
+        action.IsExternalDelivery === true &&
+        action.TargetEnvironment === targetEnvironmentId
     );
   }
 
+  private getLatestAction(actions: Action[], matches: (action: Action) => boolean): Action {
+    return actions
+      .filter(matches)
+      .sort((left, right) =>
+        Date.parse(right.CreatedOn ?? "") - Date.parse(left.CreatedOn ?? "") ||
+        (right.Id ?? 0) - (left.Id ?? 0)
+      )[0];
+  }
+
+  public canDeployToExternalEnvironment(cellInfo): boolean {
+    const predecessor = this.getExternalDeploymentPredecessor(cellInfo);
+    if (!predecessor.required) {
+      return true;
+    }
+
+    const previousEnvironment = predecessor.step &&
+      (this.externalEnvironments.find((environment) =>
+        environment.Id === predecessor.step.ExternalEnvironment
+      ) ?? predecessor.step.ExternalEnvironmentNavigation);
+    if (!previousEnvironment?.Environment) {
+      return false;
+    }
+
+    return this.hasSuccessfulDeploymentOnEnvironment(
+      cellInfo.data,
+      previousEnvironment.Environment,
+      true
+    );
+  }
+
+  private hasSuccessfulDeploymentOnEnvironment(
+    solution: SolutionRowData,
+    environmentId: number,
+    isExternalDelivery: boolean
+  ): boolean {
+    const actions: Action[] = solution.Actions ?? [];
+    const matchesEnvironmentAndCategory = (action: Action): boolean =>
+      action.TargetEnvironment === environmentId &&
+      action.IsExternalDelivery === isExternalDelivery;
+    const successfulImports = actions.filter((action) =>
+      matchesEnvironmentAndCategory(action) &&
+      action.Type === 2 &&
+      action.Result === 1
+    );
+
+    return successfulImports.some((action) => {
+      const deploymentMode = action.DeploymentMode ?? solution.DefaultDeploymentMode;
+      if (deploymentMode !== DeploymentMode.TwoStepUpgrade) {
+        return true;
+      }
+
+      return actions.some((applyAction) =>
+        matchesEnvironmentAndCategory(applyAction) &&
+        applyAction.Type === 3 &&
+        applyAction.Result === 1
+      );
+    });
+  }
+
+  public getPreviousExternalEnvironmentName(cellInfo): string {
+    const predecessor = this.getExternalDeploymentPredecessor(cellInfo);
+    return predecessor.step
+      ? this.stepDisplayName(predecessor.step)
+      : "previous environment";
+  }
+
+  private getExternalDeploymentPredecessor(
+    cellInfo
+  ): { required: boolean; step?: ExternalDeploymentPathEnvironment } {
+    const [pathIdValue, environmentIdValue] = cellInfo.column.name.split(",");
+    const pathId = Number(pathIdValue);
+    const environmentId = Number(environmentIdValue);
+    const path = this.externalDeploymentPaths.find((deploymentPath) =>
+      deploymentPath.Id === pathId
+    );
+    const steps = path?.ExternalDeploymentPathEnvironments ?? [];
+    const currentStep = steps.find((step) => step.ExternalEnvironment === environmentId);
+
+    if (currentStep?.StepNumber === 1) {
+      return { required: false };
+    }
+
+    return {
+      required: true,
+      step: currentStep?.StepNumber === undefined
+        ? undefined
+        : steps.find((step) => step.StepNumber === currentStep.StepNumber - 1),
+    };
+  }
+
   public onClickExternalDeploy(cellInfo): void {
+    if (!this.canDeployToExternalEnvironment(cellInfo)) {
+      return;
+    }
+
     const pathId = Number(cellInfo.column.name.split(",")[0]);
     const externalEnvironmentId = Number(cellInfo.column.name.split(",")[1]);
     const externalEnvironment = this.externalEnvironments.find((environment) => environment.Id === externalEnvironmentId);
@@ -768,49 +1086,38 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       return;
     }
 
-    this.layoutService.change(LayoutParameter.ShowLoading, true);
-    this.deploymentSettingsService
-      .status(cellInfo.data.Id, externalEnvironment.Environment)
-      .then((status) => {
-        if (status.manifestStatus !== "Ready") {
-          alert(`Import is blocked because the deployment settings manifest is ${status.manifestStatus}. Refresh the manifest before importing.`, "Deployment Settings");
-          return;
-        }
-        if (status.isFallbackManifest) {
-          this.layoutService.notify({
-            type: NotificationType.Info,
-            message: `This historical solution version uses the deployment settings manifest from version ${status.manifestSourceSolutionVersion}.`,
-          });
-        }
-        if (status.missing > 0) {
-          const missingNames = status.missingSettings.map(setting => setting.logicalName).join(", ");
-          const confirmResult = confirm(
-            `Missing settings for this solution version: ${missingNames}. Import anyway?`,
-            "Incomplete Deployment Settings"
-          );
-          this.layoutService.change(LayoutParameter.ShowLoading, false);
-          return confirmResult.then((result) => {
-            if (!result) {
-              return;
-            }
-            return this.startExternalDeployment(cellInfo.data, externalEnvironmentId, pathId);
-          });
-        }
-        return this.startExternalDeployment(cellInfo.data, externalEnvironmentId, pathId);
-      })
-      .catch(() => {
-        this.layoutService.notify({
-          type: NotificationType.Error,
-          message: "An error occurred while checking the deployment settings.",
-        });
-      })
-      .finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
+    this.openDeploymentDialog({
+      solution: cellInfo.data,
+      targetEnvironmentId: externalEnvironment.Environment,
+      targetEnvironmentName: externalEnvironment.EnvironmentNavigation?.Name,
+      targetIsUnmanaged: externalEnvironment.EnvironmentNavigation?.DeployUnmanaged === true &&
+        cellInfo.data.ApplicationNavigation?.ForceManagedDeployment !== true,
+      externalEnvironmentId,
+      externalDeploymentPathId: pathId,
+    });
   }
 
-  private startExternalDeployment(solution: Solution, externalEnvironmentId: number, pathId: number): Promise<void> {
-    this.layoutService.change(LayoutParameter.ShowLoading, true);
-    return this.solutionService.externalImport(solution.Id, externalEnvironmentId, pathId)
+  private startExternalDeployment(
+    solution: Solution,
+    externalEnvironmentId: number,
+    pathId: number,
+    options: DeploymentOptions
+  ): Promise<void> {
+    const targetEnvironmentId = this.externalEnvironments.find(
+      (environment) => environment.Id === externalEnvironmentId
+    )?.Environment;
+    if (targetEnvironmentId == null) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "The external environment could not be found.",
+      });
+      return Promise.resolve();
+    }
+
+    return this.solutionService
+      .externalDeploy(solution.Id, externalEnvironmentId, pathId, options)
       .then((action) => {
+        this.dataSourceSolutions?.reload();
         this.layoutService.notify({ type: NotificationType.Success, message: "The deployment has been started." });
         this.startAutoRefresh(action);
       })
@@ -819,8 +1126,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           type: NotificationType.Error,
           message: this.getDeploymentErrorMessage(error),
         });
-      })
-      .finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
+      });
   }
 
   public onClickConfigureExternalDeployment(environment: ExternalEnvironment): void {
@@ -834,22 +1140,86 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       return;
     }
 
+    const externalEnvironmentId = this.selectedExternalStep.ExternalEnvironment;
+    const targetEnvironmentId = this.externalEnvironments.find(
+      (environment) => environment.Id === externalEnvironmentId
+    )?.Environment;
+    if (targetEnvironmentId == null) {
+      this.layoutService.notify({ type: NotificationType.Error, message: "The external environment could not be found." });
+      return;
+    }
+
+    this.openDeploymentDialog({
+      solution: this.selectedSolutionForExternalDeploy as SolutionRowData,
+      targetEnvironmentId,
+      targetEnvironmentName: this.externalEnvironments.find(
+        (environment) => environment.Id === externalEnvironmentId
+      )?.EnvironmentNavigation?.Name,
+      targetIsUnmanaged: this.externalEnvironments.find(
+        (environment) => environment.Id === externalEnvironmentId
+      )?.EnvironmentNavigation?.DeployUnmanaged === true &&
+        this.selectedSolutionForExternalDeploy.ApplicationNavigation?.ForceManagedDeployment !== true,
+      externalEnvironmentId,
+      externalDeploymentPathId: this.selectedExternalDeploymentPath.Id,
+      closeSelectionPopup: true,
+    });
+    this.isExternalDeployPopupVisible = false;
+  }
+
+  public canApplyTwoStepUpgrade(cellInfo, action: Action): boolean {
+    const solution = cellInfo.data as SolutionRowData;
+    return this.isTwoStepUpgradeAction(solution, action) &&
+      action.Type === 2 &&
+      action.Status === 3 &&
+      action.Result === 1;
+  }
+
+  public canRetryApplyUpgrade(cellInfo, action: Action): boolean {
+    return this.isTwoStepUpgradeAction(cellInfo.data, action) &&
+      action.Type === 3 &&
+      action.Status === 3 &&
+      action.Result !== 1;
+  }
+
+  private isTwoStepUpgradeAction(solution: SolutionRowData, action: Action): boolean {
+    const isUpgrade = "DefaultDeploymentMode" in solution;
+    const isTwoStepUpgrade = action.DeploymentMode === DeploymentMode.TwoStepUpgrade ||
+      (action.DeploymentMode == null &&
+        solution.DefaultDeploymentMode === DeploymentMode.TwoStepUpgrade);
+    return isUpgrade && isTwoStepUpgrade;
+  }
+
+  public onClickApplyUpgrade(cellInfo, lastAction: Action): void {
     this.layoutService.change(LayoutParameter.ShowLoading, true);
-    this.solutionService.externalImport(
-      this.selectedSolutionForExternalDeploy.Id,
-      this.selectedExternalStep.ExternalEnvironment,
-      this.selectedExternalDeploymentPath.Id
-    ).then((action) => {
-      this.isExternalDeployPopupVisible = false;
-      this.startAutoRefresh(action);
-      this.layoutService.notify({ type: NotificationType.Success, message: "The deployment has been started." });
-      this.dataSourceSolutions?.reload();
-    }).catch((error) => {
-      this.layoutService.notify({
-        type: NotificationType.Error,
-        message: this.getDeploymentErrorMessage(error),
-      });
-    }).finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
+    const request = this.externalMode
+      ? this.solutionService.externalApplyUpgrade(
+          cellInfo.data.Id,
+          Number(cellInfo.column.name.split(",")[1]),
+          Number(cellInfo.column.name.split(",")[0])
+        )
+      : this.solutionService.applyUpgrade(
+          cellInfo.data.Id,
+          lastAction.TargetEnvironment ?? Number(cellInfo.column.name.split(",")[1])
+        );
+
+    request
+      .then((action) => {
+        this.layoutService.notify({
+          type: NotificationType.Success,
+          message: "Apply upgrade started...",
+        });
+        this.startAutoRefresh(action);
+      })
+      .catch((error) => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: this.getDeploymentErrorMessage(
+            error,
+            "An error occurred while starting an apply upgrade."
+          ),
+        });
+      })
+      .finally(() => this.layoutService.change(LayoutParameter.ShowLoading, false));
   }
 
   public onExternalDeploymentPathChanged(path: ExternalDeploymentPath): void {
@@ -923,8 +1293,10 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           (x) => x.Id == previousEnvironmentId
         ).Name;
 
-        this.canImport = cellInfo.data.Actions.some(
-          (x) => x.TargetEnvironment == previousEnvironmentId && x.Result == 1
+        this.canImport = this.hasSuccessfulDeploymentOnEnvironment(
+          cellInfo.data,
+          Number(previousEnvironmentId),
+          false
         );
       }
     }
@@ -940,9 +1312,14 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     this.refreshAfterPopupClose = true;
   }
 
-  private startImport(solutionId: number, targetEnvironmentId, deploymentPathId): Promise<void> {
+  private startImport(
+    solution: Solution,
+    targetEnvironmentId: number,
+    deploymentPathId: number,
+    options: DeploymentOptions
+  ): Promise<void> {
     return this.solutionService
-      .import(solutionId, targetEnvironmentId, deploymentPathId)
+      .deploy(solution.Id, targetEnvironmentId, deploymentPathId, options)
       .then((action) => {
         this.layoutService.notify({
           type: NotificationType.Success,
@@ -959,6 +1336,52 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           ),
         });
       });
+  }
+
+  private async confirmDeploymentNotes(solution: Solution, targetEnvironmentId: number): Promise<boolean> {
+    let notes: DeploymentNote[];
+    try {
+      notes = await this.solutionService.getDeploymentNotes(solution.Id, targetEnvironmentId);
+    } catch (error) {
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: this.getDeploymentErrorMessage(
+          error,
+          "Deployment notes could not be loaded. The deployment was not started."
+        ),
+      });
+      return false;
+    }
+
+    if (notes.length === 0) {
+      return true;
+    }
+
+    this.layoutService.change(LayoutParameter.ShowLoading, false);
+    const shouldContinue = await confirm(
+      this.formatDeploymentNotes(solution, notes),
+      "Deployment Notes"
+    );
+    if (shouldContinue) {
+      this.layoutService.change(LayoutParameter.ShowLoading, true);
+    }
+    return shouldContinue;
+  }
+
+  private formatDeploymentNotes(solution: Solution, notes: DeploymentNote[]): string {
+    const escapeHtml = (value: string): string =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    const noteSections = notes.map((note) =>
+      `<strong>${escapeHtml(note.solutionName)} ${escapeHtml(note.solutionVersion)}</strong><br>` +
+      escapeHtml(note.deploymentNotes).replace(/\r\n|\r|\n/g, "<br>")
+    ).join("<br><br>");
+
+    return `Please review the deployment notes for ${escapeHtml(solution.Name ?? "")} ${escapeHtml(solution.Version ?? "")} and all versions not yet successfully imported to this environment:<br><br>${noteSections}<br><br>Continue with the deployment?`;
   }
 
   private startApplyUpgrade(solutionId: number, targetEnvironmentId): Promise<void> {
@@ -1066,7 +1489,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
         allowReordering: false,
         cellTemplate: "typeCellTemplate",
         calculateCellValue: (rowData: SolutionRowData) => {
-          if (rowData["ApplyManually"] === undefined) return "Patch";
+         if (rowData.DefaultDeploymentMode === undefined) return "Patch";
           else return "Upgrade";
         },
         visibleIndex: 0,
@@ -1135,7 +1558,48 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   }
 
   private onClickRefreshSolutionsGrid(): void {
+    if (!this.dataGrid?.instance) {
+      return;
+    }
+
+    if (this.selectedApplication?.Id != null) {
+      void this.loadLatestUpgrade(this.selectedApplication.Id);
+    }
     this.dataGrid.instance.refresh();
+  }
+
+  private async loadLatestUpgrade(applicationId: number): Promise<void> {
+    const requestId = ++this.latestUpgradeLoadRequestId;
+    this.latestUpgradeLoadedForApplicationId = null;
+    this.latestUpgrade = null;
+
+    try {
+      const upgrades = await this.upgradeService.getStore().load({
+        filter: ["Application", "=", applicationId],
+        select: ["Id", "Application", "CreatedOn"],
+        sort: [
+          { selector: "CreatedOn", desc: true },
+          { selector: "Id", desc: true },
+        ],
+        take: 1,
+      }) as Upgrade[];
+
+      if (requestId !== this.latestUpgradeLoadRequestId) {
+        return;
+      }
+
+      this.latestUpgrade = upgrades[0] ?? null;
+      this.latestUpgradeLoadedForApplicationId = applicationId;
+    } catch {
+      if (requestId !== this.latestUpgradeLoadRequestId) {
+        return;
+      }
+
+      this.layoutService.notify({
+        type: NotificationType.Error,
+        message: "Could not check for newer upgrades. Export renewal remains hidden until the upgrade list is refreshed.",
+      });
+    }
   }
 
   private setSelectedApplicationId(id: number) {
@@ -1147,6 +1611,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
 
       this.applicationService.getApplicationById(id).then((application) => {
         this.selectedApplication = application;
+        void this.loadLatestUpgrade(id);
         this.selectedApplicationGroup = this.selectedApplication.Group ?? null;
         this.applicationSelectBoxInstance?.option(
           "dataSource",
@@ -1173,7 +1638,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
             "Actions.TypeNavigation",
             "Actions.StatusNavigation",
             "Actions.ResultNavigation",
-            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery)",
+            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery, DeploymentMode)",
             "CreatedByNavigation($select=Firstname, Lastname)",
             "ModifiedByNavigation($select=Firstname, Lastname)",
           ],

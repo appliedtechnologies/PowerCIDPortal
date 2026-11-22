@@ -48,7 +48,15 @@ namespace at.D365.PowerCID.Portal.Services
             this.solutionHistoryService = solutionHistoryService;
         }
 
-        public async Task<Data.Models.Action> AddExportAction(int key, Guid tenantMsIdCurrentUser, Guid msIdCurrentUser, bool exportOnly, int targetEnvironmentForImport = 0)
+        public async Task<Data.Models.Action> AddExportAction(
+            int key,
+            Guid tenantMsIdCurrentUser,
+            Guid msIdCurrentUser,
+            bool exportOnly,
+            int targetEnvironmentForImport = 0,
+            DeploymentMode? deploymentMode = null,
+            bool? overwriteUnmanagedCustomizations = null,
+            bool? enableWorkflows = null)
         {
             logger.LogDebug($"Begin: SolutionService AddExportAction(key: {key}, tenantMsIdCurrentUser: {tenantMsIdCurrentUser.ToString()}, msIdCurrentUser: {msIdCurrentUser.ToString()} exportOnly: {exportOnly})");
 
@@ -59,6 +67,10 @@ namespace at.D365.PowerCID.Portal.Services
             }
 
             Solution solution = dbContext.Solutions.First(e => e.Id == key);
+            DeploymentMode selectedMode = deploymentMode ?? GetDefaultDeploymentMode(solution);
+            if (!exportOnly && targetEnvironmentForImport != 0)
+                await ValidateTwoStepUpgradeAsync(solution, targetEnvironmentForImport, selectedMode);
+
             await this.EnsureExportRenewalAllowed(solution);
 
             Data.Models.Action newAction = new Data.Models.Action
@@ -70,7 +82,10 @@ namespace at.D365.PowerCID.Portal.Services
                 StartTime = DateTime.Now,
                 Solution = solution.Id,
                 ExportOnly = exportOnly,
-                ImportTargetEnvironment = targetEnvironmentForImport
+                ImportTargetEnvironment = targetEnvironmentForImport,
+                DeploymentMode = (int)selectedMode,
+                OverwriteUnmanagedCustomizations = overwriteUnmanagedCustomizations ?? solution.OverwriteUnmanagedCustomizations ?? true,
+                EnableWorkflows = enableWorkflows ?? solution.EnableWorkflows ?? true
             };
 
             dbContext.Add(newAction);
@@ -104,7 +119,13 @@ namespace at.D365.PowerCID.Portal.Services
             }
         }
 
-        public async Task<Data.Models.Action> AddImportAction(int key, int targetEnvironmentId, Guid msIdCurrentUser)
+        public async Task<Data.Models.Action> AddImportAction(
+            int key,
+            int targetEnvironmentId,
+            Guid msIdCurrentUser,
+            DeploymentMode? deploymentMode = null,
+            bool? overwriteUnmanagedCustomizations = null,
+            bool? enableWorkflows = null)
         {
             logger.LogDebug($"Begin: SolutionService AddImportAction(key: {key}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
 
@@ -112,6 +133,8 @@ namespace at.D365.PowerCID.Portal.Services
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
             await this.CheckImportPermission(user.Id, targetEnvironmentId);
+            DeploymentMode selectedMode = deploymentMode ?? GetDefaultDeploymentMode(solution);
+            await ValidateTwoStepUpgradeAsync(solution, targetEnvironmentId, selectedMode);
 
             Data.Models.Action newAction = new Data.Models.Action
             {
@@ -120,7 +143,10 @@ namespace at.D365.PowerCID.Portal.Services
                 Type = 2,
                 Status = 1,
                 StartTime = DateTime.Now,
-                Solution = solution.Id
+                Solution = solution.Id,
+                DeploymentMode = (int)selectedMode,
+                OverwriteUnmanagedCustomizations = overwriteUnmanagedCustomizations ?? solution.OverwriteUnmanagedCustomizations ?? true,
+                EnableWorkflows = enableWorkflows ?? solution.EnableWorkflows ?? true
             };
 
             dbContext.Add(newAction);
@@ -130,7 +156,14 @@ namespace at.D365.PowerCID.Portal.Services
             return newAction;
         }
 
-        public async Task<Data.Models.Action> AddExternalImportAction(int key, int externalEnvironmentId, int externalDeploymentPathId, Guid msIdCurrentUser)
+        public async Task<Data.Models.Action> AddExternalImportAction(
+            int key,
+            int externalEnvironmentId,
+            int externalDeploymentPathId,
+            Guid msIdCurrentUser,
+            DeploymentMode? deploymentMode = null,
+            bool? overwriteUnmanagedCustomizations = null,
+            bool? enableWorkflows = null)
         {
             logger.LogDebug($"Begin: SolutionService AddExternalImportAction(key: {key}, externalEnvironmentId: {externalEnvironmentId}, externalDeploymentPathId: {externalDeploymentPathId}, msIdCurrentUser: {msIdCurrentUser.ToString()})");
 
@@ -138,6 +171,8 @@ namespace at.D365.PowerCID.Portal.Services
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
             ExternalEnvironment externalEnvironment = await this.CheckExternalImportPermission(user.Id, solution, externalEnvironmentId, externalDeploymentPathId);
+            DeploymentMode selectedMode = deploymentMode ?? GetDefaultDeploymentMode(solution);
+            await ValidateTwoStepUpgradeAsync(solution, externalEnvironment.Environment, selectedMode);
 
             Data.Models.Action newAction = new Data.Models.Action
             {
@@ -147,7 +182,11 @@ namespace at.D365.PowerCID.Portal.Services
                 Status = 1,
                 StartTime = DateTime.Now,
                 Solution = solution.Id,
-                IsExternalDelivery = true
+                IsExternalDelivery = true,
+                ExternalDeploymentPath = externalDeploymentPathId,
+                DeploymentMode = (int)selectedMode,
+                OverwriteUnmanagedCustomizations = overwriteUnmanagedCustomizations ?? solution.OverwriteUnmanagedCustomizations ?? true,
+                EnableWorkflows = enableWorkflows ?? solution.EnableWorkflows ?? true
             };
 
             dbContext.Add(newAction);
@@ -166,6 +205,64 @@ namespace at.D365.PowerCID.Portal.Services
 
             await this.CheckImportPermission(user.Id, targetEnvironmentId);
 
+            Data.Models.Action newAction = await CreateApplyUpgradeAction(
+                solution,
+                targetEnvironmentId,
+                msIdCurrentUser,
+                isExternalDelivery: false,
+                externalDeploymentPathId: null);
+            logger.LogDebug($"End: SolutionService  AddApplyUpgradeAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
+
+            return newAction;
+        }
+
+        public async Task<Data.Models.Action> AddExternalApplyUpgradeAction(
+            int solutionId,
+            int externalEnvironmentId,
+            int externalDeploymentPathId,
+            Guid msIdCurrentUser)
+        {
+            Solution solution = await this.dbContext.Solutions.FirstAsync(e => e.Id == solutionId);
+            User user = await this.dbContext.Users.FirstAsync(e => e.MsId == msIdCurrentUser);
+            ExternalEnvironment externalEnvironment = await this.CheckExternalImportPermission(
+                user.Id,
+                solution,
+                externalEnvironmentId,
+                externalDeploymentPathId);
+
+            if (solution.IsPatch())
+                throw new InvalidOperationException("Can't apply upgrade for patch solution.");
+
+            return await CreateApplyUpgradeAction(
+                solution,
+                externalEnvironment.Environment,
+                msIdCurrentUser,
+                isExternalDelivery: true,
+                externalDeploymentPathId);
+        }
+
+        private async Task<Data.Models.Action> CreateApplyUpgradeAction(
+            Solution solution,
+            int targetEnvironmentId,
+            Guid msIdCurrentUser,
+            bool isExternalDelivery,
+            int? externalDeploymentPathId)
+        {
+            var previousImport = await this.dbContext.Actions
+                .Where(e =>
+                    e.Solution == solution.Id &&
+                    e.TargetEnvironment == targetEnvironmentId &&
+                    e.Type == 2 &&
+                    e.Result == 1 &&
+                    e.IsExternalDelivery == isExternalDelivery)
+                .OrderByDescending(e => e.CreatedOn)
+                .ThenByDescending(e => e.Id)
+                .FirstOrDefaultAsync();
+
+            if (previousImport == null ||
+                previousImport.DeploymentMode != (int)DeploymentMode.TwoStepUpgrade)
+                throw new InvalidOperationException("A successful two-step upgrade import is required before applying the upgrade.");
+
             Data.Models.Action newAction = new Data.Models.Action
             {
                 Name = $"{solution.Name}_{DateTimeOffset.Now.ToUnixTimeSeconds()}",
@@ -173,24 +270,93 @@ namespace at.D365.PowerCID.Portal.Services
                 Type = 3,
                 Status = 1,
                 StartTime = DateTime.Now,
-                Solution = solution.Id
+                Solution = solution.Id,
+                IsExternalDelivery = isExternalDelivery,
+                ExternalDeploymentPath = externalDeploymentPathId,
+                DeploymentMode = previousImport.DeploymentMode,
+                OverwriteUnmanagedCustomizations = previousImport.OverwriteUnmanagedCustomizations,
+                EnableWorkflows = previousImport.EnableWorkflows
             };
 
             dbContext.Add(newAction);
             await dbContext.SaveChangesAsync(msIdCurrentUser: msIdCurrentUser);
-            logger.LogDebug($"End: SolutionService  AddApplyUpgradeAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
-
             return newAction;
         }
 
-        public async Task<Data.Models.Action> AddEnableFlowsAction(int solutionId, int targetEnvironmentId, Guid msIdCurrentUser)
+        private static DeploymentMode GetDefaultDeploymentMode(Solution solution)
+        {
+            if (solution is not Upgrade upgrade)
+                return DeploymentMode.OneStepUpgrade;
+
+            if (!Enum.IsDefined(typeof(DeploymentMode), upgrade.DefaultDeploymentMode))
+                throw new InvalidOperationException("The solution version has an invalid default deployment mode.");
+
+            return (DeploymentMode)upgrade.DefaultDeploymentMode;
+        }
+
+        private async Task ValidateTwoStepUpgradeAsync(
+            Solution solution,
+            int targetEnvironmentId,
+            DeploymentMode deploymentMode)
+        {
+            if (deploymentMode != DeploymentMode.TwoStepUpgrade)
+                return;
+
+            if (solution.IsPatch())
+                throw new InvalidOperationException("Two-step upgrade is not available for patches.");
+
+            var targetEnvironment = await this.dbContext.Environments.FindAsync(targetEnvironmentId);
+            if (targetEnvironment == null)
+                throw new InvalidOperationException("The target environment could not be found.");
+
+            if (targetEnvironment.DeployUnmanaged &&
+                !solution.ApplicationNavigation.ForceManagedDeployment)
+            {
+                throw new InvalidOperationException("Two-step upgrade requires a managed target environment.");
+            }
+
+            if (!await this.ExistsSolutionInTargetEnvironment(
+                solution.UniqueName,
+                targetEnvironment.BasicUrl))
+            {
+                throw new InvalidOperationException(
+                    "Two-step upgrade requires this solution to already exist in the target environment.");
+            }
+        }
+
+        public async Task<Data.Models.Action> AddEnableFlowsAction(
+            int solutionId,
+            int targetEnvironmentId,
+            Guid msIdCurrentUser,
+            bool isExternalDelivery = false,
+            int? externalDeploymentPathId = null)
         {
             logger.LogDebug($"Begin: SolutionService AddEnableFlowsAction(solutionId: {solutionId}, targetEnvironmentId: {targetEnvironmentId},  msIdCurrentUser: {msIdCurrentUser.ToString()})");
 
             Solution solution = dbContext.Solutions.First(e => e.Id == solutionId);
             User user = this.dbContext.Users.First(e => e.MsId == msIdCurrentUser);
 
-            await this.CheckImportPermission(user.Id, targetEnvironmentId);
+            if (isExternalDelivery)
+            {
+                var externalEnvironment = await this.dbContext.ExternalEnvironments
+                    .FirstOrDefaultAsync(e =>
+                        e.Environment == targetEnvironmentId &&
+                        e.ExternalDeploymentPathEnvironments.Any(step =>
+                            step.ExternalDeploymentPath == externalDeploymentPathId));
+                if (externalEnvironment == null || externalDeploymentPathId == null)
+                    throw new InvalidOperationException("The external deployment path for this action could not be found.");
+
+                await this.CheckExternalImportPermission(
+                    user.Id,
+                    solution,
+                    externalEnvironment.Id,
+                    externalDeploymentPathId.Value);
+            }
+            else
+            {
+                await this.CheckImportPermission(user.Id, targetEnvironmentId);
+            }
+
             await this.CheckIsConnectionOwerSet(targetEnvironmentId);
 
             Data.Models.Action newAction = new Data.Models.Action
@@ -200,7 +366,9 @@ namespace at.D365.PowerCID.Portal.Services
                 Type = 4,
                 Status = 1,
                 StartTime = DateTime.Now,
-                Solution = solution.Id
+                Solution = solution.Id,
+                IsExternalDelivery = isExternalDelivery,
+                ExternalDeploymentPath = externalDeploymentPathId
             };
 
             dbContext.Add(newAction);
@@ -291,8 +459,8 @@ namespace at.D365.PowerCID.Portal.Services
             ImportSolutionAsyncRequest importSolutionAsyncRequest = new ImportSolutionAsyncRequest
             {
                 CustomizationFile = solutionFileData,
-                OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
-                PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
+                OverwriteUnmanagedCustomizations = action.OverwriteUnmanagedCustomizations ?? action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
+                PublishWorkflows = action.EnableWorkflows ?? action.SolutionNavigation.EnableWorkflows ?? true,
                 HoldingSolution = asHolding,
                 ComponentParameters = solutionComponentParameters,
             };
@@ -339,8 +507,8 @@ namespace at.D365.PowerCID.Portal.Services
             StageAndUpgradeAsyncRequest stageAndUpgradeRequest = new StageAndUpgradeAsyncRequest
             {
                 CustomizationFile = solutionFileData,
-                OverwriteUnmanagedCustomizations = action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
-                PublishWorkflows = action.SolutionNavigation.EnableWorkflows ?? true,
+                OverwriteUnmanagedCustomizations = action.OverwriteUnmanagedCustomizations ?? action.SolutionNavigation.OverwriteUnmanagedCustomizations ?? true,
+                PublishWorkflows = action.EnableWorkflows ?? action.SolutionNavigation.EnableWorkflows ?? true,
                 ComponentParameters = solutionComponentParameters,
             };
 
@@ -479,6 +647,26 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: SolutionService CheckImportPermission(userId: {userId}, environmentId: {environmentId})");
         }
 
+        public bool HasSuccessfulDeploymentOnEnvironment(int solutionId, int environmentId, bool isExternalDelivery)
+        {
+            var environmentActions = this.dbContext.Actions.Where(e =>
+                e.Solution == solutionId &&
+                e.TargetEnvironment == environmentId &&
+                e.IsExternalDelivery == isExternalDelivery);
+            var successfulImports = environmentActions.Where(e => e.Type == 2 && e.Result == 1);
+
+            if (successfulImports.Any(e =>
+                e.DeploymentMode == null ||
+                e.DeploymentMode != (int)DeploymentMode.TwoStepUpgrade))
+            {
+                return true;
+            }
+
+            return successfulImports.Any(e =>
+                    e.DeploymentMode == (int)DeploymentMode.TwoStepUpgrade) &&
+                environmentActions.Any(e => e.Type == 3 && e.Result == 1);
+        }
+
         private async Task<ExternalEnvironment> CheckExternalImportPermission(int userId, Solution solution, int externalEnvironmentId, int externalDeploymentPathId)
         {
             logger.LogDebug($"Begin: SolutionService CheckExternalImportPermission(userId: {userId}, solution Id: {solution.Id}, externalEnvironmentId: {externalEnvironmentId}, externalDeploymentPathId: {externalDeploymentPathId})");
@@ -508,7 +696,7 @@ namespace at.D365.PowerCID.Portal.Services
                 int previousExternalEnvironmentId = (await this.dbContext.ExternalDeploymentPathEnvironments.FirstAsync(x => x.ExternalDeploymentPath == externalDeploymentPathId && x.StepNumber == step.StepNumber - 1)).ExternalEnvironment;
                 int previousEnvironmentId = (await this.dbContext.ExternalEnvironments.FirstAsync(e => e.Id == previousExternalEnvironmentId)).Environment;
 
-                bool previousStepSucceeded = this.dbContext.Actions.Any(x => x.Solution == solution.Id && x.TargetEnvironment == previousEnvironmentId && x.Result == 1 && x.IsExternalDelivery);
+                bool previousStepSucceeded = this.HasSuccessfulDeploymentOnEnvironment(solution.Id, previousEnvironmentId, true);
                 if (!previousStepSucceeded)
                     throw new Exception("Can't skip a previous external deployment environment.");
             }

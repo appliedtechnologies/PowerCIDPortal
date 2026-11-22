@@ -30,7 +30,7 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: UpgradesController Get()");
 
-            return base.dbContext.Upgrades.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdCurrentUser);
+            return base.dbContext.Upgrades.Where(e => e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 
         public async Task<IActionResult> Post([FromBody] Upgrade upgrade, [FromServices] SolutionService solutionService)
@@ -71,7 +71,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             if ((await this.dbContext.Upgrades.FirstOrDefaultAsync(e => e.Id == key && e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)) == null)
                 return Forbid();
 
-            string[] propertyNamesAllowedToChange = { nameof(Solution.Name), nameof(Solution.Description) };
+            string[] propertyNamesAllowedToChange = { nameof(Solution.Name), nameof(Solution.Description), nameof(Solution.DeploymentNotes) };
             if (upgrade.GetChangedPropertyNames().Except(propertyNamesAllowedToChange).Count() == 0)
             {
                 if (!ModelState.IsValid)
