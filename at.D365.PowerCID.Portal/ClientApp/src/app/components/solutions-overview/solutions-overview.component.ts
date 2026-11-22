@@ -1003,11 +1003,40 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       return false;
     }
 
-    return (cellInfo.data.Actions ?? []).some((action) =>
-      action.IsExternalDelivery === true &&
-      action.TargetEnvironment === previousEnvironment.Environment &&
+    return this.hasSuccessfulDeploymentOnEnvironment(
+      cellInfo.data,
+      previousEnvironment.Environment,
+      true
+    );
+  }
+
+  private hasSuccessfulDeploymentOnEnvironment(
+    solution: SolutionRowData,
+    environmentId: number,
+    isExternalDelivery: boolean
+  ): boolean {
+    const actions: Action[] = solution.Actions ?? [];
+    const matchesEnvironmentAndCategory = (action: Action): boolean =>
+      action.TargetEnvironment === environmentId &&
+      action.IsExternalDelivery === isExternalDelivery;
+    const successfulImports = actions.filter((action) =>
+      matchesEnvironmentAndCategory(action) &&
+      action.Type === 2 &&
       action.Result === 1
     );
+
+    return successfulImports.some((action) => {
+      const deploymentMode = action.DeploymentMode ?? solution.DefaultDeploymentMode;
+      if (deploymentMode !== DeploymentMode.TwoStepUpgrade) {
+        return true;
+      }
+
+      return actions.some((applyAction) =>
+        matchesEnvironmentAndCategory(applyAction) &&
+        applyAction.Type === 3 &&
+        applyAction.Result === 1
+      );
+    });
   }
 
   public getPreviousExternalEnvironmentName(cellInfo): string {
@@ -1263,8 +1292,10 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
           (x) => x.Id == previousEnvironmentId
         ).Name;
 
-        this.canImport = cellInfo.data.Actions.some(
-          (x) => x.TargetEnvironment == previousEnvironmentId && x.Result == 1
+        this.canImport = this.hasSuccessfulDeploymentOnEnvironment(
+          cellInfo.data,
+          Number(previousEnvironmentId),
+          false
         );
       }
     }

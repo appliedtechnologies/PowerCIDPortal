@@ -647,6 +647,26 @@ namespace at.D365.PowerCID.Portal.Services
             logger.LogDebug($"End: SolutionService CheckImportPermission(userId: {userId}, environmentId: {environmentId})");
         }
 
+        public bool HasSuccessfulDeploymentOnEnvironment(int solutionId, int environmentId, bool isExternalDelivery)
+        {
+            var environmentActions = this.dbContext.Actions.Where(e =>
+                e.Solution == solutionId &&
+                e.TargetEnvironment == environmentId &&
+                e.IsExternalDelivery == isExternalDelivery);
+            var successfulImports = environmentActions.Where(e => e.Type == 2 && e.Result == 1);
+
+            if (successfulImports.Any(e =>
+                e.DeploymentMode == null ||
+                e.DeploymentMode != (int)DeploymentMode.TwoStepUpgrade))
+            {
+                return true;
+            }
+
+            return successfulImports.Any(e =>
+                    e.DeploymentMode == (int)DeploymentMode.TwoStepUpgrade) &&
+                environmentActions.Any(e => e.Type == 3 && e.Result == 1);
+        }
+
         private async Task<ExternalEnvironment> CheckExternalImportPermission(int userId, Solution solution, int externalEnvironmentId, int externalDeploymentPathId)
         {
             logger.LogDebug($"Begin: SolutionService CheckExternalImportPermission(userId: {userId}, solution Id: {solution.Id}, externalEnvironmentId: {externalEnvironmentId}, externalDeploymentPathId: {externalDeploymentPathId})");
@@ -676,7 +696,7 @@ namespace at.D365.PowerCID.Portal.Services
                 int previousExternalEnvironmentId = (await this.dbContext.ExternalDeploymentPathEnvironments.FirstAsync(x => x.ExternalDeploymentPath == externalDeploymentPathId && x.StepNumber == step.StepNumber - 1)).ExternalEnvironment;
                 int previousEnvironmentId = (await this.dbContext.ExternalEnvironments.FirstAsync(e => e.Id == previousExternalEnvironmentId)).Environment;
 
-                bool previousStepSucceeded = this.dbContext.Actions.Any(x => x.Solution == solution.Id && x.TargetEnvironment == previousEnvironmentId && x.Result == 1 && x.IsExternalDelivery);
+                bool previousStepSucceeded = this.HasSuccessfulDeploymentOnEnvironment(solution.Id, previousEnvironmentId, true);
                 if (!previousStepSucceeded)
                     throw new Exception("Can't skip a previous external deployment environment.");
             }

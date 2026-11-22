@@ -437,7 +437,11 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             int userId = dbContext.Users.FirstOrDefault(u => u.MsId == this.msIdCurrentUser).Id;
 
-            if (IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId, targetEnvironmentId, key) == false)
+            if (IsPreviousDeploymentEnvironmentResultSuccessful(
+                deploymentPathId,
+                targetEnvironmentId,
+                key,
+                solutionService) == false)
             {
                 return BadRequest("The deployment path or target environment is invalid, or a previous environment has not been successfully deployed.");
             }
@@ -488,7 +492,11 @@ namespace at.D365.PowerCID.Portal.Controllers
                 e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser) == false)
                 return Forbid();
 
-            if (!IsPreviousDeploymentEnvironmentResultSuccessful(request.DeploymentPathId, request.TargetEnvironmentId, key))
+            if (!IsPreviousDeploymentEnvironmentResultSuccessful(
+                request.DeploymentPathId,
+                request.TargetEnvironmentId,
+                key,
+                solutionService))
                 return BadRequest("The deployment path or target environment is invalid, or a previous environment has not been successfully deployed.");
 
             Data.Models.Action createdAction;
@@ -722,7 +730,11 @@ namespace at.D365.PowerCID.Portal.Controllers
             }
         }
 
-        private bool IsPreviousDeploymentEnvironmentResultSuccessful(int deploymentPathId, int targetEnvironmentId, int solutionId)
+        private bool IsPreviousDeploymentEnvironmentResultSuccessful(
+            int deploymentPathId,
+            int targetEnvironmentId,
+            int solutionId,
+            SolutionService solutionService)
         {
             logger.LogDebug($"Begin: SolutionsController IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId: {deploymentPathId}, targetEnvironmentId: {targetEnvironmentId}, solutionId: {solutionId} )");
 
@@ -745,10 +757,10 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             logger.LogDebug($"End: SolutionsController IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId: {deploymentPathId}, targetEnvironmentId: {targetEnvironmentId}, solutionId: {solutionId} )");
 
-            return dbContext.Actions.Any(x =>
-                x.Solution == solutionId &&
-                x.TargetEnvironment == previousPathEnvironment.Environment &&
-                x.Result == 1);
+            return solutionService.HasSuccessfulDeploymentOnEnvironment(
+                solutionId,
+                previousPathEnvironment.Environment,
+                false);
         }
 
         private static object ToActionStartResponse(Data.Models.Action action)
