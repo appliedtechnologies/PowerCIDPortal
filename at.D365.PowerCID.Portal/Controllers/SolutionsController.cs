@@ -439,7 +439,7 @@ namespace at.D365.PowerCID.Portal.Controllers
 
             if (IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId, targetEnvironmentId, key) == false)
             {
-                return BadRequest("Can't skip a previous deploymentenvironment");
+                return BadRequest("The deployment path or target environment is invalid, or a previous environment has not been successfully deployed.");
             }
 
             else
@@ -469,6 +469,68 @@ namespace at.D365.PowerCID.Portal.Controllers
 
                 return Ok(createdAction);
             }
+        }
+
+        [HttpPost]
+        [Route("odata/Solutions({key})/Deploy")]
+        public async Task<IActionResult> Deploy(
+            [FromRoute] int key,
+            [FromBody] DeploymentRequest request,
+            [FromServices] SolutionService solutionService)
+        {
+            if (request == null)
+                return BadRequest("Deployment options are required.");
+            if (!Enum.IsDefined(request.DeploymentMode))
+                return BadRequest("The selected deployment mode is invalid.");
+
+            if (await this.dbContext.Solutions.AnyAsync(e =>
+                e.Id == key &&
+                e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser) == false)
+                return Forbid();
+
+            if (!IsPreviousDeploymentEnvironmentResultSuccessful(request.DeploymentPathId, request.TargetEnvironmentId, key))
+                return BadRequest("The deployment path or target environment is invalid, or a previous environment has not been successfully deployed.");
+
+            Data.Models.Action createdAction;
+            try
+            {
+                if (ExportExists(key))
+                {
+                    createdAction = await solutionService.AddImportAction(
+                        key,
+                        request.TargetEnvironmentId,
+                        this.msIdCurrentUser,
+                        request.DeploymentMode,
+                        request.OverwriteUnmanagedCustomizations,
+                        request.EnableWorkflows);
+                }
+                else
+                {
+                    createdAction = await solutionService.AddExportAction(
+                        key,
+                        this.msIdTenantCurrentUser,
+                        this.msIdCurrentUser,
+                        exportOnly: false,
+                        request.TargetEnvironmentId,
+                        request.DeploymentMode,
+                        request.OverwriteUnmanagedCustomizations,
+                        request.EnableWorkflows);
+                }
+            }
+            catch (SolutionService.ExportRenewalNotAllowedException exception)
+            {
+                return Conflict(new ODataError
+                {
+                    Code = "ExportRenewalNotAllowed",
+                    Message = exception.Message
+                });
+            }
+            catch (Exception exception)
+            {
+                return BadRequest(exception.Message);
+            }
+
+            return Ok(ToActionStartResponse(createdAction));
         }
 
         [HttpPost]
@@ -586,22 +648,130 @@ namespace at.D365.PowerCID.Portal.Controllers
             return Ok(createdAction);
         }
 
+        [Authorize(Roles = "atPowerCID.Admin, atPowerCID.ExternalDeployer")]
+        [CrossTenantDeliveryGate]
+        [HttpPost]
+        [Route("odata/Solutions({key})/ExternalDeploy")]
+        public async Task<IActionResult> ExternalDeploy(
+            [FromRoute] int key,
+            [FromBody] ExternalDeploymentRequest request,
+            [FromServices] SolutionService solutionService)
+        {
+            if (request == null)
+                return BadRequest("Deployment options are required.");
+            if (!Enum.IsDefined(request.DeploymentMode))
+                return BadRequest("The selected deployment mode is invalid.");
+
+            var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e =>
+                e.Id == key &&
+                e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if (solution == null)
+                return Forbid();
+
+            if (!ExportExists(key))
+                return BadRequest("This solution version has not been exported yet. Export or import it internally at least once before delivering it externally.");
+
+            try
+            {
+                var action = await solutionService.AddExternalImportAction(
+                    key,
+                    request.ExternalEnvironmentId,
+                    request.ExternalDeploymentPathId,
+                    this.msIdCurrentUser,
+                    request.DeploymentMode,
+                    request.OverwriteUnmanagedCustomizations,
+                    request.EnableWorkflows);
+                return Ok(ToActionStartResponse(action));
+            }
+            catch (Exception exception)
+            {
+                return BadRequest(exception.Message);
+            }
+        }
+
+        [Authorize(Roles = "atPowerCID.Admin, atPowerCID.ExternalDeployer")]
+        [CrossTenantDeliveryGate]
+        [HttpPost]
+        [Route("odata/Solutions({key})/ExternalApplyUpgrade")]
+        public async Task<IActionResult> ExternalApplyUpgrade(
+            [FromRoute] int key,
+            [FromBody] ExternalDeploymentRequest request,
+            [FromServices] SolutionService solutionService)
+        {
+            if (request == null)
+                return BadRequest("External deployment path and environment are required.");
+
+            var solution = await this.dbContext.Solutions.FirstOrDefaultAsync(e =>
+                e.Id == key &&
+                e.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
+            if (solution == null)
+                return Forbid();
+
+            try
+            {
+                var action = await solutionService.AddExternalApplyUpgradeAction(
+                    key,
+                    request.ExternalEnvironmentId,
+                    request.ExternalDeploymentPathId,
+                    this.msIdCurrentUser);
+                return Ok(ToActionStartResponse(action));
+            }
+            catch (Exception exception)
+            {
+                return BadRequest(exception.Message);
+            }
+        }
+
         private bool IsPreviousDeploymentEnvironmentResultSuccessful(int deploymentPathId, int targetEnvironmentId, int solutionId)
         {
             logger.LogDebug($"Begin: SolutionsController IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId: {deploymentPathId}, targetEnvironmentId: {targetEnvironmentId}, solutionId: {solutionId} )");
 
-            int stepNumber = dbContext.DeploymentPathEnvironments.FirstOrDefault(x => x.DeploymentPath == deploymentPathId && x.Environment == targetEnvironmentId).StepNumber;
-            if (stepNumber == 1)
+            var currentPathEnvironment = dbContext.DeploymentPathEnvironments
+                .FirstOrDefault(x => x.DeploymentPath == deploymentPathId && x.Environment == targetEnvironmentId);
+            if (currentPathEnvironment == null || currentPathEnvironment.StepNumber < 1)
+                return false;
+
+            if (currentPathEnvironment.StepNumber == 1)
             {
                 return true;
             }
 
-            int deploymentPathEnvironment = dbContext.DeploymentPathEnvironments.FirstOrDefault(x => x.DeploymentPath == deploymentPathId && x.StepNumber == stepNumber - 1).Environment;
+            var previousPathEnvironment = dbContext.DeploymentPathEnvironments
+                .FirstOrDefault(x =>
+                    x.DeploymentPath == deploymentPathId &&
+                    x.StepNumber == currentPathEnvironment.StepNumber - 1);
+            if (previousPathEnvironment == null)
+                return false;
 
             logger.LogDebug($"End: SolutionsController IsPreviousDeploymentEnvironmentResultSuccessful(deploymentPathId: {deploymentPathId}, targetEnvironmentId: {targetEnvironmentId}, solutionId: {solutionId} )");
 
-            return dbContext.Actions.Any(x => x.Solution == solutionId && x.TargetEnvironment == deploymentPathEnvironment && x.Result == 1);
+            return dbContext.Actions.Any(x =>
+                x.Solution == solutionId &&
+                x.TargetEnvironment == previousPathEnvironment.Environment &&
+                x.Result == 1);
         }
+
+        private static object ToActionStartResponse(Data.Models.Action action)
+        {
+            return new
+            {
+                action.Id,
+                action.Name,
+                action.TargetEnvironment,
+                action.Type,
+                action.Status,
+                action.Result,
+                action.StartTime,
+                action.FinishTime,
+                action.Solution,
+                action.IsExternalDelivery,
+                action.ExternalDeploymentPath,
+                action.DeploymentMode,
+                action.OverwriteUnmanagedCustomizations,
+                action.EnableWorkflows
+            };
+        }
+
         private bool ExportExists(int solutionId)
         {
             logger.LogDebug($"Begin & End: SolutionsController ExportExists(solutionId: {solutionId})");
@@ -663,5 +833,23 @@ namespace at.D365.PowerCID.Portal.Controllers
     public sealed class DeploymentSettingResetRequest
     {
         public int EnvironmentId { get; set; }
+    }
+
+    public sealed class DeploymentRequest
+    {
+        public int TargetEnvironmentId { get; set; }
+        public int DeploymentPathId { get; set; }
+        public DeploymentMode DeploymentMode { get; set; }
+        public bool? OverwriteUnmanagedCustomizations { get; set; }
+        public bool? EnableWorkflows { get; set; }
+    }
+
+    public sealed class ExternalDeploymentRequest
+    {
+        public int ExternalEnvironmentId { get; set; }
+        public int ExternalDeploymentPathId { get; set; }
+        public DeploymentMode DeploymentMode { get; set; }
+        public bool? OverwriteUnmanagedCustomizations { get; set; }
+        public bool? EnableWorkflows { get; set; }
     }
 }

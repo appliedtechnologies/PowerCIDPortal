@@ -28,6 +28,161 @@
   margin-bottom: 8px;
 }
 
+.deployment-dialog-content {
+  padding: 4px 12px 8px;
+}
+
+.deployment-confirmation-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e1e1e1;
+}
+
+.deployment-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.deployment-summary-item > span {
+  color: #616161;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.deployment-summary-item > strong {
+  color: #242424;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.deployment-settings-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.deployment-settings-check > .dx-icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.deployment-settings-check-message {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.deployment-settings-loading {
+  color: #424242;
+  background-color: #f5f5f5;
+}
+
+.deployment-settings-success {
+  color: #205b20;
+  background-color: #f0f7f0;
+  border-color: #c9e4c9;
+}
+
+.deployment-settings-warning {
+  color: #705300;
+  background-color: #fff8e6;
+  border-color: #f0d98f;
+}
+
+.deployment-settings-error {
+  color: #8a1f11;
+  background-color: #fff1ef;
+  border-color: #f0c4bd;
+}
+
+.deployment-option-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding: 12px 0;
+  border-top: 1px solid #e1e1e1;
+}
+
+.deployment-option-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.deployment-option-label > strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.deployment-info-icon {
+  flex: 0 0 auto;
+  color: #616161;
+  cursor: help;
+}
+
+.deployment-dialog-content dx-select-box {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.deployment-dialog-content dx-check-box {
+  justify-self: start;
+}
+
+.deployment-mode-option {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+.deployment-confirmation-buttons {
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 1px solid #e1e1e1;
+}
+
+@media (max-width: 640px) {
+  .deployment-dialog-content {
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .deployment-confirmation-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .deployment-option-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .deployment-dialog-content dx-check-box {
+    margin-left: 2px;
+  }
+}
+
 .card {
   position: relative;
   background-color: white;
@@ -79,6 +234,11 @@
 
 .card-success {
   background-color: #86c285;
+}
+
+.card-apply-pending {
+  color: #000;
+  background-color: #DCEAF7;
 }
 
 .card-error {

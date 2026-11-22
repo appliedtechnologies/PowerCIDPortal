@@ -50,12 +50,15 @@
       <dxi-item cssClass="compact-checkbox-item checkbox-options-start" [label]="{ visible: false }">
         <div *dxTemplate>
           <div class="full-width-checkbox-row">
-            <span>Apply manually:</span>
-            <dx-check-box
-              [(value)]="this.applyManually"
+            <span>Default deployment mode:</span>
+            <dx-select-box
+              [items]="this.deploymentModeOptions"
+              displayExpr="text"
+              valueExpr="value"
+              [(value)]="this.defaultDeploymentMode"
               [disabled]="!this.isAdd"
-              [elementAttr]="{ 'aria-label': 'Apply manually' }"
-            ></dx-check-box>
+              [elementAttr]="{ 'aria-label': 'Default deployment mode' }"
+            ></dx-select-box>
           </div>
         </div>
       </dxi-item>

@@ -161,7 +161,15 @@ namespace at.D365.PowerCID.Portal.Services
                                                         {
                                                             try
                                                             {
-                                                                await solutionService.AddImportAction((int)asyncJob.ActionNavigation.Solution, (int)asyncJob.ActionNavigation.ImportTargetEnvironment, asyncJob.ActionNavigation.CreatedByNavigation.MsId);
+                                                                await solutionService.AddImportAction(
+                                                                    (int)asyncJob.ActionNavigation.Solution,
+                                                                    (int)asyncJob.ActionNavigation.ImportTargetEnvironment,
+                                                                    asyncJob.ActionNavigation.CreatedByNavigation.MsId,
+                                                                    asyncJob.ActionNavigation.DeploymentMode is int deploymentMode
+                                                                        ? (DeploymentMode?)deploymentMode
+                                                                        : null,
+                                                                    asyncJob.ActionNavigation.OverwriteUnmanagedCustomizations,
+                                                                    asyncJob.ActionNavigation.EnableWorkflows);
                                                             }
                                                             catch (Exception e)
                                                             {
@@ -180,6 +188,9 @@ namespace at.D365.PowerCID.Portal.Services
                                                                     ErrorMessage = "Could not start the import after export.",
                                                                     StartTime = DateTime.Now,
                                                                     Solution = asyncJob.ActionNavigation.Solution,
+                                                                    DeploymentMode = asyncJob.ActionNavigation.DeploymentMode,
+                                                                    OverwriteUnmanagedCustomizations = asyncJob.ActionNavigation.OverwriteUnmanagedCustomizations,
+                                                                    EnableWorkflows = asyncJob.ActionNavigation.EnableWorkflows,
                                                                 });
                                                             }
                                                         }

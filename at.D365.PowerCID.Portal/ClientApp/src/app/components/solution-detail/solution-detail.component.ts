@@ -11,6 +11,7 @@ import { DxTextAreaComponent, DxTextBoxComponent } from "devextreme-angular";
 import { Application } from "src/app/shared/models/application.model";
 import { Patch } from "src/app/shared/models/patch.model";
 import { Upgrade } from "src/app/shared/models/upgrade.model";
+import { DeploymentMode } from "src/app/shared/models/deployment-mode.model";
 import {
   LayoutParameter,
   LayoutService,
@@ -45,7 +46,12 @@ export class SolutionDetailComponent implements OnChanges {
 
   public isUpgrade: boolean;
   public isAdd: boolean;
-  public applyManually = false;
+  public defaultDeploymentMode = DeploymentMode.OneStepUpgrade;
+  public readonly deploymentModeOptions = [
+    { value: DeploymentMode.OneStepUpgrade, text: "One-step upgrade" },
+    { value: DeploymentMode.TwoStepUpgrade, text: "Two-step upgrade" },
+    { value: DeploymentMode.UpdateOnly, text: "Update only" },
+  ];
   public buttonOptionsSaveAdd: Record<string, unknown>;
   public isReleasedExternally: boolean;
 
@@ -128,7 +134,7 @@ export class SolutionDetailComponent implements OnChanges {
       if (this.isAddUpgrade) {
         const upgrade: Upgrade = {
           ...this.solution,
-          ApplyManually: this.applyManually,
+          DefaultDeploymentMode: this.defaultDeploymentMode,
         };
         await this.upgradeService.add(upgrade);
         this.layoutService.notify({
@@ -228,11 +234,15 @@ export class SolutionDetailComponent implements OnChanges {
 
   public ngOnChanges(): void{
     if (this.solution != undefined) {
-      this.isUpgrade = "ApplyManually" in this.solution;
+      const isUpgrade = "DefaultDeploymentMode" in this.solution;
+      this.isUpgrade = isUpgrade;
       this.isAdd = false;
-      this.applyManually = "ApplyManually" in this.solution
-        ? this.solution.ApplyManually === true
-        : false;
+      if ("DefaultDeploymentMode" in this.solution) {
+        this.defaultDeploymentMode =
+          this.solution.DefaultDeploymentMode ?? DeploymentMode.OneStepUpgrade;
+      } else {
+        this.defaultDeploymentMode = DeploymentMode.OneStepUpgrade;
+      }
       if(this.solution.OverwriteUnmanagedCustomizations === null)
         this.solution.OverwriteUnmanagedCustomizations = false;
       if(this.solution.EnableWorkflows === null)
@@ -240,7 +250,7 @@ export class SolutionDetailComponent implements OnChanges {
       this.isReleasedExternally = this.solution.IsReleasedExternally === true;
     } else {
       this.isAdd = true;
-      this.applyManually = false;
+      this.defaultDeploymentMode = DeploymentMode.OneStepUpgrade;
       this.solution = {
         OverwriteUnmanagedCustomizations: false,
         EnableWorkflows: true,

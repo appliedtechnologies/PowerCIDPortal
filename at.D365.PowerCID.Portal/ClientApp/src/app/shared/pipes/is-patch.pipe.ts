@@ -7,7 +7,7 @@ import { Solution } from '../models/solution.model';
 })
 export class IsPatchPipe implements PipeTransform {
     transform(solution: Solution): boolean {
-        const isUpgrade: boolean = "ApplyManually" in solution;
+        const isUpgrade: boolean = "DefaultDeploymentMode" in solution;
         return !isUpgrade;
     }
 }

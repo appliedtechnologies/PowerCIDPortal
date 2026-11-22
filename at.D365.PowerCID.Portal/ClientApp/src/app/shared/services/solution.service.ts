@@ -1,14 +1,22 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { firstValueFrom } from "rxjs";
 import ODataStore from "devextreme/data/odata/store";
 import { AppConfig } from "../config/app.config";
 import { Action } from "../models/action.model";
+import { DeploymentMode } from "../models/deployment-mode.model";
 import { ODataService } from "./odata.service";
 
 export interface DeploymentNote {
   solutionName: string;
   solutionVersion: string;
   deploymentNotes: string;
+}
+
+export interface DeploymentOptions {
+  deploymentMode: DeploymentMode;
+  overwriteUnmanagedCustomizations: boolean;
+  enableWorkflows: boolean;
 }
 
 @Injectable({
@@ -51,6 +59,22 @@ export class SolutionService {
           error: (error) => reject(error),
         });
     });
+  }
+
+  public deploy(
+    solutionId: number,
+    targetEnvironmentId: number,
+    deploymentPathId: number,
+    options: DeploymentOptions
+  ): Promise<Action> {
+    return firstValueFrom(this.http.post<Action>(
+      `${AppConfig.settings.api.url}/Solutions(${solutionId})/Deploy`,
+      {
+        targetEnvironmentId,
+        deploymentPathId,
+        ...options,
+      }
+    ));
   }
 
   public getDeploymentNotes(solutionId: number, environmentId: number): Promise<DeploymentNote[]> {
@@ -135,5 +159,32 @@ export class SolutionService {
           error: (error) => reject(error),
         });
     });
+  }
+
+  public externalDeploy(
+    solutionId: number,
+    externalEnvironmentId: number,
+    externalDeploymentPathId: number,
+    options: DeploymentOptions
+  ): Promise<Action> {
+    return firstValueFrom(this.http.post<Action>(
+      `${AppConfig.settings.api.url}/Solutions(${solutionId})/ExternalDeploy`,
+      {
+        externalEnvironmentId,
+        externalDeploymentPathId,
+        ...options,
+      }
+    ));
+  }
+
+  public externalApplyUpgrade(
+    solutionId: number,
+    externalEnvironmentId: number,
+    externalDeploymentPathId: number
+  ): Promise<Action> {
+    return firstValueFrom(this.http.post<Action>(
+      `${AppConfig.settings.api.url}/Solutions(${solutionId})/ExternalApplyUpgrade`,
+      { externalEnvironmentId, externalDeploymentPathId }
+    ));
   }
 }

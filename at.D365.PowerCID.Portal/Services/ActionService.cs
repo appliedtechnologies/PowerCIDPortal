@@ -77,10 +77,30 @@ namespace at.D365.PowerCID.Portal.Services
         public async Task FinishSuccessfulApplyUpgradeAction(Action finishedAction){
             logger.LogDebug($"Begin: ActionService FinishSuccessfulApplyUpgradeAction(finishedAction Id: {finishedAction.Id})");
 
-            if(!String.IsNullOrEmpty(finishedAction.TargetEnvironmentNavigation.ConnectionsOwner) && finishedAction.SolutionNavigation.EnableWorkflows == true)
-                await this.solutionService.AddEnableFlowsAction((int)finishedAction.Solution, finishedAction.TargetEnvironment, finishedAction.CreatedByNavigation.MsId);
-
             this.UpdateSuccessfulAction(finishedAction);
+
+            if(!String.IsNullOrEmpty(finishedAction.TargetEnvironmentNavigation.ConnectionsOwner) &&
+                (finishedAction.EnableWorkflows ?? finishedAction.SolutionNavigation.EnableWorkflows) == true)
+            {
+                try
+                {
+                    await this.solutionService.AddEnableFlowsAction(
+                        (int)finishedAction.Solution,
+                        finishedAction.TargetEnvironment,
+                        finishedAction.CreatedByNavigation.MsId,
+                        finishedAction.IsExternalDelivery,
+                        finishedAction.ExternalDeploymentPath);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogError(
+                        exception,
+                        "Apply-upgrade action {ActionId} succeeded, but its follow-up enable-workflows action could not be started.",
+                        finishedAction.Id);
+                    finishedAction.ErrorMessage =
+                        "The upgrade succeeded, but the follow-up enable-workflows action could not be started.";
+                }
+            }
 
             logger.LogDebug($"End: ActionService FinishSuccessfulApplyUpgradeAction");
         }
