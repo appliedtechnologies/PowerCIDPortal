@@ -1057,15 +1057,16 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     );
     const steps = path?.ExternalDeploymentPathEnvironments ?? [];
     const currentStep = steps.find((step) => step.ExternalEnvironment === environmentId);
-    const stepNumber = currentStep?.StepNumber;
 
-    if (stepNumber === undefined || stepNumber <= 1) {
+    if (currentStep?.StepNumber === 1) {
       return { required: false };
     }
 
     return {
       required: true,
-      step: steps.find((step) => step.StepNumber === stepNumber - 1),
+      step: currentStep?.StepNumber === undefined
+        ? undefined
+        : steps.find((step) => step.StepNumber === currentStep.StepNumber - 1),
     };
   }
 
