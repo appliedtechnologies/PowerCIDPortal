@@ -383,7 +383,7 @@ namespace at.D365.PowerCID.Portal.Controllers
             {
                 Name = "Initial Upgrade",
                 Application = application.Id,
-                ApplyManually = false
+                DefaultDeploymentMode = (int)DeploymentMode.OneStepUpgrade
             };
 
             await solutionService.CreateUpgrade(upgrade, version);

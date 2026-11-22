@@ -24,6 +24,10 @@ namespace at.D365.PowerCID.Portal.Data.Models
         public int? ImportTargetEnvironment { get; set; }
         public double? Progress { get; set; }
         public bool IsExternalDelivery { get; set; }
+        public int? ExternalDeploymentPath { get; set; }
+        public int? DeploymentMode { get; set; }
+        public bool? OverwriteUnmanagedCustomizations { get; set; }
+        public bool? EnableWorkflows { get; set; }
 
         public virtual User CreatedByNavigation { get; set; }
         public virtual Solution SolutionNavigation { get; set; }

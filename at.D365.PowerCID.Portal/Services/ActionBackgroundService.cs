@@ -146,14 +146,34 @@ namespace at.D365.PowerCID.Portal.Services
                                 Solution solution = dbContext.Solutions.FirstOrDefault(s => s.Id == queuedAction.Solution);
                                 bool isPatch = solution.GetType().Name.Contains("Patch");
                                 bool existsSolutionInTargetEnvironment = await solutionService.ExistsSolutionInTargetEnvironment(queuedAction.SolutionNavigation.UniqueName, queuedAction.TargetEnvironmentNavigation.BasicUrl);
-                                var holdingSolution = !unmanaged && !isPatch && existsSolutionInTargetEnvironment && ((Upgrade)solution).ApplyManually;
+                                DeploymentMode deploymentMode = queuedAction.DeploymentMode is int selectedMode
+                                    ? (DeploymentMode)selectedMode
+                                    : solution is Upgrade upgrade
+                                        ? (DeploymentMode)upgrade.DefaultDeploymentMode
+                                        : DeploymentMode.OneStepUpgrade;
 
-                                if (holdingSolution) //as holding upgrade
+                                if (!Enum.IsDefined(typeof(DeploymentMode), deploymentMode))
+                                    throw new InvalidOperationException("The selected deployment mode is invalid.");
+
+                                if (deploymentMode == DeploymentMode.TwoStepUpgrade &&
+                                    (unmanaged || isPatch || !existsSolutionInTargetEnvironment))
+                                {
+                                    await actionService.UpdateFailedAction(
+                                        queuedAction,
+                                        "Two-step upgrade requires an existing managed solution and cannot be used for patches.");
+                                    await dbContext.SaveChangesAsync(msIdCurrentUser: queuedAction.CreatedByNavigation.MsId);
+                                    continue;
+                                }
+
+                                if (deploymentMode == DeploymentMode.TwoStepUpgrade)
                                     asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, true, unmanaged);
-                                else if (isPatch || !existsSolutionInTargetEnvironment || (!isPatch && unmanaged)) //as patch/upgrade(unmanaged or not existing)
+                                else if (deploymentMode == DeploymentMode.UpdateOnly ||
+                                    isPatch ||
+                                    !existsSolutionInTargetEnvironment ||
+                                    unmanaged)
                                     asyncJob = await solutionService.StartImportInDataverse(exportSolutionFile, queuedAction, false, unmanaged);
-                                else //as direct upgrade
-                                    asyncJob = await solutionService.StartImportAndUpgradeInDataverse(exportSolutionFile, queuedAction, unmanaged);                                
+                                else
+                                    asyncJob = await solutionService.StartImportAndUpgradeInDataverse(exportSolutionFile, queuedAction, unmanaged);
 
                                 dbContext.Add(asyncJob);
 

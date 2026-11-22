@@ -107,6 +107,14 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                         .HasColumnType("varchar(max)")
                         .HasColumnName("Deployment Details");
 
+                    b.Property<int?>("DeploymentMode")
+                        .HasColumnType("int")
+                        .HasColumnName("Deployment Mode");
+
+                    b.Property<bool?>("EnableWorkflows")
+                        .HasColumnType("bit")
+                        .HasColumnName("Enable Workflows");
+
                     b.Property<string>("ErrorMessage")
                         .IsUnicode(false)
                         .HasColumnType("varchar(max)")
@@ -114,6 +122,10 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
 
                     b.Property<bool?>("ExportOnly")
                         .HasColumnType("bit");
+
+                    b.Property<int?>("ExternalDeploymentPath")
+                        .HasColumnType("int")
+                        .HasColumnName("External Deployment Path");
 
                     b.Property<DateTime?>("FinishTime")
                         .HasColumnType("datetime2")
@@ -131,6 +143,10 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                         .HasMaxLength(100)
                         .IsUnicode(false)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<bool?>("OverwriteUnmanagedCustomizations")
+                        .HasColumnType("bit")
+                        .HasColumnName("Overwrite Unmanaged Customizations");
 
                     b.Property<double?>("Progress")
                         .HasColumnType("float");
@@ -1257,9 +1273,9 @@ namespace at.D365.PowerCID.Portal.Data.Migrations
                 {
                     b.HasBaseType("at.D365.PowerCID.Portal.Data.Models.Solution");
 
-                    b.Property<bool>("ApplyManually")
-                        .HasColumnType("bit")
-                        .HasColumnName("Apply Manually");
+                    b.Property<int>("DefaultDeploymentMode")
+                        .HasColumnType("int")
+                        .HasColumnName("Default Deployment Mode");
 
                     b.ToTable("Solution", (string)null);
 

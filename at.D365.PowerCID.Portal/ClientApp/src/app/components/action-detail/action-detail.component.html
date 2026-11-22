@@ -12,40 +12,45 @@
     <dxi-item dataField="TypeNavigation.Type" [label]="{ text: 'Type' }"></dxi-item>
     <dxi-item dataField="StatusNavigation.Status" [label]="{ text: 'Status' }"></dxi-item>
     <dxi-item dataField="ResultNavigation.Result" [label]="{ text: 'Result' }"></dxi-item>
-    <dxi-item
-      [label]="{ text: 'Duration' }"
-      editorType="dxTextBox"
-      [editorOptions]="{
-        value: this.actionService.getDurationString(this.action)
-      }"
-    ></dxi-item>
-    <dxi-item
-      dataField="StartTime"
-      [label]="{ text: 'Start time' }"
-      editorType="dxDateBox"
-      [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
-    ></dxi-item>
-    <dxi-item
-      dataField="FinishTime"
-      [label]="{ text: 'Finish time' }"
-      editorType="dxDateBox"
-      [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
-    ></dxi-item>
-    <dxi-item
-      dataField="ErrorMessage"
-      editorType="dxTextArea"
-      [colSpan]="2"
-      [editorOptions]="{ height: 100 }"
-    ></dxi-item>
-    @if (this.action?.Type === 2) {
+    @if (this.action?.Type === 2 || this.action?.Type === 3) {
+      <dxi-item [label]="{ text: 'Deployment mode' }">
+        <div *dxTemplate>
+          <dx-text-box [value]="this.deploymentModeName" [readOnly]="true"></dx-text-box>
+        </div>
+      </dxi-item>
       <dxi-item
-        dataField="DeploymentDetails"
-        editorType="dxTextArea"
-        [colSpan]="2"
-        [editorOptions]="{ height: 100 }"
+        dataField="OverwriteUnmanagedCustomizations"
+        editorType="dxCheckBox"
+        [editorOptions]="{ disabled: true }"
+        [label]="{ text: 'Override unmanaged customizations', location: 'left' }"
+      ></dxi-item>
+      <dxi-item
+        dataField="EnableWorkflows"
+        editorType="dxCheckBox"
+        [editorOptions]="{ disabled: true }"
+        [label]="{ text: 'Enable workflows', location: 'left' }"
       ></dxi-item>
     }
   </dxi-item>
+
+  @if (this.action?.ErrorMessage || this.action?.Type === 2) {
+    <dxi-item itemType="group" cssClass="action-message-group" [colCount]="1">
+      @if (this.action?.ErrorMessage) {
+        <dxi-item
+          dataField="ErrorMessage"
+          editorType="dxTextArea"
+          [editorOptions]="{ height: 100 }"
+        ></dxi-item>
+      }
+      @if (this.action?.Type === 2) {
+        <dxi-item
+          dataField="DeploymentDetails"
+          editorType="dxTextArea"
+          [editorOptions]="{ height: 100 }"
+        ></dxi-item>
+      }
+    </dxi-item>
+  }
 
   <dxi-item
     itemType="group"
@@ -66,6 +71,25 @@
       [label]="{ text: 'Created on' }"
       editorType="dxDateBox"
       [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
+    ></dxi-item>
+    <dxi-item
+      dataField="StartTime"
+      [label]="{ text: 'Start time' }"
+      editorType="dxDateBox"
+      [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
+    ></dxi-item>
+    <dxi-item
+      dataField="FinishTime"
+      [label]="{ text: 'Finish time' }"
+      editorType="dxDateBox"
+      [editorOptions]="{ displayFormat: 'dd.MM.yyyy HH:mm:ss' }"
+    ></dxi-item>
+    <dxi-item
+      [label]="{ text: 'Duration' }"
+      editorType="dxTextBox"
+      [editorOptions]="{
+        value: this.actionService.getDurationString(this.action)
+      }"
     ></dxi-item>
   </dxi-item>
 </dx-form>

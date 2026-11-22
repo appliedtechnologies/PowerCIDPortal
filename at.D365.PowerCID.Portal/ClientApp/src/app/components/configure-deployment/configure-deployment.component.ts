@@ -117,7 +117,11 @@ export class ConfigureDeploymentComponent implements OnInit {
 
     public onValueChangedEnvVarValueTextBox(e: ValueChangedEvent, setting: DeploymentSetting): void {
         if (e.value !== e.previousValue && e.event) {
-            this.updateSetting(setting, e.value, true);
+            this.updateSetting(
+                setting,
+                e.value,
+                typeof e.value === "string" && e.value.trim().length > 0
+            );
         }
     }
 

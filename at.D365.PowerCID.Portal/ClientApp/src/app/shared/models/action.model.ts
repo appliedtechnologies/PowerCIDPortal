@@ -4,6 +4,7 @@ import { ActionStatus } from "./actionstatus.model";
 import { ActionType } from "./actiontype.model";
 import { Environment } from "./environment.model";
 import { Solution } from "./solution.model";
+import { DeploymentMode } from "./deployment-mode.model";
 
 export interface Action {
   Id?: number;
@@ -29,4 +30,8 @@ export interface Action {
   JobId?: string;
   Progress?: number;
   IsExternalDelivery?: boolean;
+  ExternalDeploymentPath?: number;
+  DeploymentMode?: DeploymentMode;
+  OverwriteUnmanagedCustomizations?: boolean;
+  EnableWorkflows?: boolean;
 }

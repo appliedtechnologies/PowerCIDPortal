@@ -1,5 +1,6 @@
 import { Solution } from "./solution.model";
+import { DeploymentMode } from "./deployment-mode.model";
 
 export interface Upgrade extends Solution {
-  ApplyManually?: boolean;
+  DefaultDeploymentMode?: DeploymentMode;
 }

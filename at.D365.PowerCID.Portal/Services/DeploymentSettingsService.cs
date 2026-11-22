@@ -224,8 +224,7 @@ namespace at.D365.PowerCID.Portal.Services
                 .Where(setting =>
                     values.TryGetValue(setting.Id, out var value) &&
                     value.IsConfigured &&
-                    (setting.Kind != DeploymentSettingKind.ConnectionReference ||
-                     !string.IsNullOrWhiteSpace(value.Value)))
+                    !string.IsNullOrWhiteSpace(value.Value))
                 .OrderBy(e => e.Kind)
                 .ThenBy(e => e.MsId)
                 .Select(setting =>
@@ -284,7 +283,8 @@ namespace at.D365.PowerCID.Portal.Services
                     DisplayName = setting.DisplayName,
                     ConnectorId = setting.ConnectorId,
                     Value = value?.Value,
-                    IsConfigured = value?.IsConfigured == true,
+                    IsConfigured = value?.IsConfigured == true &&
+                        !string.IsNullOrWhiteSpace(value.Value),
                     CreatedOn = DateTime.UtcNow
                 });
             }
@@ -317,7 +317,7 @@ namespace at.D365.PowerCID.Portal.Services
             }
 
             return snapshots
-                .Where(e => e.Kind != DeploymentSettingKind.ConnectionReference || !string.IsNullOrWhiteSpace(e.Value))
+                .Where(e => !string.IsNullOrWhiteSpace(e.Value))
                 .Select(e => new DeploymentSettingImportValue
                 {
                     Kind = e.Kind,
@@ -355,11 +355,11 @@ namespace at.D365.PowerCID.Portal.Services
             var configured = manifest.Settings.Count(e =>
                 values.TryGetValue(e.Id, out var value) &&
                 value.IsConfigured &&
-                (e.Kind != DeploymentSettingKind.ConnectionReference || !string.IsNullOrWhiteSpace(value.Value)));
+                !string.IsNullOrWhiteSpace(value.Value));
             var missing = manifest.Settings
                 .Where(e => !values.TryGetValue(e.Id, out var value) ||
                     !value.IsConfigured ||
-                    (e.Kind == DeploymentSettingKind.ConnectionReference && string.IsNullOrWhiteSpace(value.Value)))
+                    string.IsNullOrWhiteSpace(value.Value))
                 .Select(ToDescriptor)
                 .ToList();
 
@@ -576,6 +576,10 @@ namespace at.D365.PowerCID.Portal.Services
                 isConfigured &&
                 string.IsNullOrWhiteSpace(value))
                 throw new ArgumentException("A configured connection reference requires a connection id.");
+            if (setting.Kind == DeploymentSettingKind.EnvironmentVariable &&
+                isConfigured &&
+                string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("A configured environment variable requires a value.");
 
             var environment = await dbContext.Environments
                 .SingleOrDefaultAsync(e => e.Id == environmentId);
@@ -646,7 +650,8 @@ namespace at.D365.PowerCID.Portal.Services
                 settingId,
                 environmentId,
                 predecessorValue?.Value,
-                predecessorValue?.IsConfigured == true,
+                predecessorValue?.IsConfigured == true &&
+                    !string.IsNullOrWhiteSpace(predecessorValue.Value),
                 currentValue?.RowVersion);
         }
 
@@ -710,7 +715,8 @@ namespace at.D365.PowerCID.Portal.Services
                 }
 
                 currentValue.Value = sourceValue.Value;
-                currentValue.IsConfigured = sourceValue.IsConfigured;
+                currentValue.IsConfigured = sourceValue.IsConfigured &&
+                    !string.IsNullOrWhiteSpace(sourceValue.Value);
                 currentValue.IsInherited = true;
                 currentValue.InheritedFromSolutionId = predecessorValue.Value.SolutionId;
                 currentValue.ModifiedBy = sourceValue.ModifiedBy;
@@ -848,7 +854,7 @@ namespace at.D365.PowerCID.Portal.Services
                 SettingId = settingId,
                 EnvironmentId = environmentId,
                 Value = value,
-                IsConfigured = value != null,
+                IsConfigured = !string.IsNullOrWhiteSpace(value),
                 IsInherited = true,
                 ModifiedOn = DateTime.UtcNow
             });
