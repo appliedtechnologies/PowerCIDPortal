@@ -84,6 +84,8 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   @Input() public externalMode = false;
   @ViewChild(DxDataGridComponent, { static: false })
   dataGrid: DxDataGridComponent;
+  @ViewChild("externalSolutionsGrid", { static: false })
+  externalSolutionsGrid: DxDataGridComponent;
   @ViewChild("externalGroupSelectBox", { static: false })
   externalGroupSelectBox: DxSelectBoxComponent;
   @ViewChild("externalApplicationSelectBox", { static: false })
@@ -303,6 +305,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
   }
 
   public onExternalTenantChanged(tenantId: number): void {
+    this.resetExternalGridPage();
     this.selectedExternalTenantId = tenantId;
     if (tenantId === undefined || tenantId === null) {
       localStorage.removeItem(externalTenantStorageKey);
@@ -321,6 +324,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     if (this.restoringExternalSelections && (applicationId === undefined || applicationId === null)) {
       return;
     }
+    this.resetExternalGridPage();
     this.selectedApplication = this.externalApplications.find((a) => a.Id === applicationId);
     if (applicationId !== undefined && applicationId !== null) {
       void this.loadLatestUpgrade(applicationId);
@@ -340,7 +344,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
         "Actions.TypeNavigation",
         "Actions.StatusNavigation",
         "Actions.ResultNavigation",
-        "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery)",
+        "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery, DeploymentMode)",
         "ApplicationNavigation",
       ],
     });
@@ -352,6 +356,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     if (this.restoringExternalSelections) {
       return;
     }
+    this.resetExternalGridPage();
     this.selectedApplicationGroup = group;
     if (group === null) {
       localStorage.removeItem(externalGroupStorageKey);
@@ -372,6 +377,14 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       this.selectedApplicationGroup === null ||
       (a.Group ?? null) === this.selectedApplicationGroup
     );
+  }
+
+  private resetExternalGridPage(): void {
+    if (this.externalSolutionsGrid) {
+      this.externalSolutionsGrid.instance.pageIndex(0);
+    } else {
+      this.dataSourceSolutions?.pageIndex(0);
+    }
   }
 
   private restoreExternalSelections(): void {
@@ -1593,7 +1606,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
             "Actions.TypeNavigation",
             "Actions.StatusNavigation",
             "Actions.ResultNavigation",
-            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery)",
+            "Actions($orderby=StartTime desc;$select=Id, Type, Status, Result, TargetEnvironment, Solution, IsExternalDelivery, DeploymentMode)",
             "CreatedByNavigation($select=Firstname, Lastname)",
             "ModifiedByNavigation($select=Firstname, Lastname)",
           ],

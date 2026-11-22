@@ -11,6 +11,7 @@
 ></dx-toolbar>
 <dx-data-grid
   *ngIf="externalMode && showSolutionsGrid"
+  #externalSolutionsGrid
   [dataSource]="dataSourceSolutions"
   [columns]="externalDataGridColumns"
   [showBorders]="true"
@@ -21,6 +22,7 @@
   height="100%"
   class="solutions-grid external-solutions-grid"
 >
+  <dxo-paging [pageSize]="50"></dxo-paging>
   <div *dxTemplate="let cellInfo of 'externalTypeCellTemplate'">
     <div class="card dx-card dx-theme-text-color">
       {{ cellInfo.value }}
@@ -105,7 +107,7 @@
           tabindex="0"
           role="button"></i>
         <ng-container *ngIf="canApplyTwoStepUpgrade(cellInfo, lastAction); else externalActionStatus">
-          Holding Import Success · Apply Upgrade Pending
+          holding import success, apply upgrade pending
         </ng-container>
         <ng-template #externalActionStatus>
           {{ lastAction.TypeNavigation?.Type }}
@@ -375,7 +377,7 @@
             title="enable flows"
           ></i>
           <ng-container *ngIf="canApplyTwoStepUpgrade(cellInfo, lastAction); else targetActionStatus">
-            Holding Import Success · Apply Upgrade Pending
+            holding import success, apply upgrade pending
           </ng-container>
           <ng-template #targetActionStatus>
             {{ lastAction.TypeNavigation.Type }}
