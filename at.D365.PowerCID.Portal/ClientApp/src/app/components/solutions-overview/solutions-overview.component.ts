@@ -339,6 +339,8 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
       store: this.solutionService.getStore(),
       filter: [["Application", "=", applicationId], "and", ["IsReleasedExternally", "=", true]],
       sort: [{ selector: "CreatedOn", desc: true }],
+      paginate: true,
+      pageSize: 50,
       expand: [
         "Actions.TargetEnvironmentNavigation($select=DeployUnmanaged, ConnectionsOwner)",
         "Actions.TypeNavigation",
@@ -348,7 +350,7 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
         "ApplicationNavigation",
       ],
     });
-    this.showSolutionsGrid = true;
+    this.recreateExternalSolutionsGrid();
     this.externalSelectionToolbarItems = this.createExternalSelectionToolbarItems();
   }
 
@@ -385,6 +387,13 @@ export class SolutionsOverviewComponent implements AfterViewInit, OnChanges, OnI
     } else {
       this.dataSourceSolutions?.pageIndex(0);
     }
+  }
+
+  private recreateExternalSolutionsGrid(): void {
+    this.showSolutionsGrid = false;
+    this.changeDetectorRef.detectChanges();
+    this.showSolutionsGrid = true;
+    this.changeDetectorRef.detectChanges();
   }
 
   private restoreExternalSelections(): void {
