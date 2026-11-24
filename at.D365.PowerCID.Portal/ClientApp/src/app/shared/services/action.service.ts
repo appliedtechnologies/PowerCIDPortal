@@ -6,13 +6,6 @@ import { TimeHelper } from "../helper/time.helper";
 import { Action } from "../models/action.model";
 import { ODataService } from "./odata.service";
 
-export interface ActionTargetEnvironment {
-  id: number;
-  name: string;
-  tenantName: string;
-  isExternalDelivery: boolean;
-}
-
 @Injectable({
   providedIn: "root",
 })
@@ -21,19 +14,6 @@ export class ActionService {
 
   public getStore(): ODataStore {
     return this.odataService.context["Actions"];
-  }
-
-  public getTargetEnvironments(): Promise<ActionTargetEnvironment[]> {
-    return new Promise<ActionTargetEnvironment[]>((resolve, reject) => {
-      this.http
-        .get<ActionTargetEnvironment[]>(
-          `${AppConfig.settings.api.url}/Actions/TargetEnvironments`
-        )
-        .subscribe({
-          next: (targetEnvironments) => resolve(targetEnvironments),
-          error: (error) => reject(error),
-        });
-    });
   }
 
   public cancelImport(actionId: number): Promise<void> {

@@ -29,7 +29,12 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: ActionsController Get(key: {key})");
 
-            return VisibleActions().Where(e => e.Id == key);
+            var externalTenantIds = AuthorizedExternalTenantIds();
+            return base.dbContext.Actions.Where(e =>
+                (e.IsExternalDelivery && e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                    && externalTenantIds.Contains(e.TargetEnvironmentNavigation.Tenant)
+                    || !e.IsExternalDelivery && e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser)
+                && e.Id == key);
         }
 
         // GET: odata/Actions
@@ -38,48 +43,13 @@ namespace at.D365.PowerCID.Portal.Controllers
         {
             logger.LogDebug($"Begin & End: ActionsController Get()");
 
-            return VisibleActions();
-        }
-
-        [HttpGet]
-        [Route("odata/Actions/TargetEnvironments")]
-        public async Task<IActionResult> GetTargetEnvironments()
-        {
-            var visibleTargets = await VisibleActions()
-                .Select(e => new
-                {
-                    e.TargetEnvironment,
-                    EnvironmentName = e.TargetEnvironmentNavigation.Name,
-                    TenantName = e.TargetEnvironmentNavigation.TenantNavigation.Name,
-                    e.IsExternalDelivery
-                })
-                .Distinct()
-                .ToListAsync();
-
-            var targetEnvironments = visibleTargets
-                .GroupBy(e => new { e.TargetEnvironment, e.EnvironmentName, e.TenantName })
-                .Select(group => new
-                {
-                    id = group.Key.TargetEnvironment,
-                    name = group.Key.EnvironmentName,
-                    tenantName = group.Key.TenantName,
-                    isExternalDelivery = group.Any(e => e.IsExternalDelivery)
-                })
-                .ToList();
-
-            return Ok(targetEnvironments);
-        }
-
-        private IQueryable<Action> VisibleActions()
-        {
-            // External deliveries are visible to their vendor only for authorized target tenants, and to the
-            // receiving tenant. Internal actions remain scoped to their target environment's tenant.
+            // Internal deliveries are scoped by the target environment's tenant. External deliveries must instead
+            // be scoped by the solution (vendor) tenant, otherwise they would leak into the customer tenant's
+            // history and be invisible to the vendor tenant that actually performed the delivery.
             var externalTenantIds = AuthorizedExternalTenantIds();
             return base.dbContext.Actions.Where(e =>
-                (e.IsExternalDelivery &&
-                    ((e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
-                        && externalTenantIds.Contains(e.TargetEnvironmentNavigation.Tenant))
-                    || e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser))
+                e.IsExternalDelivery && e.SolutionNavigation.ApplicationNavigation.DevelopmentEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser
+                && externalTenantIds.Contains(e.TargetEnvironmentNavigation.Tenant)
                 || !e.IsExternalDelivery && e.TargetEnvironmentNavigation.TenantNavigation.MsId == this.msIdTenantCurrentUser);
         }
 

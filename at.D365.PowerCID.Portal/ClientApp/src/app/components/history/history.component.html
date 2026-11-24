@@ -74,7 +74,6 @@
   <dxi-column
     dataField="TargetEnvironment"
     caption="Target Environment"
-    cellTemplate="targetEnvironmentCellTemplate"
     >
     <dxo-lookup
       [dataSource]="dataStoreEnvironments"
@@ -84,9 +83,6 @@
     <dxo-header-filter
       [dataSource]="headerFilterDataEnvironment">
     </dxo-header-filter>
-    <div *dxTemplate="let cellData of 'targetEnvironmentCellTemplate'">
-      {{ targetEnvironmentDisplayName(cellData.data) }}
-    </div>
   </dxi-column>
   <dxi-column dataField="TypeNavigation.Type" caption="Type">
     <dxo-header-filter
