@@ -8,12 +8,12 @@ import { ActionResult } from "src/app/shared/models/actionresult.model";
 import { ActionStatus } from "src/app/shared/models/actionstatus.model";
 import { ActionType } from "src/app/shared/models/actiontype.model";
 import { Application } from "src/app/shared/models/application.model";
-import { Environment } from "src/app/shared/models/environment.model";
 import { Solution } from "src/app/shared/models/solution.model";
 import { User } from "src/app/shared/models/user.model";
 import { ActionService } from "src/app/shared/services/action.service";
 import { ApplicationService } from "src/app/shared/services/application.service";
 import { EnvironmentService } from "src/app/shared/services/environment.service";
+import { LayoutService, NotificationType } from "src/app/shared/services/layout.service";
 import { ODataService } from "src/app/shared/services/odata.service";
 import { SolutionService } from "src/app/shared/services/solution.service";
 import { UserService } from "src/app/shared/services/user.service";
@@ -60,7 +60,8 @@ export class HistoryComponent implements OnInit {
     private applicationService: ApplicationService,
     private environmentService: EnvironmentService,
     private userService: UserService,
-    private odataService: ODataService
+    private odataService: ODataService,
+    private layoutService: LayoutService
   ) {
     this.calculateDuration = this.calculateDuration.bind(this);
   }
@@ -106,16 +107,24 @@ export class HistoryComponent implements OnInit {
       }
     };
 
-    this.headerFilterDataEnvironment = {
-      store: this.environmentService.getStore(),
-      map: (item: Environment) => {
-          return {
-              text: item.Name,
-              value: item.Id,
-              Id: item.Id
-          }
-      }
-    };
+    this.headerFilterDataEnvironment = [];
+    this.actionService
+      .getTargetEnvironments()
+      .then((targetEnvironments) => {
+        this.headerFilterDataEnvironment = targetEnvironments.map((environment) => ({
+          text: environment.isExternalDelivery
+            ? `${environment.name} (${environment.tenantName})`
+            : environment.name,
+          value: environment.id,
+          Id: environment.id,
+        }));
+      })
+      .catch(() => {
+        this.layoutService.notify({
+          type: NotificationType.Error,
+          message: "Could not load target environment filter options.",
+        });
+      });
 
     this.headerFilterDataActionResult = {
       store: this.odataService.context["ActionResults"],
@@ -155,6 +164,7 @@ export class HistoryComponent implements OnInit {
         store: this.actionService.getStore(),
         expand: [
           "SolutionNavigation($select=Application)",
+          "TargetEnvironmentNavigation($select=Name,Tenant;$expand=TenantNavigation($select=Name))",
           "TypeNavigation",
           "ResultNavigation",
           "StatusNavigation",
@@ -167,6 +177,7 @@ export class HistoryComponent implements OnInit {
         filter: ["CreatedBy","=",this.userId],
         expand: [
           "SolutionNavigation($select=Application)",
+          "TargetEnvironmentNavigation($select=Name,Tenant;$expand=TenantNavigation($select=Name))",
           "TypeNavigation",
           "ResultNavigation",
           "StatusNavigation",
@@ -192,6 +203,14 @@ export class HistoryComponent implements OnInit {
         filter: "Id eq " + rowSolution.row.data.Solution,
       })
       .then((d) => {
+        if (!d?.length) {
+          this.layoutService.notify({
+            type: NotificationType.Warning,
+            message: "Solution details are not available in this tenant.",
+          });
+          return;
+        }
+
         this.selectedSolution = d[0];
         this.selectedApplication = d[0].ApplicationNavigation;
         this.isSolutionDetailPopupVisible = true;
@@ -220,6 +239,18 @@ export class HistoryComponent implements OnInit {
 
   public calculateDuration(rowData: Action): string {
     return this.actionService.getDurationString(rowData);
+  }
+
+  public targetEnvironmentDisplayName(action: Action): string {
+    const environment = action?.TargetEnvironmentNavigation;
+    if (!action?.IsExternalDelivery) {
+      return environment?.Name ?? "";
+    }
+
+    const tenantName = environment?.TenantNavigation?.Name;
+    return environment?.Name && tenantName
+      ? `${environment.Name} (${tenantName})`
+      : "";
   }
 
   public createdByFullName(user: User): string {
